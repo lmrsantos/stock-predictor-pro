@@ -25,28 +25,25 @@ serve(async (req) => {
     const cleanTicker = ticker.trim().toUpperCase();
     const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch chart data (Yahoo) + fundamentals (FMP profile) in parallel
+    // Fetch chart data + quote (for fundamentals) from Yahoo, and FMP profile for sector/industry
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
+    const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
-    // Note: stable/ratios-ttm requires a paid FMP plan (returns 402 on free tier)
-    const fmpRatiosUrl = fmpKey
-      ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
-      : null;
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: { "User-Agent": ua } }),
+      fetch(quoteUrl, { headers: { "User-Agent": ua } }),
     ];
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
-    if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
-    const fmpProfileRes = responses[1];
-    const fmpRatiosRes = responses[2];
+    const quoteRes = responses[1];
+    const fmpProfileRes = responses[2];
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -68,58 +65,54 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse FMP data
-    let fundamentals: Record<string, any> = {};
+    // Parse Yahoo v7 quote for fundamentals (PE, EPS, marketCap, etc.)
+    let yahooQuote: Record<string, any> = {};
+    try {
+      if (quoteRes.ok) {
+        const quoteJson = await quoteRes.json();
+        yahooQuote = quoteJson.quoteResponse?.result?.[0] || {};
+        console.log("Yahoo quote - trailingPE:", yahooQuote.trailingPE,
+          "forwardPE:", yahooQuote.forwardPE,
+          "epsTrailingTwelveMonths:", yahooQuote.epsTrailingTwelveMonths,
+          "marketCap:", yahooQuote.marketCap);
+      } else {
+        console.warn("Yahoo quote returned:", quoteRes.status);
+      }
+    } catch (e) {
+      console.warn("Yahoo quote parse failed:", e);
+    }
+
+    // Parse FMP profile for sector/industry (free tier provides this)
+    let fmpProfile: Record<string, any> = {};
     if (fmpProfileRes) {
       try {
         if (fmpProfileRes.ok) {
           const fmpData = await fmpProfileRes.json();
-          const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
-
-          // Parse ratios-ttm (may return 402 on free tier)
-          let ratios: Record<string, any> = {};
-          if (fmpRatiosRes?.ok) {
-            try {
-              const ratiosData = await fmpRatiosRes.json();
-              ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
-            } catch (e) { /* ignore */ }
-          }
-
-          if (profile) {
-            const price = profile.price || meta?.regularMarketPrice || 0;
-
-            // PE from ratios (paid tier) or profile
-            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? null;
-            const eps = pe && price ? price / pe : null;
-            const forwardPE = ratios.forwardPERatioTTM ?? null;
-            const dividendYield = ratios.dividendYieldTTM
-              ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null);
-
-            fundamentals = {
-              ticker: cleanTicker,
-              company_name: profile.companyName || meta?.longName || cleanTicker,
-              sector: profile.sector || null,
-              industry: profile.industry || null,
-              pe_ratio: pe,
-              forward_pe: forwardPE,
-              market_cap: profile.marketCap ? Math.round(profile.marketCap) : null,
-              eps: eps,
-              dividend_yield: dividendYield,
-              fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
-              fifty_two_week_low: profile.range ? parseFloat(profile.range.split("-")[0]) : null,
-              currency: profile.currency || meta?.currency || "USD",
-              updated_at: new Date().toISOString(),
-            };
-            console.log("Fundamentals - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
-          }
-        } else {
-          const errText = await fmpProfileRes.text();
-          console.warn("FMP profile returned:", fmpProfileRes.status, errText.substring(0, 200));
+          fmpProfile = Array.isArray(fmpData) ? fmpData[0] || {} : fmpData || {};
         }
       } catch (e) {
-        console.warn("FMP parse failed:", e);
+        console.warn("FMP profile parse failed:", e);
       }
     }
+
+    // Merge fundamentals: Yahoo for valuations, FMP for sector/industry
+    const fundamentals = {
+      ticker: cleanTicker,
+      company_name: fmpProfile.companyName || yahooQuote.longName || yahooQuote.shortName || meta?.longName || cleanTicker,
+      sector: fmpProfile.sector || yahooQuote.sector || null,
+      industry: fmpProfile.industry || yahooQuote.industry || null,
+      pe_ratio: yahooQuote.trailingPE ?? null,
+      forward_pe: yahooQuote.forwardPE ?? null,
+      market_cap: yahooQuote.marketCap ? Math.round(yahooQuote.marketCap) : (fmpProfile.marketCap ? Math.round(fmpProfile.marketCap) : null),
+      eps: yahooQuote.epsTrailingTwelveMonths ?? null,
+      dividend_yield: yahooQuote.dividendYield != null ? yahooQuote.dividendYield / 100 : (fmpProfile.lastDividend && fmpProfile.price ? fmpProfile.lastDividend / fmpProfile.price : null),
+      fifty_two_week_high: yahooQuote.fiftyTwoWeekHigh ?? (fmpProfile.range ? parseFloat(fmpProfile.range.split("-")[1]) : null),
+      fifty_two_week_low: yahooQuote.fiftyTwoWeekLow ?? (fmpProfile.range ? parseFloat(fmpProfile.range.split("-")[0]) : null),
+      currency: fmpProfile.currency || meta?.currency || "USD",
+      updated_at: new Date().toISOString(),
+    };
+
+    console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
 
     // Build price rows, deduplicate by date
     const rowMap = new Map<string, {
@@ -173,7 +166,7 @@ serve(async (req) => {
         name: fundamentals.company_name || meta?.longName || meta?.shortName || cleanTicker,
         currency: meta?.currency || "USD",
         rowsInserted: rows.length,
-        fundamentals: fundamentals.ticker ? {
+        fundamentals: {
           pe_ratio: fundamentals.pe_ratio,
           forward_pe: fundamentals.forward_pe,
           market_cap: fundamentals.market_cap,
@@ -183,7 +176,7 @@ serve(async (req) => {
           dividend_yield: fundamentals.dividend_yield,
           fifty_two_week_high: fundamentals.fifty_two_week_high,
           fifty_two_week_low: fundamentals.fifty_two_week_low,
-        } : null,
+        },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
