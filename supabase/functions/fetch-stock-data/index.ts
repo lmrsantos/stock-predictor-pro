@@ -70,23 +70,25 @@ serve(async (req) => {
         if (responses[1].ok) {
           const fmpData = await responses[1].json();
           const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
+          console.log("FMP raw keys:", profile ? Object.keys(profile).join(", ") : "null");
+          console.log("FMP PE fields:", JSON.stringify({ pe: profile?.pe, peRatio: profile?.peRatio, priceEarningsRatio: profile?.priceEarningsRatio, eps: profile?.eps, earningsPerShare: profile?.earningsPerShare, mktCap: profile?.mktCap, marketCap: profile?.marketCap, marketCapitalization: profile?.marketCapitalization }));
           if (profile) {
             fundamentals = {
               ticker: cleanTicker,
-              company_name: profile.companyName || meta?.longName || cleanTicker,
+              company_name: profile.companyName || profile.name || meta?.longName || cleanTicker,
               sector: profile.sector || null,
               industry: profile.industry || null,
-              pe_ratio: profile.pe ?? null,
-              forward_pe: profile.forwardPE ?? null,
-              market_cap: profile.mktCap ?? null,
-              eps: profile.eps ?? null,
-              dividend_yield: profile.lastDiv ? profile.lastDiv / (profile.price || 1) : null,
-              fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
-              fifty_two_week_low: profile.range ? parseFloat(profile.range.split("-")[0]) : null,
+              pe_ratio: profile.peRatio ?? profile.pe ?? profile.priceEarningsRatio ?? null,
+              forward_pe: profile.forwardPE ?? profile.forwardPe ?? null,
+              market_cap: profile.marketCap ?? profile.mktCap ?? profile.marketCapitalization ?? null,
+              eps: profile.eps ?? profile.earningsPerShare ?? null,
+              dividend_yield: profile.dividendYield ?? (profile.lastDiv ? profile.lastDiv / (profile.price || 1) : null),
+              fifty_two_week_high: profile.yearHigh ?? (profile.range ? parseFloat(profile.range.split("-")[1]) : null),
+              fifty_two_week_low: profile.yearLow ?? (profile.range ? parseFloat(profile.range.split("-")[0]) : null),
               currency: profile.currency || meta?.currency || "USD",
               updated_at: new Date().toISOString(),
             };
-            console.log("FMP fundamentals parsed - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps);
+            console.log("FMP fundamentals parsed - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
           }
         } else {
           const errText = await responses[1].text();
