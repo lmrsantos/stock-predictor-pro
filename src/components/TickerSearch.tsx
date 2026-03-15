@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SearchResult {
   symbol: string;
