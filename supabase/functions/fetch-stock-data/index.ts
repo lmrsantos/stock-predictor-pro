@@ -24,36 +24,69 @@ serve(async (req) => {
 
     const cleanTicker = ticker.trim().toUpperCase();
 
-    // Fetch from Yahoo Finance (server-side, no CORS issues)
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
+    // Fetch price history + fundamentals in parallel
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
+    const summaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(cleanTicker)}?modules=summaryDetail,defaultKeyStatistics,assetProfile,earningsQuarterlyGrowth,financialData`;
 
-    const yfResponse = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-      },
-    });
+    const headers = { "User-Agent": "Mozilla/5.0" };
 
-    if (!yfResponse.ok) {
-      const text = await yfResponse.text();
-      throw new Error(`Yahoo Finance returned ${yfResponse.status}: ${text}`);
+    const [chartRes, summaryRes] = await Promise.all([
+      fetch(chartUrl, { headers }),
+      fetch(summaryUrl, { headers }),
+    ]);
+
+    if (!chartRes.ok) {
+      const text = await chartRes.text();
+      throw new Error(`Yahoo Finance chart returned ${chartRes.status}: ${text}`);
     }
 
-    const json = await yfResponse.json();
-    const result = json.chart?.result?.[0];
+    const chartJson = await chartRes.json();
+    const chartResult = chartJson.chart?.result?.[0];
 
-    if (!result) {
+    if (!chartResult) {
       throw new Error(`No data found for ticker "${cleanTicker}"`);
     }
 
-    const timestamps: number[] = result.timestamp || [];
-    const quotes = result.indicators?.quote?.[0];
-    const meta = result.meta;
+    const timestamps: number[] = chartResult.timestamp || [];
+    const quotes = chartResult.indicators?.quote?.[0];
+    const meta = chartResult.meta;
 
     if (!quotes || !timestamps.length) {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Build rows for upsert, deduplicate by date (keep last occurrence)
+    // Parse fundamentals (best-effort, don't fail if unavailable)
+    let fundamentals: Record<string, any> = {};
+    if (summaryRes.ok) {
+      try {
+        const summaryJson = await summaryRes.json();
+        const summaryResult = summaryJson.quoteSummary?.result?.[0];
+        const sd = summaryResult?.summaryDetail || {};
+        const ks = summaryResult?.defaultKeyStatistics || {};
+        const ap = summaryResult?.assetProfile || {};
+        const fd = summaryResult?.financialData || {};
+
+        fundamentals = {
+          ticker: cleanTicker,
+          company_name: meta?.longName || meta?.shortName || cleanTicker,
+          sector: ap?.sector || null,
+          industry: ap?.industry || null,
+          pe_ratio: sd?.trailingPE?.raw ?? null,
+          forward_pe: sd?.forwardPE?.raw ?? ks?.forwardPE?.raw ?? null,
+          market_cap: sd?.marketCap?.raw ?? null,
+          eps: fd?.revenuePerShare?.raw ?? ks?.trailingEps?.raw ?? null,
+          dividend_yield: sd?.dividendYield?.raw ?? null,
+          fifty_two_week_high: sd?.fiftyTwoWeekHigh?.raw ?? null,
+          fifty_two_week_low: sd?.fiftyTwoWeekLow?.raw ?? null,
+          currency: meta?.currency || "USD",
+          updated_at: new Date().toISOString(),
+        };
+      } catch (e) {
+        console.warn("Failed to parse summary data:", e);
+      }
+    }
+
+    // Build rows for upsert, deduplicate by date
     const rowMap = new Map<string, {
       ticker: string;
       date: string;
@@ -88,18 +121,36 @@ serve(async (req) => {
 
     const rows = Array.from(rowMap.values());
 
-    // Upsert into database using service role
+    // Upsert into database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Batch upsert (on conflict update)
-    const { error: upsertError } = await supabase
-      .from("stock_prices")
-      .upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: false });
+    // Upsert prices + fundamentals in parallel
+    const upsertPromises: Promise<any>[] = [
+      supabase
+        .from("stock_prices")
+        .upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: false }),
+    ];
 
-    if (upsertError) {
-      throw new Error(`DB upsert failed: ${upsertError.message}`);
+    if (fundamentals.ticker) {
+      upsertPromises.push(
+        supabase
+          .from("stock_fundamentals")
+          .upsert([fundamentals], { onConflict: "ticker", ignoreDuplicates: false })
+      );
+    }
+
+    const results = await Promise.all(upsertPromises);
+
+    const priceError = results[0]?.error;
+    if (priceError) {
+      throw new Error(`DB price upsert failed: ${priceError.message}`);
+    }
+
+    const fundError = results[1]?.error;
+    if (fundError) {
+      console.warn("Fundamentals upsert warning:", fundError.message);
     }
 
     return new Response(
@@ -109,6 +160,17 @@ serve(async (req) => {
         name: meta?.longName || meta?.shortName || cleanTicker,
         currency: meta?.currency || "USD",
         rowsInserted: rows.length,
+        fundamentals: fundamentals.ticker ? {
+          pe_ratio: fundamentals.pe_ratio,
+          forward_pe: fundamentals.forward_pe,
+          market_cap: fundamentals.market_cap,
+          eps: fundamentals.eps,
+          sector: fundamentals.sector,
+          industry: fundamentals.industry,
+          dividend_yield: fundamentals.dividend_yield,
+          fifty_two_week_high: fundamentals.fifty_two_week_high,
+          fifty_two_week_low: fundamentals.fifty_two_week_low,
+        } : null,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
