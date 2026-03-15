@@ -110,6 +110,7 @@ const Index = () => {
         lastPrice={lastPrice}
         isLoading={isLoading}
         fundamentals={fundamentals}
+        ticker={ticker}
       />
 
       <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">

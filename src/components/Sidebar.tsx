@@ -3,6 +3,7 @@ import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
+import { InvestmentSimulator } from "./InvestmentSimulator";
 
 interface SidebarProps {
   searchInput: string;
@@ -16,6 +17,7 @@ interface SidebarProps {
   lastPrice: number;
   isLoading: boolean;
   fundamentals: StockFundamentals | null;
+  ticker: string;
 }
 
 const periods = [
@@ -48,6 +50,7 @@ export function Sidebar({
   lastPrice,
   isLoading,
   fundamentals,
+  ticker,
 }: SidebarProps) {
   const annualReturn = regression && lastPrice
     ? slopeToAnnualReturn(regression.slope, lastPrice)
@@ -250,6 +253,16 @@ export function Sidebar({
           </>
         ) : null}
       </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Investment Simulator */}
+      <InvestmentSimulator
+        regression={regression}
+        lastPrice={lastPrice}
+        ticker={ticker}
+      />
     </aside>
   );
 }
