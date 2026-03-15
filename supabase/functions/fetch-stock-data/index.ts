@@ -158,6 +158,20 @@ serve(async (req) => {
       }
     }
 
+    // Parse FMP rating for analyst recommendations
+    let fmpRating: Record<string, any> = {};
+    if (fmpRatingRes) {
+      try {
+        if (fmpRatingRes.ok) {
+          const ratingData = await fmpRatingRes.json();
+          fmpRating = Array.isArray(ratingData) ? ratingData[0] || {} : ratingData || {};
+          console.log("FMP Rating:", fmpRating.rating, "Score:", fmpRating.ratingScore, "Recommendation:", fmpRating.ratingRecommendation);
+        }
+      } catch (e) {
+        console.warn("FMP rating parse failed:", e);
+      }
+    }
+
     // Merge fundamentals
     const fundamentals = {
       ticker: cleanTicker,
@@ -174,6 +188,23 @@ serve(async (req) => {
       currency: fmpProfile.currency || meta?.currency || "USD",
       updated_at: new Date().toISOString(),
     };
+
+    // Build analyst rating object
+    const analystRating = fmpRating.rating ? {
+      rating: fmpRating.rating,
+      score: fmpRating.ratingScore ?? null,
+      recommendation: fmpRating.ratingRecommendation ?? null,
+      dcf_score: fmpRating.ratingDetailsDCFScore ?? null,
+      dcf_recommendation: fmpRating.ratingDetailsDCFRecommendation ?? null,
+      roe_score: fmpRating.ratingDetailsROEScore ?? null,
+      roe_recommendation: fmpRating.ratingDetailsROERecommendation ?? null,
+      roa_score: fmpRating.ratingDetailsROAScore ?? null,
+      roa_recommendation: fmpRating.ratingDetailsROARecommendation ?? null,
+      pe_score: fmpRating.ratingDetailsPEScore ?? null,
+      pe_recommendation: fmpRating.ratingDetailsPERecommendation ?? null,
+      pb_score: fmpRating.ratingDetailsPBScore ?? null,
+      pb_recommendation: fmpRating.ratingDetailsPBRecommendation ?? null,
+    } : null;
 
     console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
 
