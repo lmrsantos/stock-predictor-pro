@@ -82,6 +82,13 @@ serve(async (req) => {
             try {
               const ratiosData = await fmpRatiosRes.json();
               ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
+              console.log("FMP ratios keys for", cleanTicker, ":", Object.keys(ratios).join(", "));
+              console.log("FMP ratios PE fields:", JSON.stringify({
+                peRatioTTM: ratios.peRatioTTM,
+                priceToEarningsRatioTTM: ratios.priceToEarningsRatioTTM,
+                priceEarningsRatio: ratios.priceEarningsRatio,
+                peRatio: ratios.peRatio,
+              }));
             } catch (e) { console.warn("Ratios parse failed:", e); }
           }
 
