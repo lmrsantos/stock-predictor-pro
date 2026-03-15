@@ -15,9 +15,12 @@ const Index = () => {
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
 
-  const handleSearch = useCallback(() => {
-    const cleaned = searchInput.trim().toUpperCase();
-    if (cleaned) setTicker(cleaned);
+  const handleSearch = useCallback((overrideTicker?: string) => {
+    const cleaned = (overrideTicker || searchInput).trim().toUpperCase();
+    if (cleaned) {
+      setSearchInput(cleaned);
+      setTicker(cleaned);
+    }
   }, [searchInput]);
 
   // Step 1: Fetch from Yahoo Finance → store in DB
