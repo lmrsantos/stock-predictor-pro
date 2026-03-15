@@ -31,7 +31,7 @@ serve(async (req) => {
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
-      ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+      ? `https://financialmodelingprep.com/api/v3/profile/${encodeURIComponent(cleanTicker)}?apikey=${fmpKey}`
       : null;
     const fmpRatiosUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
@@ -39,16 +39,14 @@ serve(async (req) => {
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: { "User-Agent": ua } }),
-      fetch(yahooSummaryUrl, { headers: { "User-Agent": ua } }),
     ];
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
     if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
-    const yahooSummaryRes = responses[1];
-    const fmpProfileRes = responses[2];
-    const fmpRatiosRes = responses[3];
+    const fmpProfileRes = responses[1];
+    const fmpRatiosRes = responses[2];
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
