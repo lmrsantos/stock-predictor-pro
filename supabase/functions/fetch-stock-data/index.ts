@@ -25,13 +25,14 @@ serve(async (req) => {
     const cleanTicker = ticker.trim().toUpperCase();
     const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch chart data (Yahoo) + fundamentals (FMP profile + ratios) in parallel
+    // Fetch chart data (Yahoo) + fundamentals (FMP profile) in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
+    // Note: stable/ratios-ttm requires a paid FMP plan (returns 402 on free tier)
     const fmpRatiosUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
@@ -75,40 +76,22 @@ serve(async (req) => {
           const fmpData = await fmpProfileRes.json();
           const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
 
-          // Parse ratios-ttm
+          // Parse ratios-ttm (may return 402 on free tier)
           let ratios: Record<string, any> = {};
           if (fmpRatiosRes?.ok) {
             try {
               const ratiosData = await fmpRatiosRes.json();
               ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
-              // Log all available keys for debugging
-              const allKeys = Object.keys(ratios);
-              console.log("Ratios-ttm has", allKeys.length, "keys. PE-related:", 
-                allKeys.filter(k => /pe|earn|price/i.test(k)).join(", ") || "none");
-            } catch (e) { console.warn("Ratios parse failed:", e); }
-          } else {
-            console.warn("Ratios-ttm status:", fmpRatiosRes?.status);
+            } catch (e) { /* ignore */ }
           }
 
           if (profile) {
             const price = profile.price || meta?.regularMarketPrice || 0;
 
-            // Log profile keys that might contain PE
-            const profilePeKeys = Object.keys(profile).filter(k => /pe|earn|eps|ratio/i.test(k));
-            console.log("Profile PE-related keys:", profilePeKeys.join(", ") || "none");
-            console.log("Profile price:", price, "profile.pe:", profile.pe, "profile.eps:", profile.eps);
-
-            // Try PE from ratios, then profile
-            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? ratios.priceEarningsRatioTTM
-              ?? profile.pe ?? profile.peRatio ?? null;
-
-            // EPS
-            const eps = profile.eps ?? (pe && price ? price / pe : null);
-
-            // Forward PE
+            // PE from ratios (paid tier) or profile
+            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? null;
+            const eps = pe && price ? price / pe : null;
             const forwardPE = ratios.forwardPERatioTTM ?? null;
-
-            // Dividend yield
             const dividendYield = ratios.dividendYieldTTM
               ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null);
 
@@ -127,7 +110,7 @@ serve(async (req) => {
               currency: profile.currency || meta?.currency || "USD",
               updated_at: new Date().toISOString(),
             };
-            console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
+            console.log("Fundamentals - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
           }
         } else {
           const errText = await fmpProfileRes.text();
