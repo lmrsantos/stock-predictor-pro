@@ -25,15 +25,18 @@ serve(async (req) => {
     const cleanTicker = ticker.trim().toUpperCase();
     const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch chart data (Yahoo) + fundamentals (FMP + Yahoo quoteSummary) in parallel
+    // Fetch chart data (Yahoo) + fundamentals (FMP profile + ratios + key-metrics) in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
-      ? `https://financialmodelingprep.com/api/v3/profile/${encodeURIComponent(cleanTicker)}?apikey=${fmpKey}`
+      ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
     const fmpRatiosUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+      : null;
+    const fmpKeyMetricsUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/key-metrics-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
 
     const fetchPromises: Promise<Response>[] = [
@@ -41,11 +44,13 @@ serve(async (req) => {
     ];
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
     if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
+    if (fmpKeyMetricsUrl) fetchPromises.push(fetch(fmpKeyMetricsUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
     const fmpProfileRes = responses[1];
     const fmpRatiosRes = responses[2];
+    const fmpKeyMetricsRes = responses[3];
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -67,7 +72,7 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse FMP profile (v3 includes PE directly) and ratios
+    // Parse FMP data from all three endpoints
     let fundamentals: Record<string, any> = {};
     if (fmpProfileRes) {
       try {
@@ -75,6 +80,7 @@ serve(async (req) => {
           const fmpData = await fmpProfileRes.json();
           const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
 
+          // Parse ratios-ttm
           let ratios: Record<string, any> = {};
           if (fmpRatiosRes?.ok) {
             try {
@@ -83,14 +89,33 @@ serve(async (req) => {
             } catch (e) { console.warn("Ratios parse failed:", e); }
           }
 
+          // Parse key-metrics-ttm (often has PE when ratios-ttm doesn't)
+          let keyMetrics: Record<string, any> = {};
+          if (fmpKeyMetricsRes?.ok) {
+            try {
+              const kmData = await fmpKeyMetricsRes.json();
+              keyMetrics = Array.isArray(kmData) ? kmData[0] || {} : kmData || {};
+            } catch (e) { console.warn("Key metrics parse failed:", e); }
+          }
+
           if (profile) {
-            const price = profile.price || 0;
-            // v3 profile has direct fields: pe, eps, mktCap, lastDiv, etc.
-            // ratios-ttm may also have peRatioTTM — use whichever is available
-            const pe = profile.pe ?? ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? null;
-            const eps = profile.eps ?? (pe && price ? price / pe : null);
-            const forwardPE = ratios.forwardPERatioTTM ?? null;
-            const dividendYield = ratios.dividendYieldTTM ?? (profile.lastDiv && price ? profile.lastDiv / price : null);
+            const price = profile.price || meta?.regularMarketPrice || 0;
+
+            // Try PE from multiple sources
+            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM
+              ?? keyMetrics.peRatioTTM ?? keyMetrics.priceEarningsRatioTTM
+              ?? (profile.pe || null);
+
+            // Try EPS - calculate from PE if not directly available
+            const eps = pe && price ? price / pe : null;
+
+            // Forward PE
+            const forwardPE = ratios.forwardPERatioTTM ?? keyMetrics.forwardPERatioTTM ?? null;
+
+            // Dividend yield
+            const dividendYield = ratios.dividendYieldTTM
+              ?? keyMetrics.dividendYieldTTM
+              ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null);
 
             fundamentals = {
               ticker: cleanTicker,
@@ -99,7 +124,7 @@ serve(async (req) => {
               industry: profile.industry || null,
               pe_ratio: pe,
               forward_pe: forwardPE,
-              market_cap: profile.mktCap ? Math.round(profile.mktCap) : null,
+              market_cap: profile.marketCap ? Math.round(profile.marketCap) : null,
               eps: eps,
               dividend_yield: dividendYield,
               fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
@@ -107,8 +132,14 @@ serve(async (req) => {
               currency: profile.currency || meta?.currency || "USD",
               updated_at: new Date().toISOString(),
             };
-            console.log("Profile fields - pe:", profile.pe, "eps:", profile.eps, "mktCap:", profile.mktCap);
-            console.log("Final fundamentals - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
+
+            // Debug logging
+            console.log("Ratios PE fields:", JSON.stringify({
+              "ratios.peRatioTTM": ratios.peRatioTTM,
+              "keyMetrics.peRatioTTM": keyMetrics.peRatioTTM,
+              "profile.pe": profile.pe,
+            }));
+            console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
           }
         } else {
           const errText = await fmpProfileRes.text();
@@ -118,8 +149,6 @@ serve(async (req) => {
         console.warn("FMP parse failed:", e);
       }
     }
-
-    console.log("Final fundamentals - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
 
     // Build price rows, deduplicate by date
     const rowMap = new Map<string, {
@@ -173,7 +202,7 @@ serve(async (req) => {
         name: fundamentals.company_name || meta?.longName || meta?.shortName || cleanTicker,
         currency: meta?.currency || "USD",
         rowsInserted: rows.length,
-        fundamentals: {
+        fundamentals: fundamentals.ticker ? {
           pe_ratio: fundamentals.pe_ratio,
           forward_pe: fundamentals.forward_pe,
           market_cap: fundamentals.market_cap,
@@ -183,7 +212,7 @@ serve(async (req) => {
           dividend_yield: fundamentals.dividend_yield,
           fifty_two_week_high: fundamentals.fifty_two_week_high,
           fifty_two_week_low: fundamentals.fifty_two_week_low,
-        },
+        } : null,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
