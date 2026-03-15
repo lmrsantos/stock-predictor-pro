@@ -13,10 +13,26 @@ export interface StockFundamentals {
   fifty_two_week_low: number | null;
 }
 
+export interface AnalystRating {
+  rating: string;
+  score: number | null;
+  recommendation: string | null;
+  dcf_score: number | null;
+  dcf_recommendation: string | null;
+  roe_score: number | null;
+  roe_recommendation: string | null;
+  roa_score: number | null;
+  roa_recommendation: string | null;
+  pe_score: number | null;
+  pe_recommendation: string | null;
+  pb_score: number | null;
+  pb_recommendation: string | null;
+}
+
 export async function fetchAndStoreStockData(
   ticker: string,
   period: string = "1y"
-): Promise<{ name: string; currency: string; fundamentals: StockFundamentals | null }> {
+): Promise<{ name: string; currency: string; fundamentals: StockFundamentals | null; analystRating: AnalystRating | null }> {
   const { data, error } = await supabase.functions.invoke("fetch-stock-data", {
     body: { ticker, period },
   });
@@ -28,6 +44,7 @@ export async function fetchAndStoreStockData(
     name: data.name,
     currency: data.currency,
     fundamentals: data.fundamentals || null,
+    analystRating: data.analystRating || null,
   };
 }
 

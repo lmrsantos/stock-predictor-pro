@@ -88,18 +88,23 @@ serve(async (req) => {
     const fmpProfileUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
+    const fmpRatingUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/rating?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+      : null;
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: authHeaders }),
     ];
     if (quoteUrl) fetchPromises.push(fetch(quoteUrl, { headers: authHeaders }));
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
+    if (fmpRatingUrl) fetchPromises.push(fetch(fmpRatingUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
     let responseIdx = 1;
     const quoteRes = quoteUrl ? responses[responseIdx++] : null;
     const fmpProfileRes = fmpProfileUrl ? responses[responseIdx++] : null;
+    const fmpRatingRes = fmpRatingUrl ? responses[responseIdx++] : null;
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -153,6 +158,20 @@ serve(async (req) => {
       }
     }
 
+    // Parse FMP rating for analyst recommendations
+    let fmpRating: Record<string, any> = {};
+    if (fmpRatingRes) {
+      try {
+        if (fmpRatingRes.ok) {
+          const ratingData = await fmpRatingRes.json();
+          fmpRating = Array.isArray(ratingData) ? ratingData[0] || {} : ratingData || {};
+          console.log("FMP Rating:", fmpRating.rating, "Score:", fmpRating.ratingScore, "Recommendation:", fmpRating.ratingRecommendation);
+        }
+      } catch (e) {
+        console.warn("FMP rating parse failed:", e);
+      }
+    }
+
     // Merge fundamentals
     const fundamentals = {
       ticker: cleanTicker,
@@ -169,6 +188,23 @@ serve(async (req) => {
       currency: fmpProfile.currency || meta?.currency || "USD",
       updated_at: new Date().toISOString(),
     };
+
+    // Build analyst rating object
+    const analystRating = fmpRating.rating ? {
+      rating: fmpRating.rating,
+      score: fmpRating.ratingScore ?? null,
+      recommendation: fmpRating.ratingRecommendation ?? null,
+      dcf_score: fmpRating.ratingDetailsDCFScore ?? null,
+      dcf_recommendation: fmpRating.ratingDetailsDCFRecommendation ?? null,
+      roe_score: fmpRating.ratingDetailsROEScore ?? null,
+      roe_recommendation: fmpRating.ratingDetailsROERecommendation ?? null,
+      roa_score: fmpRating.ratingDetailsROAScore ?? null,
+      roa_recommendation: fmpRating.ratingDetailsROARecommendation ?? null,
+      pe_score: fmpRating.ratingDetailsPEScore ?? null,
+      pe_recommendation: fmpRating.ratingDetailsPERecommendation ?? null,
+      pb_score: fmpRating.ratingDetailsPBScore ?? null,
+      pb_recommendation: fmpRating.ratingDetailsPBRecommendation ?? null,
+    } : null;
 
     console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
 
@@ -235,6 +271,7 @@ serve(async (req) => {
           fifty_two_week_high: fundamentals.fifty_two_week_high,
           fifty_two_week_low: fundamentals.fifty_two_week_low,
         },
+        analystRating,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

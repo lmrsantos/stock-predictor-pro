@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
+import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
 
 const Index = () => {
   const [ticker, setTicker] = useState("AAPL");
@@ -48,6 +49,7 @@ const Index = () => {
   });
 
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
+  const analystRating = meta?.analystRating || null;
 
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
@@ -123,6 +125,15 @@ const Index = () => {
           isLoading={isLoading}
           showTable={showTable}
           onToggleTable={() => setShowTable(!showTable)}
+        />
+
+        <InvestmentRecommendation
+          regression={regression}
+          fundamentals={fundamentals}
+          analystRating={analystRating}
+          lastPrice={lastPrice}
+          ticker={ticker}
+          isLoading={isLoading}
         />
 
         {error ? (
