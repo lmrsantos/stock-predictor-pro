@@ -13,6 +13,22 @@ export interface StockFundamentals {
   fifty_two_week_low: number | null;
 }
 
+export interface AnalystRating {
+  rating: string;
+  score: number | null;
+  recommendation: string | null;
+  dcf_score: number | null;
+  dcf_recommendation: string | null;
+  roe_score: number | null;
+  roe_recommendation: string | null;
+  roa_score: number | null;
+  roa_recommendation: string | null;
+  pe_score: number | null;
+  pe_recommendation: string | null;
+  pb_score: number | null;
+  pb_recommendation: string | null;
+}
+
 export async function fetchAndStoreStockData(
   ticker: string,
   period: string = "1y"
