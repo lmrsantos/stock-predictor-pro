@@ -26,13 +26,37 @@ serve(async (req) => {
 
     // Fetch price history + fundamentals in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
-    const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}`;
+    const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" };
 
-    const headers = { "User-Agent": "Mozilla/5.0" };
+    // Step 1: Get crumb + cookies from Yahoo Finance
+    let crumb = "";
+    let cookies = "";
+    try {
+      const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+        headers,
+        redirect: "follow",
+      });
+      if (crumbRes.ok) {
+        crumb = await crumbRes.text();
+        cookies = crumbRes.headers.get("set-cookie") || "";
+      }
+    } catch (e) {
+      console.warn("Crumb fetch failed, continuing without:", e);
+    }
+
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
+
+    const quoteParams = crumb
+      ? `symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(crumb)}`
+      : `symbols=${encodeURIComponent(cleanTicker)}`;
+    const quoteUrl = `https://query2.finance.yahoo.com/v7/finance/quote?${quoteParams}`;
+
+    const quoteHeaders: Record<string, string> = { ...headers };
+    if (cookies) quoteHeaders["Cookie"] = cookies;
 
     const [chartRes, quoteRes] = await Promise.all([
       fetch(chartUrl, { headers }),
-      fetch(quoteUrl, { headers }),
+      fetch(quoteUrl, { headers: quoteHeaders }),
     ]);
 
     if (!chartRes.ok) {
