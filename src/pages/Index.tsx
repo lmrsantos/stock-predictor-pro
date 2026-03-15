@@ -106,6 +106,7 @@ const Index = () => {
         regression={regression}
         lastPrice={lastPrice}
         isLoading={isLoading}
+        fundamentals={fundamentals}
       />
 
       <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
