@@ -88,12 +88,16 @@ serve(async (req) => {
     const fmpProfileUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
+    const fmpRatingUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/rating?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+      : null;
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: authHeaders }),
     ];
     if (quoteUrl) fetchPromises.push(fetch(quoteUrl, { headers: authHeaders }));
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
+    if (fmpRatingUrl) fetchPromises.push(fetch(fmpRatingUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
