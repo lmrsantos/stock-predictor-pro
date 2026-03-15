@@ -235,7 +235,7 @@ export function Sidebar({
                 <InfoTooltip {...metricInfo.slope} />
               </div>
               <div className={`text-xl font-mono mt-1 ${regression.slope >= 0 ? "price-positive" : "price-negative"}`}>
-                {regression.slope >= 0 ? "+" : ""}{regression.slope.toFixed(4)}
+                {regression.slope >= 0 ? "+$" : "-$"}{Math.abs(regression.slope).toFixed(4)}
               </div>
             </div>
 
