@@ -29,6 +29,7 @@ function CustomTooltip({ active, payload, label }: any) {
     weekday: "short",
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
 
   return (
