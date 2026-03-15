@@ -7,6 +7,53 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+// Get Yahoo Finance crumb + cookies for authenticated endpoints
+async function getYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  try {
+    // Step 1: Get cookies from Yahoo
+    const cookieRes = await fetch("https://fc.yahoo.com/", {
+      headers: { "User-Agent": ua },
+      redirect: "manual",
+    });
+    const setCookies = cookieRes.headers.getSetCookie?.() || [];
+    // Extract just the cookie key=value pairs
+    const cookies = setCookies.map(c => c.split(";")[0]).join("; ");
+    // Also consume body
+    await cookieRes.text().catch(() => {});
+
+    if (!cookies) {
+      console.warn("No cookies from Yahoo");
+      return null;
+    }
+
+    // Step 2: Get crumb using the cookies
+    const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+      headers: {
+        "User-Agent": ua,
+        "Cookie": cookies,
+      },
+    });
+    
+    if (!crumbRes.ok) {
+      console.warn("Crumb request failed:", crumbRes.status);
+      return null;
+    }
+
+    const crumb = await crumbRes.text();
+    if (!crumb || crumb.includes("<")) {
+      console.warn("Invalid crumb:", crumb.substring(0, 50));
+      return null;
+    }
+
+    return { crumb, cookie: cookies };
+  } catch (e) {
+    console.warn("Yahoo crumb auth failed:", e);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,11 +70,19 @@ serve(async (req) => {
     }
 
     const cleanTicker = ticker.trim().toUpperCase();
-    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch chart data + quote (for fundamentals) from Yahoo, and FMP profile for sector/industry
+    // Get Yahoo auth crumb first
+    const auth = await getYahooCrumb();
+    const authHeaders: Record<string, string> = { "User-Agent": ua };
+    if (auth) {
+      authHeaders["Cookie"] = auth.cookie;
+    }
+
+    // Fetch chart data + quote (with crumb auth) + FMP profile in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
-    const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}`;
+    const quoteUrl = auth
+      ? `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(auth.crumb)}`
+      : null;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
@@ -35,15 +90,16 @@ serve(async (req) => {
       : null;
 
     const fetchPromises: Promise<Response>[] = [
-      fetch(chartUrl, { headers: { "User-Agent": ua } }),
-      fetch(quoteUrl, { headers: { "User-Agent": ua } }),
+      fetch(chartUrl, { headers: authHeaders }),
     ];
+    if (quoteUrl) fetchPromises.push(fetch(quoteUrl, { headers: authHeaders }));
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
-    const quoteRes = responses[1];
-    const fmpProfileRes = responses[2];
+    let responseIdx = 1;
+    const quoteRes = quoteUrl ? responses[responseIdx++] : null;
+    const fmpProfileRes = fmpProfileUrl ? responses[responseIdx++] : null;
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -65,24 +121,26 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse Yahoo v7 quote for fundamentals (PE, EPS, marketCap, etc.)
+    // Parse Yahoo v7 quote for fundamentals
     let yahooQuote: Record<string, any> = {};
-    try {
-      if (quoteRes.ok) {
-        const quoteJson = await quoteRes.json();
-        yahooQuote = quoteJson.quoteResponse?.result?.[0] || {};
-        console.log("Yahoo quote - trailingPE:", yahooQuote.trailingPE,
-          "forwardPE:", yahooQuote.forwardPE,
-          "epsTrailingTwelveMonths:", yahooQuote.epsTrailingTwelveMonths,
-          "marketCap:", yahooQuote.marketCap);
-      } else {
-        console.warn("Yahoo quote returned:", quoteRes.status);
+    if (quoteRes) {
+      try {
+        if (quoteRes.ok) {
+          const quoteJson = await quoteRes.json();
+          yahooQuote = quoteJson.quoteResponse?.result?.[0] || {};
+          console.log("Yahoo quote - trailingPE:", yahooQuote.trailingPE,
+            "forwardPE:", yahooQuote.forwardPE,
+            "eps:", yahooQuote.epsTrailingTwelveMonths,
+            "marketCap:", yahooQuote.marketCap);
+        } else {
+          console.warn("Yahoo quote returned:", quoteRes.status);
+        }
+      } catch (e) {
+        console.warn("Yahoo quote parse failed:", e);
       }
-    } catch (e) {
-      console.warn("Yahoo quote parse failed:", e);
     }
 
-    // Parse FMP profile for sector/industry (free tier provides this)
+    // Parse FMP profile for sector/industry
     let fmpProfile: Record<string, any> = {};
     if (fmpProfileRes) {
       try {
@@ -95,17 +153,17 @@ serve(async (req) => {
       }
     }
 
-    // Merge fundamentals: Yahoo for valuations, FMP for sector/industry
+    // Merge fundamentals
     const fundamentals = {
       ticker: cleanTicker,
       company_name: fmpProfile.companyName || yahooQuote.longName || yahooQuote.shortName || meta?.longName || cleanTicker,
-      sector: fmpProfile.sector || yahooQuote.sector || null,
-      industry: fmpProfile.industry || yahooQuote.industry || null,
+      sector: fmpProfile.sector || null,
+      industry: fmpProfile.industry || null,
       pe_ratio: yahooQuote.trailingPE ?? null,
       forward_pe: yahooQuote.forwardPE ?? null,
       market_cap: yahooQuote.marketCap ? Math.round(yahooQuote.marketCap) : (fmpProfile.marketCap ? Math.round(fmpProfile.marketCap) : null),
       eps: yahooQuote.epsTrailingTwelveMonths ?? null,
-      dividend_yield: yahooQuote.dividendYield != null ? yahooQuote.dividendYield / 100 : (fmpProfile.lastDividend && fmpProfile.price ? fmpProfile.lastDividend / fmpProfile.price : null),
+      dividend_yield: yahooQuote.trailingAnnualDividendYield ?? (fmpProfile.lastDividend && fmpProfile.price ? fmpProfile.lastDividend / fmpProfile.price : null),
       fifty_two_week_high: yahooQuote.fiftyTwoWeekHigh ?? (fmpProfile.range ? parseFloat(fmpProfile.range.split("-")[1]) : null),
       fifty_two_week_low: yahooQuote.fiftyTwoWeekLow ?? (fmpProfile.range ? parseFloat(fmpProfile.range.split("-")[0]) : null),
       currency: fmpProfile.currency || meta?.currency || "USD",
@@ -114,7 +172,7 @@ serve(async (req) => {
 
     console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
 
-    // Build price rows, deduplicate by date
+    // Build price rows
     const rowMap = new Map<string, {
       ticker: string; date: string; open: number; high: number;
       low: number; close: number; volume: number;
