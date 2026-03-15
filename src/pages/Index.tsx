@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
+import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
 import { computeLinearRegression } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
@@ -35,6 +35,16 @@ const Index = () => {
     enabled: !!meta, // Only query DB after fetch completes
     staleTime: 10 * 60 * 1000,
   });
+
+  // Step 3: Read fundamentals from DB
+  const { data: dbFundamentals } = useQuery({
+    queryKey: ["fundamentals-db", ticker],
+    queryFn: () => getFundamentalsFromDB(ticker),
+    enabled: !!meta,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const fundamentals = meta?.fundamentals || dbFundamentals || null;
 
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
@@ -96,6 +106,7 @@ const Index = () => {
         regression={regression}
         lastPrice={lastPrice}
         isLoading={isLoading}
+        fundamentals={fundamentals}
       />
 
       <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
