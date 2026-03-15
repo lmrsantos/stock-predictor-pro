@@ -1,13 +1,13 @@
-import { Search } from "lucide-react";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
+import { TickerSearch } from "./TickerSearch";
 
 interface SidebarProps {
   searchInput: string;
   onSearchInputChange: (v: string) => void;
-  onSearch: () => void;
+  onSearch: (ticker?: string) => void;
   period: string;
   onPeriodChange: (v: string) => void;
   forecastDays: number;
@@ -66,22 +66,11 @@ export function Sidebar({
       {/* Search */}
       <div className="space-y-2">
         <label className="label-upper">Ticker Symbol</label>
-        <div className="relative">
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => onSearchInputChange(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === "Enter" && onSearch()}
-            placeholder="AAPL"
-            className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus placeholder:text-muted-foreground"
-          />
-          <button
-            onClick={onSearch}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-accent transition-colors"
-          >
-            <Search className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        </div>
+        <TickerSearch
+          value={searchInput}
+          onChange={onSearchInputChange}
+          onSelect={(symbol) => onSearch(symbol)}
+        />
       </div>
 
       {/* Analysis Period */}
