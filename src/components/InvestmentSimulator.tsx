@@ -59,7 +59,6 @@ export function InvestmentSimulator({ regression, lastPrice, ticker }: Investmen
 
       {/* Investment Amount */}
       <div className="space-y-2">
-      <div className="space-y-2">
         <span className="text-xs text-muted-foreground">Amount ($)</span>
         <Input
           type="number"
