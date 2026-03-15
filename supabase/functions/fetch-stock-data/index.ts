@@ -27,7 +27,6 @@ serve(async (req) => {
 
     // Fetch chart data (Yahoo) + fundamentals (FMP + Yahoo quoteSummary) in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
-    const yahooSummaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(cleanTicker)}?modules=defaultKeyStatistics,summaryDetail,assetProfile,earningsQuote,financialData`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
