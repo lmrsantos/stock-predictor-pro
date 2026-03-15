@@ -3,6 +3,7 @@ import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
+import { InvestmentSimulator } from "./InvestmentSimulator";
 
 interface SidebarProps {
   searchInput: string;
