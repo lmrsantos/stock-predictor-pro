@@ -127,6 +127,15 @@ const Index = () => {
           onToggleTable={() => setShowTable(!showTable)}
         />
 
+        <InvestmentRecommendation
+          regression={regression}
+          fundamentals={fundamentals}
+          analystRating={analystRating}
+          lastPrice={lastPrice}
+          ticker={ticker}
+          isLoading={isLoading}
+        />
+
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
             <div className="text-center space-y-2">
