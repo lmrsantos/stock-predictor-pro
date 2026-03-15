@@ -104,6 +104,7 @@ serve(async (req) => {
     let responseIdx = 1;
     const quoteRes = quoteUrl ? responses[responseIdx++] : null;
     const fmpProfileRes = fmpProfileUrl ? responses[responseIdx++] : null;
+    const fmpRatingRes = fmpRatingUrl ? responses[responseIdx++] : null;
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
