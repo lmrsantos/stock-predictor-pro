@@ -29,6 +29,7 @@ function CustomTooltip({ active, payload, label }: any) {
     weekday: "short",
     month: "short",
     day: "numeric",
+    year: "numeric",
   });
 
   return (
@@ -93,9 +94,16 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   // Find the forecast boundary
   const forecastStartIndex = data.findIndex((d) => d.isForecast);
 
-  // Format dates for x-axis
+  // Determine if data spans multiple years
+  const firstYear = new Date(data[0]?.date).getFullYear();
+  const lastYear = new Date(data[data.length - 1]?.date).getFullYear();
+  const spanMultipleYears = firstYear !== lastYear;
+
   const formatDate = (date: string) => {
     const d = new Date(date);
+    if (spanMultipleYears) {
+      return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    }
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
