@@ -7,24 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-function buildFundamentals(ticker: string, q: any, meta: any) {
-  return {
-    ticker,
-    company_name: q.longName || q.shortName || meta?.longName || ticker,
-    sector: q.sector || null,
-    industry: q.industry || null,
-    pe_ratio: q.trailingPE ?? null,
-    forward_pe: q.forwardPE ?? null,
-    market_cap: q.marketCap ?? null,
-    eps: q.epsTrailingTwelveMonths ?? null,
-    dividend_yield: q.dividendYield ? q.dividendYield / 100 : null,
-    fifty_two_week_high: q.fiftyTwoWeekHigh ?? null,
-    fifty_two_week_low: q.fiftyTwoWeekLow ?? null,
-    currency: q.currency || meta?.currency || "USD",
-    updated_at: new Date().toISOString(),
-  };
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,27 +23,9 @@ serve(async (req) => {
     }
 
     const cleanTicker = ticker.trim().toUpperCase();
-    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
+    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-    // Step 1: Get crumb + cookies for authenticated Yahoo Finance endpoints
-    let crumb = "";
-    let cookieHeader = "";
-    try {
-      const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
-        headers: { "User-Agent": ua },
-        redirect: "follow",
-      });
-      if (crumbRes.ok) {
-        crumb = (await crumbRes.text()).trim();
-        cookieHeader = crumbRes.headers.get("set-cookie") || "";
-      } else {
-        console.warn("Crumb fetch returned:", crumbRes.status);
-      }
-    } catch (e) {
-      console.warn("Crumb fetch failed:", e);
-    }
-
-    // Step 2: Fetch chart data (prices) — this endpoint doesn't need auth
+    // Step 1: Fetch chart data (prices) — this endpoint works without auth
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
     const chartRes = await fetch(chartUrl, { headers: { "User-Agent": ua } });
 
@@ -85,83 +49,77 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Step 3: Try multiple approaches to get fundamentals (P/E, etc.)
+    // Step 2: Get fundamentals by visiting Yahoo Finance page first for cookies, then API
     let fundamentals: Record<string, any> = {};
+    try {
+      // First visit the page to get cookies
+      const pageRes = await fetch(`https://finance.yahoo.com/quote/${encodeURIComponent(cleanTicker)}/`, {
+        headers: {
+          "User-Agent": ua,
+          "Accept": "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+      });
 
-    // Approach A: crumb-based v7 quote API
-    if (crumb) {
-      try {
-        const quoteUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(crumb)}`;
-        const quoteHeaders: Record<string, string> = { "User-Agent": ua };
-        if (cookieHeader) quoteHeaders["Cookie"] = cookieHeader;
+      const pageCookies = pageRes.headers.get("set-cookie") || "";
+      console.log("Page status:", pageRes.status, "has cookies:", !!pageCookies);
 
-        const quoteRes = await fetch(quoteUrl, { headers: quoteHeaders });
-        if (quoteRes.ok) {
-          const quoteJson = await quoteRes.json();
-          const q = quoteJson.quoteResponse?.result?.[0];
-          if (q) {
-            fundamentals = buildFundamentals(cleanTicker, q, meta);
-          }
-        } else {
-          console.warn("v7 quote returned:", quoteRes.status);
+      if (pageRes.ok) {
+        const html = await pageRes.text();
+
+        // Try to extract data from the page HTML
+        // Yahoo embeds JSON-LD and data attributes
+        const patterns = [
+          // Modern Yahoo: look for fin-streamer data
+          /"trailingPE"[:\s]*(?:{[^}]*"raw"[:\s]*)?(\d+\.?\d*)/,
+          /"forwardPE"[:\s]*(?:{[^}]*"raw"[:\s]*)?(\d+\.?\d*)/,
+          /"marketCap"[:\s]*(?:{[^}]*"raw"[:\s]*)?(\d+\.?\d*)/,
+          /"epsTrailingTwelveMonths"[:\s]*(?:{[^}]*"raw"[:\s]*)?(-?\d+\.?\d*)/,
+        ];
+
+        const peMatch = html.match(/"trailingPE"[^}]*?"raw"\s*:\s*(\d+\.?\d*)/s) 
+          || html.match(/Trailing P\/E.*?>([\d.]+)/s);
+        const fpeMatch = html.match(/"forwardPE"[^}]*?"raw"\s*:\s*(\d+\.?\d*)/s)
+          || html.match(/Forward P\/E.*?>([\d.]+)/s);
+        const mcapMatch = html.match(/"marketCap"[^}]*?"raw"\s*:\s*(\d+\.?\d*)/s);
+        const epsMatch = html.match(/"epsTrailingTwelveMonths"[^}]*?"raw"\s*:\s*(-?\d+\.?\d*)/s)
+          || html.match(/EPS \(TTM\).*?>([\d.-]+)/s);
+        const sectorMatch = html.match(/"sector"\s*:\s*"([^"]+)"/);
+        const industryMatch = html.match(/"industry"\s*:\s*"([^"]+)"/);
+        const w52hMatch = html.match(/"fiftyTwoWeekHigh"[^}]*?"raw"\s*:\s*(\d+\.?\d*)/s);
+        const w52lMatch = html.match(/"fiftyTwoWeekLow"[^}]*?"raw"\s*:\s*(\d+\.?\d*)/s);
+        const divYieldMatch = html.match(/"dividendYield"[^}]*?"raw"\s*:\s*(\d+\.?\d*)/s);
+
+        const pe = peMatch ? parseFloat(peMatch[1]) : null;
+        const fpe = fpeMatch ? parseFloat(fpeMatch[1]) : null;
+        const eps = epsMatch ? parseFloat(epsMatch[1]) : null;
+
+        console.log("Parsed fundamentals - PE:", pe, "FPE:", fpe, "EPS:", eps);
+
+        if (pe !== null || fpe !== null || eps !== null) {
+          fundamentals = {
+            ticker: cleanTicker,
+            company_name: meta?.longName || meta?.shortName || cleanTicker,
+            sector: sectorMatch ? sectorMatch[1] : null,
+            industry: industryMatch ? industryMatch[1] : null,
+            pe_ratio: pe,
+            forward_pe: fpe,
+            market_cap: mcapMatch ? parseInt(mcapMatch[1]) : null,
+            eps: eps,
+            dividend_yield: divYieldMatch ? parseFloat(divYieldMatch[1]) : null,
+            fifty_two_week_high: w52hMatch ? parseFloat(w52hMatch[1]) : null,
+            fifty_two_week_low: w52lMatch ? parseFloat(w52lMatch[1]) : null,
+            currency: meta?.currency || "USD",
+            updated_at: new Date().toISOString(),
+          };
         }
-      } catch (e) {
-        console.warn("v7 quote fetch failed:", e);
       }
+    } catch (e) {
+      console.warn("Fundamentals fetch failed:", e);
     }
 
-    // Approach B: Scrape Yahoo Finance page for embedded JSON
-    if (!fundamentals.ticker) {
-      try {
-        const pageRes = await fetch(`https://finance.yahoo.com/quote/${encodeURIComponent(cleanTicker)}/`, {
-          headers: { "User-Agent": ua },
-        });
-        if (pageRes.ok) {
-          const html = await pageRes.text();
-          // Look for JSON data in the page source
-          const jsonMatch = html.match(/root\.App\.main\s*=\s*({.*?});\s*\n/s)
-            || html.match(/"QuoteSummaryStore":\s*({.*?"symbol"\s*:\s*"[^"]*".*?})\s*,\s*"/s);
-          
-          if (jsonMatch) {
-            try {
-              const parsed = JSON.parse(jsonMatch[1]);
-              const store = parsed?.context?.dispatcher?.stores?.QuoteSummaryStore
-                || parsed;
-              const sd = store?.summaryDetail || {};
-              const ks = store?.defaultKeyStatistics || {};
-              const q = store?.price || {};
-              const ap = store?.assetProfile || {};
-
-              fundamentals = {
-                ticker: cleanTicker,
-                company_name: q.longName || q.shortName || meta?.longName || cleanTicker,
-                sector: ap?.sector || null,
-                industry: ap?.industry || null,
-                pe_ratio: sd?.trailingPE?.raw ?? q?.trailingPE?.raw ?? null,
-                forward_pe: sd?.forwardPE?.raw ?? ks?.forwardPE?.raw ?? null,
-                market_cap: q?.marketCap?.raw ?? sd?.marketCap?.raw ?? null,
-                eps: ks?.trailingEps?.raw ?? null,
-                dividend_yield: sd?.dividendYield?.raw ?? null,
-                fifty_two_week_high: sd?.fiftyTwoWeekHigh?.raw ?? null,
-                fifty_two_week_low: sd?.fiftyTwoWeekLow?.raw ?? null,
-                currency: q?.currency || meta?.currency || "USD",
-                updated_at: new Date().toISOString(),
-              };
-            } catch (parseErr) {
-              console.warn("Failed to parse embedded JSON:", parseErr);
-            }
-          } else {
-            console.warn("No embedded JSON found in page");
-          }
-        } else {
-          console.warn("Page scrape returned:", pageRes.status);
-        }
-      } catch (e) {
-        console.warn("Page scrape failed:", e);
-      }
-    }
-
-    // Step 4: Build price rows, deduplicate by date
+    // Step 3: Build price rows, deduplicate by date
     const rowMap = new Map<string, {
       ticker: string; date: string; open: number; high: number;
       low: number; close: number; volume: number;
@@ -186,7 +144,7 @@ serve(async (req) => {
 
     const rows = Array.from(rowMap.values());
 
-    // Step 5: Upsert into database
+    // Step 4: Upsert into database
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
