@@ -253,6 +253,16 @@ export function Sidebar({
           </>
         ) : null}
       </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Investment Simulator */}
+      <InvestmentSimulator
+        regression={regression}
+        lastPrice={lastPrice}
+        ticker={ticker}
+      />
     </aside>
   );
 }
