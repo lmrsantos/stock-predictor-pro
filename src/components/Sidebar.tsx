@@ -17,6 +17,7 @@ interface SidebarProps {
   lastPrice: number;
   isLoading: boolean;
   fundamentals: StockFundamentals | null;
+  ticker: string;
 }
 
 const periods = [
