@@ -36,6 +36,16 @@ const Index = () => {
     staleTime: 10 * 60 * 1000,
   });
 
+  // Step 3: Read fundamentals from DB
+  const { data: dbFundamentals } = useQuery({
+    queryKey: ["fundamentals-db", ticker],
+    queryFn: () => getFundamentalsFromDB(ticker),
+    enabled: !!meta,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const fundamentals = meta?.fundamentals || dbFundamentals || null;
+
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
 
