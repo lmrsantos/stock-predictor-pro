@@ -1,12 +1,126 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchStockData } from "@/lib/yahoo-finance";
+import { computeLinearRegression } from "@/lib/regression";
+import { ChartDataPoint } from "@/lib/types";
+import { Sidebar } from "@/components/Sidebar";
+import { StockHeader } from "@/components/StockHeader";
+import { RegressionChart } from "@/components/RegressionChart";
+import { DataTable } from "@/components/DataTable";
 
 const Index = () => {
+  const [ticker, setTicker] = useState("AAPL");
+  const [searchInput, setSearchInput] = useState("AAPL");
+  const [period, setPeriod] = useState("1y");
+  const [forecastDays, setForecastDays] = useState(30);
+  const [showTable, setShowTable] = useState(false);
+
+  const handleSearch = useCallback(() => {
+    const cleaned = searchInput.trim().toUpperCase();
+    if (cleaned) setTicker(cleaned);
+  }, [searchInput]);
+
+  const { data: stockResult, isLoading, error } = useQuery({
+    queryKey: ["stock", ticker, period],
+    queryFn: () => fetchStockData(ticker, period),
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const regression = stockResult?.data
+    ? computeLinearRegression(stockResult.data, forecastDays)
+    : null;
+
+  // Build unified chart data
+  const chartData: ChartDataPoint[] = [];
+  if (regression) {
+    regression.historicalFit.forEach((f) => {
+      chartData.push({
+        date: f.date,
+        timestamp: f.timestamp,
+        actual: f.actual,
+        fitted: f.fitted,
+        upper1Sigma: f.upper1Sigma,
+        lower1Sigma: f.lower1Sigma,
+        upper2Sigma: f.upper2Sigma,
+        lower2Sigma: f.lower2Sigma,
+        isForecast: false,
+      });
+    });
+    regression.predictions.forEach((p) => {
+      chartData.push({
+        date: p.date,
+        timestamp: p.timestamp,
+        predicted: p.predicted,
+        fitted: p.predicted,
+        upper1Sigma: p.upper1Sigma,
+        lower1Sigma: p.lower1Sigma,
+        upper2Sigma: p.upper2Sigma,
+        lower2Sigma: p.lower2Sigma,
+        isForecast: true,
+      });
+    });
+  }
+
+  const lastPrice = stockResult?.data?.length
+    ? stockResult.data[stockResult.data.length - 1].close
+    : 0;
+  const prevPrice = stockResult?.data?.length && stockResult.data.length > 1
+    ? stockResult.data[stockResult.data.length - 2].close
+    : lastPrice;
+  const priceChange = lastPrice - prevPrice;
+  const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] h-screen bg-background text-foreground overflow-hidden">
+      <Sidebar
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
+        onSearch={handleSearch}
+        period={period}
+        onPeriodChange={setPeriod}
+        forecastDays={forecastDays}
+        onForecastDaysChange={setForecastDays}
+        regression={regression}
+        lastPrice={lastPrice}
+        isLoading={isLoading}
+      />
+
+      <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
+        <StockHeader
+          ticker={ticker}
+          name={stockResult?.name || ""}
+          price={lastPrice}
+          change={priceChange}
+          changePct={priceChangePct}
+          isLoading={isLoading}
+          showTable={showTable}
+          onToggleTable={() => setShowTable(!showTable)}
+        />
+
+        {error ? (
+          <div className="flex-1 chart-surface flex items-center justify-center">
+            <div className="text-center space-y-2">
+              <p className="text-accent-danger text-sm font-mono">Error loading data</p>
+              <p className="text-muted-foreground text-xs">{(error as Error).message}</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <RegressionChart
+              data={chartData}
+              isLoading={isLoading}
+              slopePositive={regression ? regression.slope >= 0 : true}
+            />
+            {showTable && regression && (
+              <DataTable
+                historicalFit={regression.historicalFit}
+                predictions={regression.predictions}
+              />
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 };
