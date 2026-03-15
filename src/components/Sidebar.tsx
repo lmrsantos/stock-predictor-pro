@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
+import { StockFundamentals } from "@/lib/stock-data";
 
 interface SidebarProps {
   searchInput: string;
@@ -13,6 +14,7 @@ interface SidebarProps {
   regression: RegressionResult | null;
   lastPrice: number;
   isLoading: boolean;
+  fundamentals: StockFundamentals | null;
 }
 
 const periods = [
@@ -26,6 +28,13 @@ const periods = [
 
 const forecastOptions = [7, 14, 30, 60, 90];
 
+function formatMarketCap(value: number): string {
+  if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+  return `$${value.toLocaleString()}`;
+}
+
 export function Sidebar({
   searchInput,
   onSearchInputChange,
@@ -37,6 +46,7 @@ export function Sidebar({
   regression,
   lastPrice,
   isLoading,
+  fundamentals,
 }: SidebarProps) {
   const annualReturn = regression && lastPrice
     ? slopeToAnnualReturn(regression.slope, lastPrice)
@@ -112,7 +122,68 @@ export function Sidebar({
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Stats */}
+      {/* Fundamentals */}
+      {fundamentals && (fundamentals.pe_ratio || fundamentals.eps || fundamentals.sector) && (
+        <div className="space-y-3">
+          <label className="label-upper">Company Fundamentals</label>
+
+          {fundamentals.sector && (
+            <div className="stat-card">
+              <div className="text-xs text-muted-foreground">Sector / Industry</div>
+              <div className="text-sm mt-1">{fundamentals.sector}</div>
+              {fundamentals.industry && (
+                <div className="text-xs text-muted-foreground mt-0.5">{fundamentals.industry}</div>
+              )}
+            </div>
+          )}
+
+          {fundamentals.pe_ratio != null && (
+            <div className="stat-card">
+              <div className="text-xs text-muted-foreground">P/E Ratio (Trailing)</div>
+              <div className="text-xl font-mono mt-1">{fundamentals.pe_ratio.toFixed(2)}</div>
+              {fundamentals.forward_pe != null && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Forward: {fundamentals.forward_pe.toFixed(2)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {fundamentals.eps != null && (
+            <div className="stat-card">
+              <div className="text-xs text-muted-foreground">EPS (TTM)</div>
+              <div className="text-xl font-mono mt-1">${fundamentals.eps.toFixed(2)}</div>
+            </div>
+          )}
+
+          {fundamentals.market_cap != null && (
+            <div className="stat-card">
+              <div className="text-xs text-muted-foreground">Market Cap</div>
+              <div className="text-xl font-mono mt-1">{formatMarketCap(fundamentals.market_cap)}</div>
+            </div>
+          )}
+
+          {fundamentals.dividend_yield != null && fundamentals.dividend_yield > 0 && (
+            <div className="stat-card">
+              <div className="text-xs text-muted-foreground">Dividend Yield</div>
+              <div className="text-xl font-mono mt-1">{(fundamentals.dividend_yield * 100).toFixed(2)}%</div>
+            </div>
+          )}
+
+          {fundamentals.fifty_two_week_low != null && fundamentals.fifty_two_week_high != null && (
+            <div className="stat-card">
+              <div className="text-xs text-muted-foreground">52-Week Range</div>
+              <div className="text-sm font-mono mt-1">
+                ${formatPrice(fundamentals.fifty_two_week_low)} – ${formatPrice(fundamentals.fifty_two_week_high)}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-border" />
+        </div>
+      )}
+
+      {/* Model Stats */}
       <div className="space-y-3">
         <label className="label-upper">Model Statistics</label>
 
