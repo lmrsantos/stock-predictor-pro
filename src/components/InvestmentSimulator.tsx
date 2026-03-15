@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { RegressionResult } from "@/lib/types";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 
 interface InvestmentSimulatorProps {
   regression: RegressionResult | null;
