@@ -7,6 +7,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+function buildFundamentals(ticker: string, q: any, meta: any) {
+  return {
+    ticker,
+    company_name: q.longName || q.shortName || meta?.longName || ticker,
+    sector: q.sector || null,
+    industry: q.industry || null,
+    pe_ratio: q.trailingPE ?? null,
+    forward_pe: q.forwardPE ?? null,
+    market_cap: q.marketCap ?? null,
+    eps: q.epsTrailingTwelveMonths ?? null,
+    dividend_yield: q.dividendYield ? q.dividendYield / 100 : null,
+    fifty_two_week_high: q.fiftyTwoWeekHigh ?? null,
+    fifty_two_week_low: q.fiftyTwoWeekLow ?? null,
+    currency: q.currency || meta?.currency || "USD",
+    updated_at: new Date().toISOString(),
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
