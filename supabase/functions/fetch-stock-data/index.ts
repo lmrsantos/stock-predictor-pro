@@ -25,7 +25,7 @@ serve(async (req) => {
     const cleanTicker = ticker.trim().toUpperCase();
     const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch chart data (Yahoo) + fundamentals (FMP profile + ratios + key-metrics) in parallel
+    // Fetch chart data (Yahoo) + fundamentals (FMP profile + ratios) in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
@@ -35,22 +35,17 @@ serve(async (req) => {
     const fmpRatiosUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
-    const fmpQuoteUrl = fmpKey
-      ? `https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
-      : null;
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: { "User-Agent": ua } }),
     ];
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
     if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
-    if (fmpQuoteUrl) fetchPromises.push(fetch(fmpQuoteUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
     const fmpProfileRes = responses[1];
     const fmpRatiosRes = responses[2];
-    const fmpQuoteRes = responses[3];
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -72,7 +67,7 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse FMP data from all three endpoints
+    // Parse FMP data
     let fundamentals: Record<string, any> = {};
     if (fmpProfileRes) {
       try {
@@ -86,28 +81,29 @@ serve(async (req) => {
             try {
               const ratiosData = await fmpRatiosRes.json();
               ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
+              // Log all available keys for debugging
+              const allKeys = Object.keys(ratios);
+              console.log("Ratios-ttm has", allKeys.length, "keys. PE-related:", 
+                allKeys.filter(k => /pe|earn|price/i.test(k)).join(", ") || "none");
             } catch (e) { console.warn("Ratios parse failed:", e); }
-          }
-
-          // Parse key-metrics/quote (often has PE when ratios-ttm doesn't)
-          let quote: Record<string, any> = {};
-          if (fmpQuoteRes?.ok) {
-            try {
-              const qData = await fmpQuoteRes.json();
-              quote = Array.isArray(qData) ? qData[0] || {} : qData || {};
-              console.log("Quote keys:", Object.keys(quote).join(", "));
-            } catch (e) { console.warn("Quote parse failed:", e); }
+          } else {
+            console.warn("Ratios-ttm status:", fmpRatiosRes?.status);
           }
 
           if (profile) {
-            const price = profile.price || quote.price || meta?.regularMarketPrice || 0;
+            const price = profile.price || meta?.regularMarketPrice || 0;
 
-            // Try PE from ratios-ttm first, then quote
-            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM
-              ?? quote.pe ?? null;
+            // Log profile keys that might contain PE
+            const profilePeKeys = Object.keys(profile).filter(k => /pe|earn|eps|ratio/i.test(k));
+            console.log("Profile PE-related keys:", profilePeKeys.join(", ") || "none");
+            console.log("Profile price:", price, "profile.pe:", profile.pe, "profile.eps:", profile.eps);
 
-            // EPS from quote or calculated
-            const eps = quote.eps ?? (pe && price ? price / pe : null);
+            // Try PE from ratios, then profile
+            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? ratios.priceEarningsRatioTTM
+              ?? profile.pe ?? profile.peRatio ?? null;
+
+            // EPS
+            const eps = profile.eps ?? (pe && price ? price / pe : null);
 
             // Forward PE
             const forwardPE = ratios.forwardPERatioTTM ?? null;
@@ -123,7 +119,7 @@ serve(async (req) => {
               industry: profile.industry || null,
               pe_ratio: pe,
               forward_pe: forwardPE,
-              market_cap: profile.marketCap ? Math.round(profile.marketCap) : (quote.marketCap ? Math.round(quote.marketCap) : null),
+              market_cap: profile.marketCap ? Math.round(profile.marketCap) : null,
               eps: eps,
               dividend_yield: dividendYield,
               fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
@@ -131,9 +127,6 @@ serve(async (req) => {
               currency: profile.currency || meta?.currency || "USD",
               updated_at: new Date().toISOString(),
             };
-
-            // Debug logging
-            console.log("Sources - ratios.peRatioTTM:", ratios.peRatioTTM, "quote.pe:", quote.pe, "quote.eps:", quote.eps);
             console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
           }
         } else {
