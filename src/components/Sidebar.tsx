@@ -69,10 +69,7 @@ export function Sidebar({
         <TickerSearch
           value={searchInput}
           onChange={onSearchInputChange}
-          onSelect={(symbol) => {
-            onSearchInputChange(symbol);
-            onSearch();
-          }}
+          onSelect={(symbol) => onSearch(symbol)}
         />
       </div>
 
