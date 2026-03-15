@@ -53,8 +53,8 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Build rows for upsert
-    const rows: Array<{
+    // Build rows for upsert, deduplicate by date (keep last occurrence)
+    const rowMap = new Map<string, {
       ticker: string;
       date: string;
       open: number;
@@ -62,7 +62,7 @@ serve(async (req) => {
       low: number;
       close: number;
       volume: number;
-    }> = [];
+    }>();
 
     for (let i = 0; i < timestamps.length; i++) {
       const close = quotes.close?.[i];
@@ -75,7 +75,7 @@ serve(async (req) => {
 
       const date = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
 
-      rows.push({
+      rowMap.set(date, {
         ticker: cleanTicker,
         date,
         open,
@@ -85,6 +85,8 @@ serve(async (req) => {
         volume: volume ?? 0,
       });
     }
+
+    const rows = Array.from(rowMap.values());
 
     // Upsert into database using service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
