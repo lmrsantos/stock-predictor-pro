@@ -1,5 +1,6 @@
 import { Table2 } from "lucide-react";
 import { formatPrice } from "@/lib/regression";
+import { InfoTooltip, metricInfo } from "./InfoTooltip";
 
 interface StockHeaderProps {
   ticker: string;
@@ -42,9 +43,11 @@ export function StockHeader({
               <span className="text-3xl lg:text-4xl font-mono font-bold">
                 ${formatPrice(price)}
               </span>
+              <InfoTooltip {...metricInfo.price} />
               <span className={`text-sm font-mono ${isPositive ? "price-positive" : "price-negative"}`}>
                 {isPositive ? "+" : ""}{formatPrice(change)} ({isPositive ? "+" : ""}{(changePct * 100).toFixed(2)}%)
               </span>
+              <InfoTooltip {...metricInfo.dailyChange} />
             </div>
           </>
         )}

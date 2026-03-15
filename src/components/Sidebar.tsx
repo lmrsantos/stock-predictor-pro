@@ -2,6 +2,7 @@ import { Search } from "lucide-react";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
+import { InfoTooltip, metricInfo } from "./InfoTooltip";
 
 interface SidebarProps {
   searchInput: string;
@@ -129,7 +130,10 @@ export function Sidebar({
 
           {fundamentals.sector && (
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Sector / Industry</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                Sector / Industry
+                <InfoTooltip {...metricInfo.sector} />
+              </div>
               <div className="text-sm mt-1">{fundamentals.sector}</div>
               {fundamentals.industry && (
                 <div className="text-xs text-muted-foreground mt-0.5">{fundamentals.industry}</div>
@@ -139,11 +143,15 @@ export function Sidebar({
 
           {fundamentals.pe_ratio != null && (
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">P/E Ratio (Trailing)</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                P/E Ratio (Trailing)
+                <InfoTooltip {...metricInfo.peRatio} />
+              </div>
               <div className="text-xl font-mono mt-1">{fundamentals.pe_ratio.toFixed(2)}</div>
               {fundamentals.forward_pe != null && (
-                <div className="text-xs text-muted-foreground mt-1">
+                <div className="text-xs text-muted-foreground mt-1 flex items-center">
                   Forward: {fundamentals.forward_pe.toFixed(2)}
+                  <InfoTooltip {...metricInfo.forwardPE} />
                 </div>
               )}
             </div>
@@ -151,28 +159,40 @@ export function Sidebar({
 
           {fundamentals.eps != null && (
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">EPS (TTM)</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                EPS (TTM)
+                <InfoTooltip {...metricInfo.eps} />
+              </div>
               <div className="text-xl font-mono mt-1">${fundamentals.eps.toFixed(2)}</div>
             </div>
           )}
 
           {fundamentals.market_cap != null && (
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Market Cap</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                Market Cap
+                <InfoTooltip {...metricInfo.marketCap} />
+              </div>
               <div className="text-xl font-mono mt-1">{formatMarketCap(fundamentals.market_cap)}</div>
             </div>
           )}
 
           {fundamentals.dividend_yield != null && fundamentals.dividend_yield > 0 && (
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Dividend Yield</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                Dividend Yield
+                <InfoTooltip {...metricInfo.dividendYield} />
+              </div>
               <div className="text-xl font-mono mt-1">{(fundamentals.dividend_yield * 100).toFixed(2)}%</div>
             </div>
           )}
 
           {fundamentals.fifty_two_week_low != null && fundamentals.fifty_two_week_high != null && (
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">52-Week Range</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                52-Week Range
+                <InfoTooltip {...metricInfo.fiftyTwoWeekRange} />
+              </div>
               <div className="text-sm font-mono mt-1">
                 ${formatPrice(fundamentals.fifty_two_week_low)} – ${formatPrice(fundamentals.fifty_two_week_high)}
               </div>
@@ -199,7 +219,10 @@ export function Sidebar({
         ) : regression ? (
           <>
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">R² (Fit Quality)</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                R² (Fit Quality)
+                <InfoTooltip {...metricInfo.rSquared} />
+              </div>
               <div className="text-xl font-mono mt-1">{regression.rSquared.toFixed(4)}</div>
               <div className="text-[10px] text-muted-foreground mt-1">
                 {regression.rSquared > 0.7 ? "Strong" : regression.rSquared > 0.4 ? "Moderate" : "Weak"} linear trend
@@ -207,20 +230,29 @@ export function Sidebar({
             </div>
 
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Slope ($/day)</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                Slope ($/day)
+                <InfoTooltip {...metricInfo.slope} />
+              </div>
               <div className={`text-xl font-mono mt-1 ${regression.slope >= 0 ? "price-positive" : "price-negative"}`}>
                 {regression.slope >= 0 ? "+" : ""}{regression.slope.toFixed(4)}
               </div>
             </div>
 
             <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Std Deviation (σ)</div>
+              <div className="text-xs text-muted-foreground flex items-center">
+                Std Deviation (σ)
+                <InfoTooltip {...metricInfo.stdDeviation} />
+              </div>
               <div className="text-xl font-mono mt-1">${formatPrice(regression.standardDeviation)}</div>
             </div>
 
             {annualReturn !== null && (
               <div className="stat-card">
-                <div className="text-xs text-muted-foreground">Implied Annual Return</div>
+                <div className="text-xs text-muted-foreground flex items-center">
+                  Implied Annual Return
+                  <InfoTooltip {...metricInfo.annualReturn} />
+                </div>
                 <div className={`text-xl font-mono mt-1 ${annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
                   {annualReturn >= 0 ? "+" : ""}{(annualReturn * 100).toFixed(1)}%
                 </div>

@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { ChartDataPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/regression";
+import { InfoTooltip, metricInfo } from "./InfoTooltip";
 
 interface RegressionChartProps {
   data: ChartDataPoint[];
@@ -104,22 +105,31 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
-      <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
+      <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-wrap">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 bg-foreground inline-block rounded" />
           Price
+          <InfoTooltip {...metricInfo.price} />
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-0.5 inline-block rounded" style={{ background: regressionColor }} />
           Regression
+          <InfoTooltip {...metricInfo.regressionLine} />
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 inline-block rounded opacity-30" style={{ background: "hsl(210, 100%, 50%)" }} />
           1σ Band
+          <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: "hsl(210, 100%, 50%)" }} />
           2σ Band
+          <InfoTooltip {...metricInfo.twoSigmaBand} />
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-0.5 inline-block rounded border-t border-dashed border-muted-foreground" />
+          Forecast
+          <InfoTooltip {...metricInfo.forecast} />
         </span>
       </div>
 
