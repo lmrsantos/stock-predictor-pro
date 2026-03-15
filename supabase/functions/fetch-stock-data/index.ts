@@ -44,13 +44,13 @@ serve(async (req) => {
     ];
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
     if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
-    if (fmpKeyMetricsUrl) fetchPromises.push(fetch(fmpKeyMetricsUrl));
+    if (fmpQuoteUrl) fetchPromises.push(fetch(fmpQuoteUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
     const fmpProfileRes = responses[1];
     const fmpRatiosRes = responses[2];
-    const fmpKeyMetricsRes = responses[3];
+    const fmpQuoteRes = responses[3];
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
