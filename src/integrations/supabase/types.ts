@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      stock_fundamentals: {
+        Row: {
+          company_name: string | null
+          currency: string | null
+          dividend_yield: number | null
+          eps: number | null
+          fifty_two_week_high: number | null
+          fifty_two_week_low: number | null
+          forward_pe: number | null
+          id: string
+          industry: string | null
+          market_cap: number | null
+          pe_ratio: number | null
+          sector: string | null
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          company_name?: string | null
+          currency?: string | null
+          dividend_yield?: number | null
+          eps?: number | null
+          fifty_two_week_high?: number | null
+          fifty_two_week_low?: number | null
+          forward_pe?: number | null
+          id?: string
+          industry?: string | null
+          market_cap?: number | null
+          pe_ratio?: number | null
+          sector?: string | null
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          company_name?: string | null
+          currency?: string | null
+          dividend_yield?: number | null
+          eps?: number | null
+          fifty_two_week_high?: number | null
+          fifty_two_week_low?: number | null
+          forward_pe?: number | null
+          id?: string
+          industry?: string | null
+          market_cap?: number | null
+          pe_ratio?: number | null
+          sector?: string | null
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stock_prices: {
         Row: {
           close: number
