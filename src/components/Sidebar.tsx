@@ -50,6 +50,7 @@ export function Sidebar({
   lastPrice,
   isLoading,
   fundamentals,
+  ticker,
 }: SidebarProps) {
   const annualReturn = regression && lastPrice
     ? slopeToAnnualReturn(regression.slope, lastPrice)
