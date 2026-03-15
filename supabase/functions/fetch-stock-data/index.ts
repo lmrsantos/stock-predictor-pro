@@ -26,13 +26,13 @@ serve(async (req) => {
 
     // Fetch price history + fundamentals in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
-    const summaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(cleanTicker)}?modules=summaryDetail,defaultKeyStatistics,assetProfile,earningsQuarterlyGrowth,financialData`;
+    const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}`;
 
     const headers = { "User-Agent": "Mozilla/5.0" };
 
-    const [chartRes, summaryRes] = await Promise.all([
+    const [chartRes, quoteRes] = await Promise.all([
       fetch(chartUrl, { headers }),
-      fetch(summaryUrl, { headers }),
+      fetch(quoteUrl, { headers }),
     ]);
 
     if (!chartRes.ok) {
