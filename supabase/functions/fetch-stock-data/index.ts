@@ -72,30 +72,32 @@ serve(async (req) => {
 
     if (fmpProfileRes) {
       try {
+        console.log("FMP profile status:", fmpProfileRes.status);
+        console.log("FMP ratios status:", fmpRatiosRes?.status);
+        
         if (fmpProfileRes.ok) {
           const fmpData = await fmpProfileRes.json();
           const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
+          console.log("FMP profile keys:", profile ? Object.keys(profile).join(", ") : "null");
 
-          // Parse ratios TTM for P/E and other valuation metrics
           let ratios: Record<string, any> = {};
           if (fmpRatiosRes?.ok) {
             try {
               const ratiosData = await fmpRatiosRes.json();
               ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
-              console.log("FMP ratios keys for", cleanTicker, ":", Object.keys(ratios).join(", "));
-              console.log("FMP ratios PE fields:", JSON.stringify({
-                peRatioTTM: ratios.peRatioTTM,
-                priceToEarningsRatioTTM: ratios.priceToEarningsRatioTTM,
-                priceEarningsRatio: ratios.priceEarningsRatio,
-                peRatio: ratios.peRatio,
-              }));
+              console.log("FMP ratios keys:", Object.keys(ratios).join(", "));
+              // Log all keys containing 'pe' or 'earning' (case-insensitive)
+              const peKeys = Object.entries(ratios).filter(([k]) => /pe|earning|price/i.test(k));
+              console.log("FMP PE-related fields:", JSON.stringify(Object.fromEntries(peKeys)));
             } catch (e) { console.warn("Ratios parse failed:", e); }
           }
 
           if (profile) {
             const price = profile.price || 0;
-            const pe = ratios.priceToEarningsRatioTTM ?? ratios.peRatioTTM ?? null;
+            // Try multiple field names for PE
+            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? ratios.priceEarningsRatioTTM ?? profile.pe ?? null;
             const eps = pe && price ? price / pe : null;
+            const forwardPE = ratios.forwardPERatioTTM ?? ratios.priceEarningsToGrowthRatioTTM ?? null;
 
             fundamentals = {
               ticker: cleanTicker,
@@ -103,10 +105,10 @@ serve(async (req) => {
               sector: profile.sector || null,
               industry: profile.industry || null,
               pe_ratio: pe,
-              forward_pe: ratios.forwardPERatioTTM ?? null,
-              market_cap: profile.marketCap ?? null,
+              forward_pe: forwardPE,
+              market_cap: profile.marketCap ? Math.round(profile.marketCap) : null,
               eps: eps,
-              dividend_yield: ratios.dividendYieldTTM ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null),
+              dividend_yield: ratios.dividendYieldTTM ?? ratios.dividendYielTTM ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null),
               fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
               fifty_two_week_low: profile.range ? parseFloat(profile.range.split("-")[0]) : null,
               currency: profile.currency || meta?.currency || "USD",
