@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchStockData } from "@/lib/yahoo-finance";
+import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { computeLinearRegression } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
@@ -20,15 +20,27 @@ const Index = () => {
     if (cleaned) setTicker(cleaned);
   }, [searchInput]);
 
-  const { data: stockResult, isLoading, error } = useQuery({
-    queryKey: ["stock", ticker, period],
-    queryFn: () => fetchStockData(ticker, period),
+  // Step 1: Fetch from Yahoo Finance → store in DB
+  const { data: meta, isLoading: isFetching, error: fetchError } = useQuery({
+    queryKey: ["fetch-stock", ticker, period],
+    queryFn: () => fetchAndStoreStockData(ticker, period),
     retry: 1,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000, // 10 min cache
   });
 
-  const regression = stockResult?.data
-    ? computeLinearRegression(stockResult.data, forecastDays)
+  // Step 2: Read from DB
+  const { data: stockData, isLoading: isQuerying, error: queryError } = useQuery({
+    queryKey: ["stock-db", ticker, period],
+    queryFn: () => getStockDataFromDB(ticker, period),
+    enabled: !!meta, // Only query DB after fetch completes
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const isLoading = isFetching || isQuerying;
+  const error = fetchError || queryError;
+
+  const regression = stockData?.length
+    ? computeLinearRegression(stockData, forecastDays)
     : null;
 
   // Build unified chart data
@@ -62,11 +74,11 @@ const Index = () => {
     });
   }
 
-  const lastPrice = stockResult?.data?.length
-    ? stockResult.data[stockResult.data.length - 1].close
+  const lastPrice = stockData?.length
+    ? stockData[stockData.length - 1].close
     : 0;
-  const prevPrice = stockResult?.data?.length && stockResult.data.length > 1
-    ? stockResult.data[stockResult.data.length - 2].close
+  const prevPrice = stockData?.length && stockData.length > 1
+    ? stockData[stockData.length - 2].close
     : lastPrice;
   const priceChange = lastPrice - prevPrice;
   const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
@@ -89,7 +101,7 @@ const Index = () => {
       <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
         <StockHeader
           ticker={ticker}
-          name={stockResult?.name || ""}
+          name={meta?.name || ""}
           price={lastPrice}
           change={priceChange}
           changePct={priceChangePct}
