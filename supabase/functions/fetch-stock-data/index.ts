@@ -29,16 +29,18 @@ serve(async (req) => {
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
-    const fmpUrl = fmpKey
-      ? `https://financialmodelingprep.com/api/v3/profile/${encodeURIComponent(cleanTicker)}?apikey=${fmpKey}`
+    const fmpProfileUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+      : null;
+    const fmpRatiosUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: { "User-Agent": ua } }),
     ];
-    if (fmpUrl) {
-      fetchPromises.push(fetch(fmpUrl));
-    }
+    if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
+    if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
@@ -63,34 +65,51 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse FMP fundamentals
+    // Parse FMP profile (responses[1]) and ratios (responses[2])
     let fundamentals: Record<string, any> = {};
-    if (responses[1]) {
+    const fmpProfileRes = responses[1];
+    const fmpRatiosRes = responses[2];
+
+    if (fmpProfileRes) {
       try {
-        if (responses[1].ok) {
-          const fmpData = await responses[1].json();
+        if (fmpProfileRes.ok) {
+          const fmpData = await fmpProfileRes.json();
           const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
+
+          // Parse ratios TTM for P/E and other valuation metrics
+          let ratios: Record<string, any> = {};
+          if (fmpRatiosRes?.ok) {
+            try {
+              const ratiosData = await fmpRatiosRes.json();
+              ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
+            } catch (e) { console.warn("Ratios parse failed:", e); }
+          }
+
           if (profile) {
+            const price = profile.price || 0;
+            const pe = ratios.priceToEarningsRatioTTM ?? ratios.peRatioTTM ?? null;
+            const eps = pe && price ? price / pe : null;
+
             fundamentals = {
               ticker: cleanTicker,
               company_name: profile.companyName || meta?.longName || cleanTicker,
               sector: profile.sector || null,
               industry: profile.industry || null,
-              pe_ratio: profile.pe ?? null,
-              forward_pe: profile.forwardPE ?? null,
-              market_cap: profile.mktCap ?? null,
-              eps: profile.eps ?? null,
-              dividend_yield: profile.lastDiv ? profile.lastDiv / (profile.price || 1) : null,
+              pe_ratio: pe,
+              forward_pe: ratios.forwardPERatioTTM ?? null,
+              market_cap: profile.marketCap ?? null,
+              eps: eps,
+              dividend_yield: ratios.dividendYieldTTM ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null),
               fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
               fifty_two_week_low: profile.range ? parseFloat(profile.range.split("-")[0]) : null,
               currency: profile.currency || meta?.currency || "USD",
               updated_at: new Date().toISOString(),
             };
-            console.log("FMP fundamentals parsed - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps);
+            console.log("Fundamentals - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
           }
         } else {
-          const errText = await responses[1].text();
-          console.warn("FMP returned:", responses[1].status, errText.substring(0, 200));
+          const errText = await fmpProfileRes.text();
+          console.warn("FMP profile returned:", fmpProfileRes.status, errText.substring(0, 200));
         }
       } catch (e) {
         console.warn("FMP parse failed:", e);
