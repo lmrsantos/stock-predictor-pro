@@ -95,6 +95,7 @@ serve(async (req) => {
             try {
               const qData = await fmpQuoteRes.json();
               quote = Array.isArray(qData) ? qData[0] || {} : qData || {};
+              console.log("Quote keys:", Object.keys(quote).join(", "));
             } catch (e) { console.warn("Quote parse failed:", e); }
           }
 
