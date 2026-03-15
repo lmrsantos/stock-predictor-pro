@@ -35,8 +35,8 @@ serve(async (req) => {
     const fmpRatiosUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
-    const fmpKeyMetricsUrl = fmpKey
-      ? `https://financialmodelingprep.com/stable/key-metrics-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+    const fmpQuoteUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
 
     const fetchPromises: Promise<Response>[] = [
