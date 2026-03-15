@@ -89,32 +89,30 @@ serve(async (req) => {
             } catch (e) { console.warn("Ratios parse failed:", e); }
           }
 
-          // Parse key-metrics-ttm (often has PE when ratios-ttm doesn't)
-          let keyMetrics: Record<string, any> = {};
-          if (fmpKeyMetricsRes?.ok) {
+          // Parse key-metrics/quote (often has PE when ratios-ttm doesn't)
+          let quote: Record<string, any> = {};
+          if (fmpQuoteRes?.ok) {
             try {
-              const kmData = await fmpKeyMetricsRes.json();
-              keyMetrics = Array.isArray(kmData) ? kmData[0] || {} : kmData || {};
-            } catch (e) { console.warn("Key metrics parse failed:", e); }
+              const qData = await fmpQuoteRes.json();
+              quote = Array.isArray(qData) ? qData[0] || {} : qData || {};
+            } catch (e) { console.warn("Quote parse failed:", e); }
           }
 
           if (profile) {
-            const price = profile.price || meta?.regularMarketPrice || 0;
+            const price = profile.price || quote.price || meta?.regularMarketPrice || 0;
 
-            // Try PE from multiple sources
+            // Try PE from ratios-ttm first, then quote
             const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM
-              ?? keyMetrics.peRatioTTM ?? keyMetrics.priceEarningsRatioTTM
-              ?? (profile.pe || null);
+              ?? quote.pe ?? null;
 
-            // Try EPS - calculate from PE if not directly available
-            const eps = pe && price ? price / pe : null;
+            // EPS from quote or calculated
+            const eps = quote.eps ?? (pe && price ? price / pe : null);
 
             // Forward PE
-            const forwardPE = ratios.forwardPERatioTTM ?? keyMetrics.forwardPERatioTTM ?? null;
+            const forwardPE = ratios.forwardPERatioTTM ?? null;
 
             // Dividend yield
             const dividendYield = ratios.dividendYieldTTM
-              ?? keyMetrics.dividendYieldTTM
               ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null);
 
             fundamentals = {
@@ -124,7 +122,7 @@ serve(async (req) => {
               industry: profile.industry || null,
               pe_ratio: pe,
               forward_pe: forwardPE,
-              market_cap: profile.marketCap ? Math.round(profile.marketCap) : null,
+              market_cap: profile.marketCap ? Math.round(profile.marketCap) : (quote.marketCap ? Math.round(quote.marketCap) : null),
               eps: eps,
               dividend_yield: dividendYield,
               fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
@@ -134,11 +132,7 @@ serve(async (req) => {
             };
 
             // Debug logging
-            console.log("Ratios PE fields:", JSON.stringify({
-              "ratios.peRatioTTM": ratios.peRatioTTM,
-              "keyMetrics.peRatioTTM": keyMetrics.peRatioTTM,
-              "profile.pe": profile.pe,
-            }));
+            console.log("Sources - ratios.peRatioTTM:", ratios.peRatioTTM, "quote.pe:", quote.pe, "quote.eps:", quote.eps);
             console.log("Final - PE:", fundamentals.pe_ratio, "EPS:", fundamentals.eps, "MarketCap:", fundamentals.market_cap);
           }
         } else {
