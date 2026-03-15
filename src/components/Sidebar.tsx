@@ -1,8 +1,8 @@
-import { Search } from "lucide-react";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
+import { TickerSearch } from "./TickerSearch";
 
 interface SidebarProps {
   searchInput: string;
