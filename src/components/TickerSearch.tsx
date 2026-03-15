@@ -33,23 +33,13 @@ export function TickerSearch({ value, onChange, onSelect }: TickerSearchProps) {
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0&listsCount=0&enableFuzzyQuery=true&quotesQueryId=tss_match_phrase_query`,
-        { headers: { "User-Agent": "Mozilla/5.0" } }
-      );
+      const { data, error } = await supabase.functions.invoke("search-ticker", {
+        body: { query },
+      });
 
-      if (res.ok) {
-        const data = await res.json();
-        const quotes: SearchResult[] = (data.quotes || [])
-          .filter((q: any) => q.quoteType === "EQUITY" || q.quoteType === "ETF")
-          .map((q: any) => ({
-            symbol: q.symbol,
-            name: q.shortname || q.longname || q.symbol,
-            exchange: q.exchDisp || q.exchange || "",
-            type: q.quoteType || "",
-          }));
-        setResults(quotes);
-        setIsOpen(quotes.length > 0);
+      if (!error && data?.results) {
+        setResults(data.results);
+        setIsOpen(data.results.length > 0);
         setActiveIndex(-1);
       }
     } catch {
