@@ -67,8 +67,10 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Step 3: Fetch quote data (P/E, fundamentals) — needs crumb+cookie
+    // Step 3: Try multiple approaches to get fundamentals (P/E, etc.)
     let fundamentals: Record<string, any> = {};
+
+    // Approach A: crumb-based v7 quote API
     if (crumb) {
       try {
         const quoteUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(crumb)}`;
@@ -76,32 +78,68 @@ serve(async (req) => {
         if (cookieHeader) quoteHeaders["Cookie"] = cookieHeader;
 
         const quoteRes = await fetch(quoteUrl, { headers: quoteHeaders });
-
         if (quoteRes.ok) {
           const quoteJson = await quoteRes.json();
           const q = quoteJson.quoteResponse?.result?.[0];
           if (q) {
-            fundamentals = {
-              ticker: cleanTicker,
-              company_name: q.longName || q.shortName || meta?.longName || cleanTicker,
-              sector: q.sector || null,
-              industry: q.industry || null,
-              pe_ratio: q.trailingPE ?? null,
-              forward_pe: q.forwardPE ?? null,
-              market_cap: q.marketCap ?? null,
-              eps: q.epsTrailingTwelveMonths ?? null,
-              dividend_yield: q.dividendYield ? q.dividendYield / 100 : null,
-              fifty_two_week_high: q.fiftyTwoWeekHigh ?? null,
-              fifty_two_week_low: q.fiftyTwoWeekLow ?? null,
-              currency: q.currency || meta?.currency || "USD",
-              updated_at: new Date().toISOString(),
-            };
+            fundamentals = buildFundamentals(cleanTicker, q, meta);
           }
         } else {
-          console.warn("Quote endpoint returned:", quoteRes.status);
+          console.warn("v7 quote returned:", quoteRes.status);
         }
       } catch (e) {
-        console.warn("Quote fetch failed:", e);
+        console.warn("v7 quote fetch failed:", e);
+      }
+    }
+
+    // Approach B: Scrape Yahoo Finance page for embedded JSON
+    if (!fundamentals.ticker) {
+      try {
+        const pageRes = await fetch(`https://finance.yahoo.com/quote/${encodeURIComponent(cleanTicker)}/`, {
+          headers: { "User-Agent": ua },
+        });
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          // Look for JSON data in the page source
+          const jsonMatch = html.match(/root\.App\.main\s*=\s*({.*?});\s*\n/s)
+            || html.match(/"QuoteSummaryStore":\s*({.*?"symbol"\s*:\s*"[^"]*".*?})\s*,\s*"/s);
+          
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[1]);
+              const store = parsed?.context?.dispatcher?.stores?.QuoteSummaryStore
+                || parsed;
+              const sd = store?.summaryDetail || {};
+              const ks = store?.defaultKeyStatistics || {};
+              const q = store?.price || {};
+              const ap = store?.assetProfile || {};
+
+              fundamentals = {
+                ticker: cleanTicker,
+                company_name: q.longName || q.shortName || meta?.longName || cleanTicker,
+                sector: ap?.sector || null,
+                industry: ap?.industry || null,
+                pe_ratio: sd?.trailingPE?.raw ?? q?.trailingPE?.raw ?? null,
+                forward_pe: sd?.forwardPE?.raw ?? ks?.forwardPE?.raw ?? null,
+                market_cap: q?.marketCap?.raw ?? sd?.marketCap?.raw ?? null,
+                eps: ks?.trailingEps?.raw ?? null,
+                dividend_yield: sd?.dividendYield?.raw ?? null,
+                fifty_two_week_high: sd?.fiftyTwoWeekHigh?.raw ?? null,
+                fifty_two_week_low: sd?.fiftyTwoWeekLow?.raw ?? null,
+                currency: q?.currency || meta?.currency || "USD",
+                updated_at: new Date().toISOString(),
+              };
+            } catch (parseErr) {
+              console.warn("Failed to parse embedded JSON:", parseErr);
+            }
+          } else {
+            console.warn("No embedded JSON found in page");
+          }
+        } else {
+          console.warn("Page scrape returned:", pageRes.status);
+        }
+      } catch (e) {
+        console.warn("Page scrape failed:", e);
       }
     }
 
