@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpUrl = fmpKey
-      ? `https://financialmodelingprep.com/api/v3/profile/${encodeURIComponent(cleanTicker)}?apikey=${fmpKey}`
+      ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
 
     const fetchPromises: Promise<Response>[] = [
