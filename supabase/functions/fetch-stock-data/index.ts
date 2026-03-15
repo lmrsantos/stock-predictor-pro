@@ -57,33 +57,32 @@ serve(async (req) => {
 
     // Parse fundamentals (best-effort, don't fail if unavailable)
     let fundamentals: Record<string, any> = {};
-    if (summaryRes.ok) {
+    if (quoteRes.ok) {
       try {
-        const summaryJson = await summaryRes.json();
-        const summaryResult = summaryJson.quoteSummary?.result?.[0];
-        const sd = summaryResult?.summaryDetail || {};
-        const ks = summaryResult?.defaultKeyStatistics || {};
-        const ap = summaryResult?.assetProfile || {};
-        const fd = summaryResult?.financialData || {};
-
-        fundamentals = {
-          ticker: cleanTicker,
-          company_name: meta?.longName || meta?.shortName || cleanTicker,
-          sector: ap?.sector || null,
-          industry: ap?.industry || null,
-          pe_ratio: sd?.trailingPE?.raw ?? null,
-          forward_pe: sd?.forwardPE?.raw ?? ks?.forwardPE?.raw ?? null,
-          market_cap: sd?.marketCap?.raw ?? null,
-          eps: fd?.revenuePerShare?.raw ?? ks?.trailingEps?.raw ?? null,
-          dividend_yield: sd?.dividendYield?.raw ?? null,
-          fifty_two_week_high: sd?.fiftyTwoWeekHigh?.raw ?? null,
-          fifty_two_week_low: sd?.fiftyTwoWeekLow?.raw ?? null,
-          currency: meta?.currency || "USD",
-          updated_at: new Date().toISOString(),
-        };
+        const quoteJson = await quoteRes.json();
+        const q = quoteJson.quoteResponse?.result?.[0];
+        if (q) {
+          fundamentals = {
+            ticker: cleanTicker,
+            company_name: q.longName || q.shortName || cleanTicker,
+            sector: q.sector || null,
+            industry: q.industry || null,
+            pe_ratio: q.trailingPE ?? null,
+            forward_pe: q.forwardPE ?? null,
+            market_cap: q.marketCap ?? null,
+            eps: q.epsTrailingTwelveMonths ?? null,
+            dividend_yield: q.dividendYield ? q.dividendYield / 100 : null,
+            fifty_two_week_high: q.fiftyTwoWeekHigh ?? null,
+            fifty_two_week_low: q.fiftyTwoWeekLow ?? null,
+            currency: q.currency || meta?.currency || "USD",
+            updated_at: new Date().toISOString(),
+          };
+        }
       } catch (e) {
-        console.warn("Failed to parse summary data:", e);
+        console.warn("Failed to parse quote data:", e);
       }
+    } else {
+      console.warn("Quote endpoint returned:", quoteRes.status);
     }
 
     // Build rows for upsert, deduplicate by date
