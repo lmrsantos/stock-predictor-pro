@@ -59,24 +59,28 @@ export function InvestmentSimulator({ regression, lastPrice, ticker }: Investmen
 
       {/* Investment Amount */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Amount ($)</span>
-          <span className="text-xs font-mono text-foreground">
-            ${investment.toLocaleString()}
-          </span>
-        </div>
-        <Slider
-          value={[investment]}
-          onValueChange={([v]) => setInvestment(v)}
-          min={1000}
+      <div className="space-y-2">
+        <span className="text-xs text-muted-foreground">Amount ($)</span>
+        <Input
+          type="number"
+          value={investment || ""}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            if (v >= 0 && v <= 100000) setInvestment(v);
+          }}
+          min={0}
           max={100000}
-          step={1000}
+          className="h-8 bg-secondary border-border font-mono text-sm"
+          placeholder="Enter amount..."
+        />
+        <Slider
+          value={[Math.min(investment, 100000)]}
+          onValueChange={([v]) => setInvestment(v)}
+          min={0}
+          max={100000}
+          step={500}
           className="w-full"
         />
-        <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
-          <span>$1K</span>
-          <span>$100K</span>
-        </div>
       </div>
 
       {/* Period Selection */}
