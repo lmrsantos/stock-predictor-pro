@@ -29,16 +29,18 @@ serve(async (req) => {
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
-    const fmpUrl = fmpKey
+    const fmpProfileUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
+      : null;
+    const fmpRatiosUrl = fmpKey
+      ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
 
     const fetchPromises: Promise<Response>[] = [
       fetch(chartUrl, { headers: { "User-Agent": ua } }),
     ];
-    if (fmpUrl) {
-      fetchPromises.push(fetch(fmpUrl));
-    }
+    if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
+    if (fmpRatiosUrl) fetchPromises.push(fetch(fmpRatiosUrl));
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
