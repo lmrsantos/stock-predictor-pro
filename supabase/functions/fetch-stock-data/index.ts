@@ -23,41 +23,29 @@ serve(async (req) => {
     }
 
     const cleanTicker = ticker.trim().toUpperCase();
+    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch price history + fundamentals in parallel
-    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
-    const headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" };
-
-    // Step 1: Get crumb + cookies from Yahoo Finance
+    // Step 1: Get crumb + cookies for authenticated Yahoo Finance endpoints
     let crumb = "";
-    let cookies = "";
+    let cookieHeader = "";
     try {
       const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
-        headers,
+        headers: { "User-Agent": ua },
         redirect: "follow",
       });
       if (crumbRes.ok) {
-        crumb = await crumbRes.text();
-        cookies = crumbRes.headers.get("set-cookie") || "";
+        crumb = (await crumbRes.text()).trim();
+        cookieHeader = crumbRes.headers.get("set-cookie") || "";
+      } else {
+        console.warn("Crumb fetch returned:", crumbRes.status);
       }
     } catch (e) {
-      console.warn("Crumb fetch failed, continuing without:", e);
+      console.warn("Crumb fetch failed:", e);
     }
 
+    // Step 2: Fetch chart data (prices) — this endpoint doesn't need auth
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
-
-    const quoteParams = crumb
-      ? `symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(crumb)}`
-      : `symbols=${encodeURIComponent(cleanTicker)}`;
-    const quoteUrl = `https://query2.finance.yahoo.com/v7/finance/quote?${quoteParams}`;
-
-    const quoteHeaders: Record<string, string> = { ...headers };
-    if (cookies) quoteHeaders["Cookie"] = cookies;
-
-    const [chartRes, quoteRes] = await Promise.all([
-      fetch(chartUrl, { headers }),
-      fetch(quoteUrl, { headers: quoteHeaders }),
-    ]);
+    const chartRes = await fetch(chartUrl, { headers: { "User-Agent": ua } });
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -79,108 +67,94 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse fundamentals (best-effort, don't fail if unavailable)
+    // Step 3: Fetch quote data (P/E, fundamentals) — needs crumb+cookie
     let fundamentals: Record<string, any> = {};
-    if (quoteRes.ok) {
+    if (crumb) {
       try {
-        const quoteJson = await quoteRes.json();
-        const q = quoteJson.quoteResponse?.result?.[0];
-        if (q) {
-          fundamentals = {
-            ticker: cleanTicker,
-            company_name: q.longName || q.shortName || cleanTicker,
-            sector: q.sector || null,
-            industry: q.industry || null,
-            pe_ratio: q.trailingPE ?? null,
-            forward_pe: q.forwardPE ?? null,
-            market_cap: q.marketCap ?? null,
-            eps: q.epsTrailingTwelveMonths ?? null,
-            dividend_yield: q.dividendYield ? q.dividendYield / 100 : null,
-            fifty_two_week_high: q.fiftyTwoWeekHigh ?? null,
-            fifty_two_week_low: q.fiftyTwoWeekLow ?? null,
-            currency: q.currency || meta?.currency || "USD",
-            updated_at: new Date().toISOString(),
-          };
+        const quoteUrl = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(crumb)}`;
+        const quoteHeaders: Record<string, string> = { "User-Agent": ua };
+        if (cookieHeader) quoteHeaders["Cookie"] = cookieHeader;
+
+        const quoteRes = await fetch(quoteUrl, { headers: quoteHeaders });
+
+        if (quoteRes.ok) {
+          const quoteJson = await quoteRes.json();
+          const q = quoteJson.quoteResponse?.result?.[0];
+          if (q) {
+            fundamentals = {
+              ticker: cleanTicker,
+              company_name: q.longName || q.shortName || meta?.longName || cleanTicker,
+              sector: q.sector || null,
+              industry: q.industry || null,
+              pe_ratio: q.trailingPE ?? null,
+              forward_pe: q.forwardPE ?? null,
+              market_cap: q.marketCap ?? null,
+              eps: q.epsTrailingTwelveMonths ?? null,
+              dividend_yield: q.dividendYield ? q.dividendYield / 100 : null,
+              fifty_two_week_high: q.fiftyTwoWeekHigh ?? null,
+              fifty_two_week_low: q.fiftyTwoWeekLow ?? null,
+              currency: q.currency || meta?.currency || "USD",
+              updated_at: new Date().toISOString(),
+            };
+          }
+        } else {
+          console.warn("Quote endpoint returned:", quoteRes.status);
         }
       } catch (e) {
-        console.warn("Failed to parse quote data:", e);
+        console.warn("Quote fetch failed:", e);
       }
-    } else {
-      console.warn("Quote endpoint returned:", quoteRes.status);
     }
 
-    // Build rows for upsert, deduplicate by date
+    // Step 4: Build price rows, deduplicate by date
     const rowMap = new Map<string, {
-      ticker: string;
-      date: string;
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-      volume: number;
+      ticker: string; date: string; open: number; high: number;
+      low: number; close: number; volume: number;
     }>();
 
     for (let i = 0; i < timestamps.length; i++) {
       const close = quotes.close?.[i];
       const open = quotes.open?.[i];
-      const high = quotes.high?.[i];
-      const low = quotes.low?.[i];
-      const volume = quotes.volume?.[i];
-
       if (close == null || open == null) continue;
 
       const date = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
-
       rowMap.set(date, {
         ticker: cleanTicker,
         date,
         open,
-        high: high ?? close,
-        low: low ?? close,
+        high: quotes.high?.[i] ?? close,
+        low: quotes.low?.[i] ?? close,
         close,
-        volume: volume ?? 0,
+        volume: quotes.volume?.[i] ?? 0,
       });
     }
 
     const rows = Array.from(rowMap.values());
 
-    // Upsert into database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Step 5: Upsert into database
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // Upsert prices + fundamentals in parallel
     const upsertPromises: Promise<any>[] = [
-      supabase
-        .from("stock_prices")
-        .upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: false }),
+      supabase.from("stock_prices").upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: false }),
     ];
 
     if (fundamentals.ticker) {
       upsertPromises.push(
-        supabase
-          .from("stock_fundamentals")
-          .upsert([fundamentals], { onConflict: "ticker", ignoreDuplicates: false })
+        supabase.from("stock_fundamentals").upsert([fundamentals], { onConflict: "ticker", ignoreDuplicates: false })
       );
     }
 
     const results = await Promise.all(upsertPromises);
-
-    const priceError = results[0]?.error;
-    if (priceError) {
-      throw new Error(`DB price upsert failed: ${priceError.message}`);
-    }
-
-    const fundError = results[1]?.error;
-    if (fundError) {
-      console.warn("Fundamentals upsert warning:", fundError.message);
-    }
+    if (results[0]?.error) throw new Error(`DB price upsert failed: ${results[0].error.message}`);
+    if (results[1]?.error) console.warn("Fundamentals upsert warning:", results[1].error.message);
 
     return new Response(
       JSON.stringify({
         success: true,
         ticker: cleanTicker,
-        name: meta?.longName || meta?.shortName || cleanTicker,
+        name: fundamentals.company_name || meta?.longName || meta?.shortName || cleanTicker,
         currency: meta?.currency || "USD",
         rowsInserted: rows.length,
         fundamentals: fundamentals.ticker ? {
