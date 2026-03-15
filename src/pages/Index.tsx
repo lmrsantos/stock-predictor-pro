@@ -49,6 +49,7 @@ const Index = () => {
   });
 
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
+  const analystRating = meta?.analystRating || null;
 
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
