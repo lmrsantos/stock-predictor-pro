@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -25,13 +25,14 @@ serve(async (req) => {
     const cleanTicker = ticker.trim().toUpperCase();
     const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
-    // Fetch chart data (Yahoo) + fundamentals (FMP) in parallel
+    // Fetch chart data (Yahoo) + fundamentals (FMP profile) in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
     const fmpProfileUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/profile?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
+    // Note: stable/ratios-ttm requires a paid FMP plan (returns 402 on free tier)
     const fmpRatiosUrl = fmpKey
       ? `https://financialmodelingprep.com/stable/ratios-ttm?symbol=${encodeURIComponent(cleanTicker)}&apikey=${fmpKey}`
       : null;
@@ -44,6 +45,8 @@ serve(async (req) => {
 
     const responses = await Promise.all(fetchPromises);
     const chartRes = responses[0];
+    const fmpProfileRes = responses[1];
+    const fmpRatiosRes = responses[2];
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
@@ -65,30 +68,32 @@ serve(async (req) => {
       throw new Error(`Insufficient data for ${cleanTicker}`);
     }
 
-    // Parse FMP profile (responses[1]) and ratios (responses[2])
+    // Parse FMP data
     let fundamentals: Record<string, any> = {};
-    const fmpProfileRes = responses[1];
-    const fmpRatiosRes = responses[2];
-
     if (fmpProfileRes) {
       try {
         if (fmpProfileRes.ok) {
           const fmpData = await fmpProfileRes.json();
           const profile = Array.isArray(fmpData) ? fmpData[0] : fmpData;
 
-          // Parse ratios TTM for P/E and other valuation metrics
+          // Parse ratios-ttm (may return 402 on free tier)
           let ratios: Record<string, any> = {};
           if (fmpRatiosRes?.ok) {
             try {
               const ratiosData = await fmpRatiosRes.json();
               ratios = Array.isArray(ratiosData) ? ratiosData[0] || {} : ratiosData || {};
-            } catch (e) { console.warn("Ratios parse failed:", e); }
+            } catch (e) { /* ignore */ }
           }
 
           if (profile) {
-            const price = profile.price || 0;
-            const pe = ratios.priceToEarningsRatioTTM ?? ratios.peRatioTTM ?? null;
+            const price = profile.price || meta?.regularMarketPrice || 0;
+
+            // PE from ratios (paid tier) or profile
+            const pe = ratios.peRatioTTM ?? ratios.priceToEarningsRatioTTM ?? null;
             const eps = pe && price ? price / pe : null;
+            const forwardPE = ratios.forwardPERatioTTM ?? null;
+            const dividendYield = ratios.dividendYieldTTM
+              ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null);
 
             fundamentals = {
               ticker: cleanTicker,
@@ -96,10 +101,10 @@ serve(async (req) => {
               sector: profile.sector || null,
               industry: profile.industry || null,
               pe_ratio: pe,
-              forward_pe: ratios.forwardPERatioTTM ?? null,
-              market_cap: profile.marketCap ?? null,
+              forward_pe: forwardPE,
+              market_cap: profile.marketCap ? Math.round(profile.marketCap) : null,
               eps: eps,
-              dividend_yield: ratios.dividendYieldTTM ?? (profile.lastDividend ? profile.lastDividend / (price || 1) : null),
+              dividend_yield: dividendYield,
               fifty_two_week_high: profile.range ? parseFloat(profile.range.split("-")[1]) : null,
               fifty_two_week_low: profile.range ? parseFloat(profile.range.split("-")[0]) : null,
               currency: profile.currency || meta?.currency || "USD",
