@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
+import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
 import { computeLinearRegression } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
