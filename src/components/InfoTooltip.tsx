@@ -33,7 +33,7 @@ export function InfoTooltip({ title, what, howToRead }: InfoTooltipProps) {
           <p className="text-muted-foreground mt-0.5 leading-relaxed">{what}</p>
         </div>
         <div>
-          <span className="font-medium text-primary">How to read it</span>
+          <span className="font-medium text-primary">How to read it?</span>
           <p className="text-muted-foreground mt-0.5 leading-relaxed">{howToRead}</p>
         </div>
       </PopoverContent>
