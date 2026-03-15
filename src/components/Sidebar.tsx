@@ -7,7 +7,7 @@ import { TickerSearch } from "./TickerSearch";
 interface SidebarProps {
   searchInput: string;
   onSearchInputChange: (v: string) => void;
-  onSearch: () => void;
+  onSearch: (ticker?: string) => void;
   period: string;
   onPeriodChange: (v: string) => void;
   forecastDays: number;
