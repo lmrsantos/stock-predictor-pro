@@ -152,6 +152,7 @@ Rules:
 - Focus on trends, momentum, industry movements, or notable patterns
 - Never give direct buy/sell advice — frame as observations
 - Include relevant emojis sparingly (1-2 max)
+- NEVER use markdown formatting (no **, *, #, -, etc). Output ONLY plain text.
 - Reference the ticker if provided
 - Vary your angle: sometimes technical, sometimes fundamental, sometimes industry/sector
 - IMPORTANT: If the market is CLOSED, frame your commentary around the LAST trading session's data, upcoming catalysts, or weekly recap. Do NOT say the market is moving right now. Use past tense or forward-looking language instead.
