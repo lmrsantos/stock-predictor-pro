@@ -147,7 +147,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
           <CartesianGrid
-            stroke="hsl(220, 10%, 10%)"
+            stroke="hsl(268, 25%, 88%)"
             strokeDasharray="3 3"
             vertical={false}
           />
