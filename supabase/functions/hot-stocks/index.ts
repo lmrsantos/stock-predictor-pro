@@ -66,12 +66,23 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Parse optional sector filter from request body
+    let sectorFilter: string | null = null;
+    let topN = 5;
+    try {
+      const body = await req.json();
+      sectorFilter = body.sector || body.sectors || null;
+      if (body.limit) topN = Math.min(body.limit, 20);
+    } catch { /* no body = default scan */ }
+
+    const cacheKey = sectorFilter ? `hot_stocks_v3_${sectorFilter}` : "hot_stocks_v2";
+
     // Check cache — reuse results from last 30 minutes
     const cacheWindow = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("market_updates")
       .select("content, created_at")
-      .eq("signal_type", "hot_stocks_v2")
+      .eq("signal_type", cacheKey)
       .gte("created_at", cacheWindow)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -87,9 +98,9 @@ serve(async (req) => {
       } catch { /* fall through */ }
     }
 
-    // Step 1: Use FMP Stock Screener to get a broad universe
-    // Pull stocks with market cap > $500M, price > $5, US exchange, sorted by volume
-    const screenerUrl = `https://financialmodelingprep.com/stable/company-screener?marketCapMoreThan=500000000&priceMoreThan=5&exchange=NYSE,NASDAQ&isActivelyTrading=true&limit=80&apikey=${FMP_API_KEY}`;
+    // Step 1: Use FMP Stock Screener
+    const sectorParam = sectorFilter ? `&sector=${encodeURIComponent(sectorFilter)}` : "";
+    const screenerUrl = `https://financialmodelingprep.com/stable/company-screener?marketCapMoreThan=500000000&priceMoreThan=5&exchange=NYSE,NASDAQ&isActivelyTrading=true${sectorParam}&limit=80&apikey=${FMP_API_KEY}`;
     
     console.log("Fetching stock screener...");
     const screenerRes = await fetch(screenerUrl);
@@ -104,23 +115,25 @@ serve(async (req) => {
       console.error(`Screener failed (${screenerRes.status}): ${errText.substring(0, 200)}`);
     }
 
-    // Also try to pull market movers for extra candidates
+    // Also try to pull market movers for extra candidates (skip when sector filtering)
     let movers: any[] = [];
-    try {
-      const [activesRes, gainersRes] = await Promise.all([
-        fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
-        fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
-      ]);
-      if (activesRes.ok) {
-        const d = await activesRes.json();
-        if (Array.isArray(d)) movers.push(...d);
-      } else { await activesRes.text(); }
-      if (gainersRes.ok) {
-        const d = await gainersRes.json();
-        if (Array.isArray(d)) movers.push(...d);
-      } else { await gainersRes.text(); }
-    } catch (e) {
-      console.error("Movers fetch error:", e);
+    if (!sectorFilter) {
+      try {
+        const [activesRes, gainersRes] = await Promise.all([
+          fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
+          fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
+        ]);
+        if (activesRes.ok) {
+          const d = await activesRes.json();
+          if (Array.isArray(d)) movers.push(...d);
+        } else { await activesRes.text(); }
+        if (gainersRes.ok) {
+          const d = await gainersRes.json();
+          if (Array.isArray(d)) movers.push(...d);
+        } else { await gainersRes.text(); }
+      } catch (e) {
+        console.error("Movers fetch error:", e);
+      }
     }
 
     // Merge all candidates, deduplicate
@@ -231,20 +244,20 @@ serve(async (req) => {
 
     console.log(`Scored ${scored.length} stocks with positive trends out of ${processed} processed`);
 
-    // Sort by score and take top 5
+    // Sort by score and take top N
     scored.sort((a, b) => b.score - a.score);
-    const top5 = scored.slice(0, 5);
+    const topResults = scored.slice(0, topN);
 
     // Cache the result
-    if (top5.length > 0) {
+    if (topResults.length > 0) {
       await supabase.from("market_updates").insert({
-        content: JSON.stringify(top5),
+        content: JSON.stringify(topResults),
         ticker: null,
-        signal_type: "hot_stocks_v2",
+        signal_type: cacheKey,
       });
     }
 
-    return new Response(JSON.stringify({ stocks: top5, cached: false }), {
+    return new Response(JSON.stringify({ stocks: topResults, cached: false, sector: sectorFilter }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
