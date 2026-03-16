@@ -152,6 +152,7 @@ Rules:
 - Focus on trends, momentum, industry movements, or notable patterns
 - Never give direct buy/sell advice — frame as observations
 - Include relevant emojis sparingly (1-2 max)
+- NEVER use markdown formatting (no **, *, #, -, etc). Output ONLY plain text.
 - Reference the ticker if provided
 - Vary your angle: sometimes technical, sometimes fundamental, sometimes industry/sector
 - IMPORTANT: If the market is CLOSED, frame your commentary around the LAST trading session's data, upcoming catalysts, or weekly recap. Do NOT say the market is moving right now. Use past tense or forward-looking language instead.
@@ -194,10 +195,17 @@ Rules:
     const content = aiData.choices?.[0]?.message?.content;
     if (!content) throw new Error("No content from AI");
 
+    // Strip any markdown formatting the AI might have used
+    const cleanContent = content.trim()
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/^#+\s*/gm, '')
+      .replace(/^[-*]\s+/gm, '');
+
     const { data: update, error: insertError } = await supabase
       .from("market_updates")
       .insert({
-        content: content.trim(),
+        content: cleanContent,
         ticker: ticker || null,
         signal_type: ticker ? "stock" : "general",
       })
