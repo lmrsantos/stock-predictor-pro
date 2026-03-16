@@ -115,23 +115,25 @@ serve(async (req) => {
       console.error(`Screener failed (${screenerRes.status}): ${errText.substring(0, 200)}`);
     }
 
-    // Also try to pull market movers for extra candidates
+    // Also try to pull market movers for extra candidates (skip when sector filtering)
     let movers: any[] = [];
-    try {
-      const [activesRes, gainersRes] = await Promise.all([
-        fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
-        fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
-      ]);
-      if (activesRes.ok) {
-        const d = await activesRes.json();
-        if (Array.isArray(d)) movers.push(...d);
-      } else { await activesRes.text(); }
-      if (gainersRes.ok) {
-        const d = await gainersRes.json();
-        if (Array.isArray(d)) movers.push(...d);
-      } else { await gainersRes.text(); }
-    } catch (e) {
-      console.error("Movers fetch error:", e);
+    if (!sectorFilter) {
+      try {
+        const [activesRes, gainersRes] = await Promise.all([
+          fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
+          fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
+        ]);
+        if (activesRes.ok) {
+          const d = await activesRes.json();
+          if (Array.isArray(d)) movers.push(...d);
+        } else { await activesRes.text(); }
+        if (gainersRes.ok) {
+          const d = await gainersRes.json();
+          if (Array.isArray(d)) movers.push(...d);
+        } else { await gainersRes.text(); }
+      } catch (e) {
+        console.error("Movers fetch error:", e);
+      }
     }
 
     // Merge all candidates, deduplicate
