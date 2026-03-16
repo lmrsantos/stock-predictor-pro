@@ -162,7 +162,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           />
           <YAxis
             domain={["auto", "auto"]}
-            tick={{ fill: "hsl(220, 10%, 40%)", fontSize: 11 }}
+            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => `$${v.toFixed(0)}`}
