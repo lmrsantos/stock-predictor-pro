@@ -50,13 +50,15 @@ export function ChatBubble({ context }: ChatBubbleProps) {
   // Auto-open and fetch insight when ticker changes
   useEffect(() => {
     const ticker = context?.ticker;
-    if (!ticker || !user || loading) return;
+    if (!ticker || !user) return;
     if (prevTickerRef.current === ticker) return;
     
     // Skip the very first mount (default ticker)
     const isFirstMount = prevTickerRef.current === undefined;
     prevTickerRef.current = ticker;
     if (isFirstMount) return;
+
+    let cancelled = false;
 
     // Clear previous conversation and auto-fetch insight
     const autoMessage: Message = { role: "user", content: `Give me a quick overview of ${ticker}` };
@@ -69,14 +71,18 @@ export function ChatBubble({ context }: ChatBubbleProps) {
         const { data, error } = await supabase.functions.invoke("chat-insights", {
           body: { messages: [autoMessage], context },
         });
+        if (cancelled) return;
         if (error) throw error;
         setMessages([autoMessage, { role: "assistant", content: data.reply }]);
       } catch {
+        if (cancelled) return;
         setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!" }]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+
+    return () => { cancelled = true; };
   }, [context?.ticker, user]);
 
   const sendMessage = useCallback(async () => {
