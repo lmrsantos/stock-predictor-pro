@@ -4,6 +4,7 @@ import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
+import { MarketFeed } from "./MarketFeed";
 
 interface SidebarProps {
   searchInput: string;
