@@ -174,7 +174,7 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
       {/* Scrolling ticker */}
       <div
         ref={scrollRef}
-        className="overflow-x-hidden whitespace-nowrap py-2 px-4 pr-48 scrollbar-none"
+        className={`overflow-x-hidden whitespace-nowrap py-2 px-4 scrollbar-none ${isAdmin ? "pr-48" : ""}`}
       >
         {updates.length === 0 ? (
           <span className="text-xs text-muted-foreground font-mono">Waiting for market updates…</span>
