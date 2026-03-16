@@ -108,8 +108,11 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   };
 
   const regressionColor = slopePositive
-    ? "hsl(150, 80%, 50%)"
-    : "hsl(0, 80%, 60%)";
+    ? "hsl(150, 70%, 40%)"
+    : "hsl(0, 75%, 55%)";
+
+  const bandColor = "hsl(265, 80%, 58%)";
+  const bgColor = "hsl(270, 30%, 98%)";
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
@@ -125,12 +128,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <InfoTooltip {...metricInfo.regressionLine} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-30" style={{ background: "hsl(210, 100%, 50%)" }} />
+          <span className="w-3 h-3 inline-block rounded opacity-30" style={{ background: bandColor }} />
           1σ Band
           <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: "hsl(210, 100%, 50%)" }} />
+          <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: bandColor }} />
           2σ Band
           <InfoTooltip {...metricInfo.twoSigmaBand} />
         </span>
@@ -144,22 +147,22 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
           <CartesianGrid
-            stroke="hsl(220, 10%, 10%)"
+            stroke="hsl(268, 25%, 88%)"
             strokeDasharray="3 3"
             vertical={false}
           />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fill: "hsl(220, 10%, 40%)", fontSize: 11 }}
-            axisLine={{ stroke: "hsl(220, 10%, 12%)" }}
+            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
+            axisLine={{ stroke: "hsl(268, 25%, 88%)" }}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={60}
           />
           <YAxis
             domain={["auto", "auto"]}
-            tick={{ fill: "hsl(220, 10%, 40%)", fontSize: 11 }}
+            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => `$${v.toFixed(0)}`}
@@ -171,15 +174,15 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <Area
             dataKey="upper2Sigma"
             stroke="none"
-            fill="hsl(210, 100%, 50%)"
-            fillOpacity={0.05}
+            fill={bandColor}
+            fillOpacity={0.08}
             type="linear"
             isAnimationActive={false}
           />
           <Area
             dataKey="lower2Sigma"
             stroke="none"
-            fill="hsl(220, 15%, 3%)"
+            fill={bgColor}
             fillOpacity={1}
             type="linear"
             isAnimationActive={false}
@@ -189,15 +192,15 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <Area
             dataKey="upper1Sigma"
             stroke="none"
-            fill="hsl(210, 100%, 50%)"
-            fillOpacity={0.1}
+            fill={bandColor}
+            fillOpacity={0.15}
             type="linear"
             isAnimationActive={false}
           />
           <Area
             dataKey="lower1Sigma"
             stroke="none"
-            fill="hsl(220, 15%, 3%)"
+            fill={bgColor}
             fillOpacity={1}
             type="linear"
             isAnimationActive={false}
@@ -217,7 +220,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Actual price */}
           <Line
             dataKey="actual"
-            stroke="hsl(220, 10%, 85%)"
+            stroke="hsl(265, 40%, 30%)"
             strokeWidth={1.5}
             dot={false}
             type="linear"
@@ -228,7 +231,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Predicted price (forecast zone) */}
           <Line
             dataKey="predicted"
-            stroke="hsl(210, 100%, 50%)"
+            stroke="hsl(265, 80%, 58%)"
             strokeWidth={2}
             dot={false}
             type="linear"
@@ -240,12 +243,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {forecastStartIndex > 0 && (
             <ReferenceLine
               x={data[forecastStartIndex]?.date}
-              stroke="hsl(220, 10%, 25%)"
+              stroke="hsl(268, 25%, 75%)"
               strokeDasharray="4 4"
               label={{
                 value: "Forecast →",
                 position: "insideTopRight",
-                fill: "hsl(220, 10%, 40%)",
+                fill: "hsl(265, 15%, 45%)",
                 fontSize: 10,
               }}
             />
