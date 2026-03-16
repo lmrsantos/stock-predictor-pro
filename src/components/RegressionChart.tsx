@@ -243,12 +243,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {forecastStartIndex > 0 && (
             <ReferenceLine
               x={data[forecastStartIndex]?.date}
-              stroke="hsl(220, 10%, 25%)"
+              stroke="hsl(268, 25%, 75%)"
               strokeDasharray="4 4"
               label={{
                 value: "Forecast →",
                 position: "insideTopRight",
-                fill: "hsl(220, 10%, 40%)",
+                fill: "hsl(265, 15%, 45%)",
                 fontSize: 10,
               }}
             />
