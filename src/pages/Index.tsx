@@ -166,7 +166,7 @@ const Index = () => {
         )}
       </main>
       </div>
-    </div>
+  );
 };
 
 export default Index;
