@@ -30,7 +30,7 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [adminKey, setAdminKey] = useState(() => localStorage.getItem("mf_admin_key") || "");
   const [showAdmin, setShowAdmin] = useState(false);
-  const [isAdmin] = useState(() => !!localStorage.getItem("mf_admin_key"));
+  const [isAdmin, setIsAdmin] = useState(() => !!localStorage.getItem("mf_admin_key"));
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,6 +112,7 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
   const handleAdminKeySubmit = () => {
     if (adminKey.trim()) {
       localStorage.setItem("mf_admin_key", adminKey.trim());
+      setIsAdmin(true);
       setShowAdmin(false);
       toast.success("Admin key saved");
     }
@@ -173,7 +174,7 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
       {/* Scrolling ticker */}
       <div
         ref={scrollRef}
-        className="overflow-x-hidden whitespace-nowrap py-2 px-4 pr-48 scrollbar-none"
+        className={`overflow-x-hidden whitespace-nowrap py-2 px-4 scrollbar-none ${isAdmin ? "pr-48" : ""}`}
       >
         {updates.length === 0 ? (
           <span className="text-xs text-muted-foreground font-mono">Waiting for market updates…</span>
