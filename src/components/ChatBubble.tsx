@@ -294,8 +294,12 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                   ))}
                   {loading && (
                     <div className="flex justify-start">
-                      <div className="bg-secondary rounded-xl px-3 py-2 text-sm text-muted-foreground">
-                        <span className="animate-pulse">thinking...</span>
+                      <div className="bg-secondary rounded-xl px-3 py-2 text-sm text-muted-foreground flex items-center gap-1.5">
+                        <span className="flex gap-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
+                        </span>
                       </div>
                     </div>
                   )}
