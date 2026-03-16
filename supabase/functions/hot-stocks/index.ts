@@ -242,20 +242,20 @@ serve(async (req) => {
 
     console.log(`Scored ${scored.length} stocks with positive trends out of ${processed} processed`);
 
-    // Sort by score and take top 5
+    // Sort by score and take top N
     scored.sort((a, b) => b.score - a.score);
-    const top5 = scored.slice(0, 5);
+    const topResults = scored.slice(0, topN);
 
     // Cache the result
-    if (top5.length > 0) {
+    if (topResults.length > 0) {
       await supabase.from("market_updates").insert({
-        content: JSON.stringify(top5),
+        content: JSON.stringify(topResults),
         ticker: null,
-        signal_type: "hot_stocks_v2",
+        signal_type: cacheKey,
       });
     }
 
-    return new Response(JSON.stringify({ stocks: top5, cached: false }), {
+    return new Response(JSON.stringify({ stocks: topResults, cached: false, sector: sectorFilter }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
