@@ -201,22 +201,22 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
       {/* Scrolling ticker */}
       <div
         ref={scrollRef}
-        className={`overflow-x-hidden whitespace-nowrap py-2 px-4 scrollbar-none ${isAdmin ? "pr-48" : ""}`}
+        className={`overflow-x-hidden whitespace-nowrap py-3 px-4 scrollbar-none ${isAdmin ? "pr-48" : ""}`}
       >
         {updates.length === 0 ? (
           <span className="text-xs text-muted-foreground font-mono">Generating market insights…</span>
         ) : (
           updates.map((u, i) => (
-            <span key={u.id} className="inline-flex items-center gap-2 mr-8">
+            <span key={u.id} className="inline-flex items-center gap-3 mr-10">
               {u.ticker ? (
-                <span className="text-[10px] font-mono font-bold text-primary">${u.ticker}</span>
+                <span className="text-xs font-mono font-bold text-primary">${u.ticker}</span>
               ) : (
-                <span className="text-[10px] font-mono text-muted-foreground">MKT</span>
+                <span className="text-xs font-mono font-semibold text-muted-foreground">MKT</span>
               )}
-              <span className="text-xs text-foreground/85">{u.content}</span>
-              <span className="text-[10px] text-muted-foreground">{timeAgo(u.created_at)}</span>
+              <span className="text-sm text-foreground leading-snug">{u.content}</span>
+              <span className="text-xs text-muted-foreground">{timeAgo(u.created_at)}</span>
               {i < updates.length - 1 && (
-                <span className="text-border mx-2">•</span>
+                <span className="text-border mx-3">•</span>
               )}
             </span>
           ))
