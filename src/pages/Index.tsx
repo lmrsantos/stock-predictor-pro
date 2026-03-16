@@ -164,10 +164,12 @@ const Index = () => {
               slopePositive={regression ? regression.slope >= 0 : true}
             />
             {showTable && regression && (
-              <DataTable
-                historicalFit={regression.historicalFit}
-                predictions={regression.predictions}
-              />
+              <div ref={tableRef}>
+                <DataTable
+                  historicalFit={regression.historicalFit}
+                  predictions={regression.predictions}
+                />
+              </div>
             )}
           </>
         )}
