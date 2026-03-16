@@ -154,8 +154,8 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fill: "hsl(220, 10%, 40%)", fontSize: 11 }}
-            axisLine={{ stroke: "hsl(220, 10%, 12%)" }}
+            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
+            axisLine={{ stroke: "hsl(268, 25%, 88%)" }}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={60}
