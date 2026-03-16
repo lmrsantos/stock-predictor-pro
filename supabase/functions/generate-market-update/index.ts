@@ -195,10 +195,17 @@ Rules:
     const content = aiData.choices?.[0]?.message?.content;
     if (!content) throw new Error("No content from AI");
 
+    // Strip any markdown formatting the AI might have used
+    const cleanContent = content.trim()
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/^#+\s*/gm, '')
+      .replace(/^[-*]\s+/gm, '');
+
     const { data: update, error: insertError } = await supabase
       .from("market_updates")
       .insert({
-        content: content.trim(),
+        content: cleanContent,
         ticker: ticker || null,
         signal_type: ticker ? "stock" : "general",
       })
