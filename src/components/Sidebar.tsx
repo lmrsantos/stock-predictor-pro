@@ -4,7 +4,7 @@ import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
-import { MarketFeed } from "./MarketFeed";
+
 
 interface SidebarProps {
   searchInput: string;
@@ -265,11 +265,6 @@ export function Sidebar({
         ticker={ticker}
       />
 
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Live Market Feed */}
-      <MarketFeed currentTicker={ticker} />
     </aside>
   );
 }

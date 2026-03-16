@@ -4,6 +4,7 @@ import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } fro
 import { computeLinearRegression } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
+import { MarketTicker } from "@/components/MarketTicker";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
@@ -100,6 +101,11 @@ const Index = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] h-screen bg-background text-foreground overflow-hidden">
+      {/* Top ticker bar spanning full width */}
+      <div className="col-span-full">
+        <MarketTicker currentTicker={ticker} />
+      </div>
+
       <Sidebar
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}

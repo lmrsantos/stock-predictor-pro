@@ -1,0 +1,199 @@
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Sparkles, Loader2, Lock } from "lucide-react";
+import { toast } from "sonner";
+
+interface MarketUpdate {
+  id: string;
+  content: string;
+  ticker: string | null;
+  signal_type: string;
+  created_at: string;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
+
+interface MarketTickerProps {
+  currentTicker: string;
+}
+
+export function MarketTicker({ currentTicker }: MarketTickerProps) {
+  const [updates, setUpdates] = useState<MarketUpdate[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [adminKey, setAdminKey] = useState(() => localStorage.getItem("mf_admin_key") || "");
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [isAdmin] = useState(() => !!localStorage.getItem("mf_admin_key"));
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("market_updates")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (data) setUpdates(data);
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("market-ticker")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "market_updates" },
+        (payload) => {
+          setUpdates((prev) => [payload.new as MarketUpdate, ...prev].slice(0, 30));
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  // Auto-scroll animation
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let animId: number;
+    let speed = 0.5;
+
+    const scroll = () => {
+      if (el.scrollLeft >= el.scrollWidth - el.clientWidth) {
+        el.scrollLeft = 0;
+      } else {
+        el.scrollLeft += speed;
+      }
+      animId = requestAnimationFrame(scroll);
+    };
+
+    const pause = () => cancelAnimationFrame(animId);
+    const resume = () => { animId = requestAnimationFrame(scroll); };
+
+    el.addEventListener("mouseenter", pause);
+    el.addEventListener("mouseleave", resume);
+    animId = requestAnimationFrame(scroll);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      el.removeEventListener("mouseenter", pause);
+      el.removeEventListener("mouseleave", resume);
+    };
+  }, [updates]);
+
+  const generateUpdate = async (forTicker?: string) => {
+    if (!adminKey) { toast.error("Enter admin key first"); return; }
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-market-update", {
+        body: { ticker: forTicker || null, adminKey },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        if (data.error === "Unauthorized") { toast.error("Invalid admin key"); return; }
+        throw new Error(data.error);
+      }
+      toast.success("Market update published!");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAdminKeySubmit = () => {
+    if (adminKey.trim()) {
+      localStorage.setItem("mf_admin_key", adminKey.trim());
+      setShowAdmin(false);
+      toast.success("Admin key saved");
+    }
+  };
+
+  return (
+    <div className="relative w-full border-b border-border bg-card/60 backdrop-blur-sm">
+      {/* Admin controls */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 flex items-center gap-1.5">
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => generateUpdate(currentTicker)}
+              disabled={isGenerating}
+              className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-[10px] font-mono hover:bg-primary/20 transition-colors disabled:opacity-50"
+            >
+              {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {currentTicker}
+            </button>
+            <button
+              onClick={() => generateUpdate()}
+              disabled={isGenerating}
+              className="flex items-center gap-1 px-2 py-1 bg-accent text-foreground rounded text-[10px] font-mono hover:bg-accent/80 transition-colors disabled:opacity-50"
+            >
+              {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              Mkt
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => setShowAdmin(!showAdmin)}
+          className="text-muted-foreground hover:text-foreground transition-colors p-1"
+          aria-label="Admin"
+        >
+          <Lock className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Admin key input */}
+      {showAdmin && (
+        <div className="absolute right-2 top-full mt-1 z-20 p-2 bg-card border border-border rounded-lg shadow-lg flex gap-1.5 w-64">
+          <input
+            type="password"
+            value={adminKey}
+            onChange={(e) => setAdminKey(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdminKeySubmit()}
+            placeholder="Admin key"
+            className="flex-1 bg-secondary border border-border rounded px-2 py-1 text-xs input-focus"
+          />
+          <button
+            onClick={handleAdminKeySubmit}
+            className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+          >
+            Save
+          </button>
+        </div>
+      )}
+
+      {/* Scrolling ticker */}
+      <div
+        ref={scrollRef}
+        className="overflow-x-hidden whitespace-nowrap py-2 px-4 pr-48 scrollbar-none"
+      >
+        {updates.length === 0 ? (
+          <span className="text-xs text-muted-foreground font-mono">Waiting for market updates…</span>
+        ) : (
+          updates.map((u, i) => (
+            <span key={u.id} className="inline-flex items-center gap-2 mr-8">
+              {u.ticker ? (
+                <span className="text-[10px] font-mono font-bold text-primary">${u.ticker}</span>
+              ) : (
+                <span className="text-[10px] font-mono text-muted-foreground">MKT</span>
+              )}
+              <span className="text-xs text-foreground/85">{u.content}</span>
+              <span className="text-[10px] text-muted-foreground">{timeAgo(u.created_at)}</span>
+              {i < updates.length - 1 && (
+                <span className="text-border mx-2">•</span>
+              )}
+            </span>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
