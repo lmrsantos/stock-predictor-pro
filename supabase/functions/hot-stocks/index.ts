@@ -75,7 +75,7 @@ serve(async (req) => {
       if (body.limit) topN = Math.min(body.limit, 20);
     } catch { /* no body = default scan */ }
 
-    const cacheKey = sectorFilter ? `hot_stocks_sector_${sectorFilter}` : "hot_stocks_v2";
+    const cacheKey = sectorFilter ? `hot_stocks_v3_${sectorFilter}` : "hot_stocks_v2";
 
     // Check cache — reuse results from last 30 minutes
     const cacheWindow = new Date(Date.now() - 30 * 60 * 1000).toISOString();
