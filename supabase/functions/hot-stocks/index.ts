@@ -66,12 +66,23 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Parse optional sector filter from request body
+    let sectorFilter: string | null = null;
+    let topN = 5;
+    try {
+      const body = await req.json();
+      sectorFilter = body.sector || body.sectors || null;
+      if (body.limit) topN = Math.min(body.limit, 20);
+    } catch { /* no body = default scan */ }
+
+    const cacheKey = sectorFilter ? `hot_stocks_sector_${sectorFilter}` : "hot_stocks_v2";
+
     // Check cache — reuse results from last 30 minutes
     const cacheWindow = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("market_updates")
       .select("content, created_at")
-      .eq("signal_type", "hot_stocks_v2")
+      .eq("signal_type", cacheKey)
       .gte("created_at", cacheWindow)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -87,9 +98,9 @@ serve(async (req) => {
       } catch { /* fall through */ }
     }
 
-    // Step 1: Use FMP Stock Screener to get a broad universe
-    // Pull stocks with market cap > $500M, price > $5, US exchange, sorted by volume
-    const screenerUrl = `https://financialmodelingprep.com/stable/company-screener?marketCapMoreThan=500000000&priceMoreThan=5&exchange=NYSE,NASDAQ&isActivelyTrading=true&limit=80&apikey=${FMP_API_KEY}`;
+    // Step 1: Use FMP Stock Screener
+    const sectorParam = sectorFilter ? `&sector=${encodeURIComponent(sectorFilter)}` : "";
+    const screenerUrl = `https://financialmodelingprep.com/stable/company-screener?marketCapMoreThan=500000000&priceMoreThan=5&exchange=NYSE,NASDAQ&isActivelyTrading=true${sectorParam}&limit=80&apikey=${FMP_API_KEY}`;
     
     console.log("Fetching stock screener...");
     const screenerRes = await fetch(screenerUrl);
