@@ -112,6 +112,7 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
   const handleAdminKeySubmit = () => {
     if (adminKey.trim()) {
       localStorage.setItem("mf_admin_key", adminKey.trim());
+      setIsAdmin(true);
       setShowAdmin(false);
       toast.success("Admin key saved");
     }
