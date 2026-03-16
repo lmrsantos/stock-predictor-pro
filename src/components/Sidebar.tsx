@@ -271,10 +271,13 @@ export function Sidebar({
       <div className="border-t border-border" />
 
       {/* Hot Stocks */}
-      <HotStocks onSelectTicker={(symbol) => {
-        onSearchInputChange(symbol);
-        onSearch(symbol);
-      }} />
+      <div>
+        <label className="label-upper mb-3 block">Hot Stocks</label>
+        <HotStocks onSelectTicker={(symbol) => {
+          onSearchInputChange(symbol);
+          onSearch(symbol);
+        }} />
+      </div>
 
     </aside>
   );
