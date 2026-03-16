@@ -160,16 +160,19 @@ export function ChatBubble({ context }: ChatBubbleProps) {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.reply },
+        { role: "assistant", content: data.reply, isTyping: true },
       ]);
+      setTyping(true);
     } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content: "Give me a sec... try asking that again!",
+          isTyping: true,
         },
       ]);
+      setTyping(true);
     } finally {
       setLoading(false);
     }
