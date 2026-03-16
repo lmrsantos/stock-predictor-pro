@@ -66,13 +66,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check cache — reuse results from last 2 hours
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    // Check cache — reuse results from last 30 minutes
+    const cacheWindow = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("market_updates")
-      .select("content")
-      .eq("signal_type", "hot_stocks")
-      .gte("created_at", twoHoursAgo)
+      .select("content, created_at")
+      .eq("signal_type", "hot_stocks_v2")
+      .gte("created_at", cacheWindow)
       .order("created_at", { ascending: false })
       .limit(1);
 
