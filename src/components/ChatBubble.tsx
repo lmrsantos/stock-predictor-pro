@@ -67,7 +67,7 @@ function TypewriterMessage({ content, onDone }: { content: string; onDone: () =>
   const displayed = useTypewriter(content, true, onDone);
 
   return (
-    <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
+    <div className="prose prose-sm max-w-none [&>p]:m-0">
       <ReactMarkdown>{displayed}</ReactMarkdown>
       <span className="inline-block w-[2px] h-[14px] bg-primary ml-0.5 animate-pulse align-text-bottom" />
     </div>
