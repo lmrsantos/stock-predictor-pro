@@ -267,6 +267,15 @@ export function Sidebar({
         />
       </div>
 
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Hot Stocks */}
+      <HotStocks onSelectTicker={(symbol) => {
+        onSearchInputChange(symbol);
+        onSearch(symbol);
+      }} />
+
     </aside>
   );
 }
