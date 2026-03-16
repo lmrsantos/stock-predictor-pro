@@ -319,7 +319,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!input.trim() || loading}
+                      disabled={!input.trim() || loading || typing}
                       className="px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
                     >
                       <Send className="w-4 h-4" />
