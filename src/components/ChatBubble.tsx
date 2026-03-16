@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  isTyping?: boolean; // true while typewriter is animating
 }
 
 interface ChatContext {
