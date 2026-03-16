@@ -128,7 +128,8 @@ export function ChatBubble({ context }: ChatBubbleProps) {
         setTyping(true);
       } catch {
         if (cancelled) return;
-        setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!" }]);
+        setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!", isTyping: true }]);
+        setTyping(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
