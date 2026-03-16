@@ -140,7 +140,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || typing) return;
 
     const userMsg: Message = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
