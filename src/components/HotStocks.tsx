@@ -1,0 +1,158 @@
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Flame, Loader2, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+
+interface HotStock {
+  symbol: string;
+  name: string;
+  price: number;
+  dayChange: number;
+  score: number;
+  rSquared: number;
+  annualReturn: number;
+  momentum: string;
+}
+
+const scanMessages = [
+  "Initializing QuantPulse™ Scanner…",
+  "Scanning market movers & gainers…",
+  "Running regression analysis…",
+  "Evaluating momentum signals…",
+  "Scoring trend reliability…",
+  "Ranking top opportunities…",
+];
+
+interface HotStocksProps {
+  onSelectTicker: (ticker: string) => void;
+}
+
+export function HotStocks({ onSelectTicker }: HotStocksProps) {
+  const [stocks, setStocks] = useState<HotStock[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState("");
+  const [hasScanned, setHasScanned] = useState(false);
+
+  const discover = async () => {
+    setIsScanning(true);
+    setStocks([]);
+    setHasScanned(false);
+
+    // Cycle through scan messages
+    let msgIndex = 0;
+    setScanMessage(scanMessages[0]);
+    const interval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % scanMessages.length;
+      setScanMessage(scanMessages[msgIndex]);
+    }, 1800);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("hot-stocks");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.stocks) {
+        setStocks(data.stocks);
+        setHasScanned(true);
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      clearInterval(interval);
+      setIsScanning(false);
+      setScanMessage("");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <label className="label-upper flex items-center gap-1.5">
+        <Flame className="w-3.5 h-3.5" />
+        Hot Stocks Discovery
+      </label>
+
+      <button
+        onClick={discover}
+        disabled={isScanning}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-70"
+      >
+        {isScanning ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <TrendingUp className="w-4 h-4" />
+        )}
+        {isScanning ? "Scanning…" : "Discover Hot Stocks"}
+      </button>
+
+      {/* Scanning animation */}
+      {isScanning && (
+        <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse [animation-delay:200ms]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse [animation-delay:400ms]" />
+            </div>
+            <span className="text-xs font-mono text-primary animate-pulse">
+              {scanMessage}
+            </span>
+          </div>
+          <div className="mt-2 h-1 bg-secondary rounded-full overflow-hidden">
+            <div className="h-full bg-primary/60 rounded-full animate-[scan_3s_ease-in-out_infinite]" />
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {hasScanned && stocks.length === 0 && !isScanning && (
+        <p className="text-xs text-muted-foreground text-center py-2">
+          No strong candidates found right now. Try again later.
+        </p>
+      )}
+
+      {stocks.length > 0 && (
+        <div className="space-y-1.5">
+          {stocks.map((stock, i) => (
+            <button
+              key={stock.symbol}
+              onClick={() => onSelectTicker(stock.symbol)}
+              className="w-full text-left p-3 rounded-lg bg-card/50 border border-border hover:border-primary/40 hover:bg-card transition-all group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground w-4">
+                    #{i + 1}
+                  </span>
+                  <span className="text-sm font-mono font-bold text-foreground group-hover:text-primary transition-colors">
+                    {stock.symbol}
+                  </span>
+                </div>
+                <span className={`text-xs font-mono ${stock.dayChange >= 0 ? "price-positive" : "price-negative"}`}>
+                  {stock.dayChange >= 0 ? "+" : ""}{stock.dayChange.toFixed(2)}%
+                </span>
+              </div>
+              <div className="ml-6 mt-1">
+                <div className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+                  {stock.name}
+                </div>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    R² {stock.rSquared.toFixed(3)}
+                  </span>
+                  <span className={`text-[10px] font-mono ${stock.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
+                    {stock.annualReturn >= 0 ? "+" : ""}{stock.annualReturn.toFixed(1)}% yr
+                  </span>
+                  <span className="text-[10px] font-mono text-primary">
+                    {stock.momentum}
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+          <p className="text-[9px] text-muted-foreground text-center mt-2">
+            Scored by QuantPulse™ — regression momentum + trend reliability
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
