@@ -9,6 +9,8 @@ import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
+import { ChatBubble } from "@/components/ChatBubble";
+import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
   const [ticker, setTicker] = useState("^DJI");
