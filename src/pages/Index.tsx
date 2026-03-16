@@ -101,6 +101,11 @@ const Index = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] h-screen bg-background text-foreground overflow-hidden">
+      {/* Top ticker bar spanning full width */}
+      <div className="col-span-full">
+        <MarketTicker currentTicker={ticker} />
+      </div>
+
       <Sidebar
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}

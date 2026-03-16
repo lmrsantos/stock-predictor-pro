@@ -265,11 +265,6 @@ export function Sidebar({
         ticker={ticker}
       />
 
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Live Market Feed */}
-      <MarketFeed currentTicker={ticker} />
     </aside>
   );
 }
