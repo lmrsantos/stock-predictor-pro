@@ -26,7 +26,7 @@ interface MarketTickerProps {
   onSelectTicker?: (symbol: string) => void;
 }
 
-export function MarketTicker({ currentTicker }: MarketTickerProps) {
+export function MarketTicker({ currentTicker, onSelectTicker }: MarketTickerProps) {
   const [updates, setUpdates] = useState<MarketUpdate[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [adminKey, setAdminKey] = useState(() => localStorage.getItem("mf_admin_key") || "");
