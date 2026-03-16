@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Flame, Loader2, TrendingUp } from "lucide-react";
+import { Loader2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface HotStock {
@@ -12,14 +12,18 @@ interface HotStock {
   rSquared: number;
   annualReturn: number;
   momentum: string;
+  sector?: string;
+  marketCap?: string;
 }
 
 const scanMessages = [
-  "Initializing QuantPulse™ Scanner…",
-  "Scanning market movers & gainers…",
-  "Running regression analysis…",
-  "Evaluating momentum signals…",
-  "Scoring trend reliability…",
+  "Initializing QuantPulse™ Engine…",
+  "Scanning 80+ stocks across NYSE & NASDAQ…",
+  "Fetching historical price data…",
+  "Running linear regression on each candidate…",
+  "Computing R² trend reliability…",
+  "Evaluating momentum & annual return signals…",
+  "Scoring trend consistency × momentum synergy…",
   "Ranking top opportunities…",
 ];
 
@@ -32,24 +36,26 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
   const [hasScanned, setHasScanned] = useState(false);
+  const [message, setMessage] = useState("");
 
   const discover = async () => {
     setIsScanning(true);
     setStocks([]);
     setHasScanned(false);
+    setMessage("");
 
-    // Cycle through scan messages
     let msgIndex = 0;
     setScanMessage(scanMessages[0]);
     const interval = setInterval(() => {
       msgIndex = (msgIndex + 1) % scanMessages.length;
       setScanMessage(scanMessages[msgIndex]);
-    }, 1800);
+    }, 2200);
 
     try {
       const { data, error } = await supabase.functions.invoke("hot-stocks");
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      if (data?.message) setMessage(data.message);
       if (data?.stocks) {
         setStocks(data.stocks);
         setHasScanned(true);
@@ -65,11 +71,6 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
   return (
     <div className="space-y-3">
-      <label className="label-upper flex items-center gap-1.5">
-        <Flame className="w-3.5 h-3.5" />
-        Hot Stocks Discovery
-      </label>
-
       <button
         onClick={discover}
         disabled={isScanning}
@@ -80,12 +81,12 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         ) : (
           <TrendingUp className="w-4 h-4" />
         )}
-        {isScanning ? "Scanning…" : "Discover Hot Stocks"}
+        {isScanning ? "Scanning…" : hasScanned ? "Scan Again" : "Discover Hot Stocks"}
       </button>
 
       {/* Scanning animation */}
       {isScanning && (
-        <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -96,19 +97,20 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
               {scanMessage}
             </span>
           </div>
-          <div className="mt-2 h-1 bg-secondary rounded-full overflow-hidden">
+          <div className="h-1 bg-secondary rounded-full overflow-hidden">
             <div className="h-full bg-primary/60 rounded-full animate-[scan_3s_ease-in-out_infinite]" />
           </div>
         </div>
       )}
 
-      {/* Results */}
+      {/* No results */}
       {hasScanned && stocks.length === 0 && !isScanning && (
         <p className="text-xs text-muted-foreground text-center py-2">
-          No strong candidates found right now. Try again later.
+          {message || "No strong candidates found right now. Try again later."}
         </p>
       )}
 
+      {/* Results */}
       {stocks.length > 0 && (
         <div className="space-y-1.5">
           {stocks.map((stock, i) => (
@@ -126,30 +128,42 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                     {stock.symbol}
                   </span>
                 </div>
-                <span className={`text-xs font-mono ${stock.dayChange >= 0 ? "price-positive" : "price-negative"}`}>
-                  {stock.dayChange >= 0 ? "+" : ""}{stock.dayChange.toFixed(2)}%
-                </span>
+                <div className="flex items-center gap-2">
+                  {stock.marketCap && (
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      {stock.marketCap}
+                    </span>
+                  )}
+                  <span className={`text-xs font-mono font-semibold ${stock.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
+                    {stock.annualReturn >= 0 ? "+" : ""}{stock.annualReturn.toFixed(1)}%/yr
+                  </span>
+                </div>
               </div>
-              <div className="ml-6 mt-1">
-                <div className="text-[10px] text-muted-foreground truncate max-w-[180px]">
+              <div className="ml-6 mt-1 space-y-0.5">
+                <div className="text-[10px] text-muted-foreground truncate max-w-[220px]">
                   {stock.name}
                 </div>
-                <div className="flex items-center gap-3 mt-1">
+                <div className="flex items-center gap-3">
                   <span className="text-[10px] font-mono text-muted-foreground">
                     R² {stock.rSquared.toFixed(3)}
                   </span>
-                  <span className={`text-[10px] font-mono ${stock.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
-                    {stock.annualReturn >= 0 ? "+" : ""}{stock.annualReturn.toFixed(1)}% yr
-                  </span>
-                  <span className="text-[10px] font-mono text-primary">
+                  {stock.sector && (
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+                      {stock.sector}
+                    </span>
+                  )}
+                  <span className={`text-[10px] font-mono font-semibold ${
+                    stock.momentum === "Strong" ? "price-positive" : "text-primary"
+                  }`}>
                     {stock.momentum}
                   </span>
                 </div>
               </div>
             </button>
           ))}
-          <p className="text-[9px] text-muted-foreground text-center mt-2">
-            Scored by QuantPulse™ — regression momentum + trend reliability
+          <p className="text-[9px] text-muted-foreground text-center mt-2 leading-relaxed">
+            Ranked by QuantPulse™ — trend consistency (R²) × momentum strength<br />
+            across 80+ stocks with $500M+ market cap
           </p>
         </div>
       )}
