@@ -241,8 +241,10 @@ export function InvestmentRecommendation({
         </div>
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
-              <Info className="w-3.5 h-3.5 text-muted-foreground" />
+            <TooltipTrigger asChild>
+              <button className="inline-flex items-center justify-center" aria-label="Signal breakdown">
+                <Info className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-xs">
               <p className="font-bold mb-1">Signal Breakdown</p>
