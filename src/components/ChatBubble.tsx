@@ -31,6 +31,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevTickerRef = useRef<string | undefined>(undefined);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -45,6 +46,38 @@ export function ChatBubble({ context }: ChatBubbleProps) {
       inputRef.current.focus();
     }
   }, [open, user]);
+
+  // Auto-open and fetch insight when ticker changes
+  useEffect(() => {
+    const ticker = context?.ticker;
+    if (!ticker || !user || loading) return;
+    if (prevTickerRef.current === ticker) return;
+    
+    // Skip the very first mount (default ticker)
+    const isFirstMount = prevTickerRef.current === undefined;
+    prevTickerRef.current = ticker;
+    if (isFirstMount) return;
+
+    // Clear previous conversation and auto-fetch insight
+    const autoMessage: Message = { role: "user", content: `Give me a quick overview of ${ticker}` };
+    setMessages([autoMessage]);
+    setOpen(true);
+    setLoading(true);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("chat-insights", {
+          body: { messages: [autoMessage], context },
+        });
+        if (error) throw error;
+        setMessages([autoMessage, { role: "assistant", content: data.reply }]);
+      } catch {
+        setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!" }]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [context?.ticker, user]);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
