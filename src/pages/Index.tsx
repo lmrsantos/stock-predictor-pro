@@ -120,7 +120,10 @@ const Index = () => {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       {/* Top ticker bar */}
-      <MarketTicker currentTicker={ticker} />
+      <MarketTicker currentTicker={ticker} onSelectTicker={(symbol) => {
+        setSearchInput(symbol);
+        setTicker(symbol);
+      }} />
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
 
