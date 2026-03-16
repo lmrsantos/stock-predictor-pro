@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
 import { computeLinearRegression } from "@/lib/regression";
@@ -16,6 +16,13 @@ const Index = () => {
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showTable && tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [showTable]);
 
   const handleSearch = useCallback((overrideTicker?: string) => {
     const cleaned = (overrideTicker || searchInput).trim().toUpperCase();
@@ -157,10 +164,12 @@ const Index = () => {
               slopePositive={regression ? regression.slope >= 0 : true}
             />
             {showTable && regression && (
-              <DataTable
-                historicalFit={regression.historicalFit}
-                predictions={regression.predictions}
-              />
+              <div ref={tableRef}>
+                <DataTable
+                  historicalFit={regression.historicalFit}
+                  predictions={regression.predictions}
+                />
+              </div>
             )}
           </>
         )}
