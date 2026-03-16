@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  isTyping?: boolean; // true while typewriter is animating
 }
 
 interface ChatContext {
@@ -24,11 +25,61 @@ interface ChatBubbleProps {
   context?: ChatContext;
 }
 
+// Typewriter: reveals text char-by-char with human-like timing
+function useTypewriter(fullText: string, active: boolean, onDone: () => void) {
+  const [displayed, setDisplayed] = useState("");
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!active || !fullText) return;
+    setDisplayed("");
+    indexRef.current = 0;
+
+    const tick = () => {
+      const i = indexRef.current;
+      if (i >= fullText.length) {
+        onDone();
+        return;
+      }
+      const char = fullText[i];
+      indexRef.current = i + 1;
+      setDisplayed(fullText.slice(0, i + 1));
+
+      // Variable speed: pause at punctuation, faster on spaces
+      let delay = 18 + Math.random() * 22; // base 18-40ms
+      if (char === '.' || char === '!' || char === '?') delay = 180 + Math.random() * 120;
+      else if (char === ',') delay = 80 + Math.random() * 60;
+      else if (char === ' ') delay = 10 + Math.random() * 15;
+      else if (char === '\n') delay = 100 + Math.random() * 80;
+
+      setTimeout(tick, delay);
+    };
+
+    // Initial brief pause before typing starts
+    const t = setTimeout(tick, 300 + Math.random() * 200);
+    return () => clearTimeout(t);
+  }, [fullText, active]);
+
+  return displayed;
+}
+
+function TypewriterMessage({ content, onDone }: { content: string; onDone: () => void }) {
+  const displayed = useTypewriter(content, true, onDone);
+
+  return (
+    <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
+      <ReactMarkdown>{displayed}</ReactMarkdown>
+      <span className="inline-block w-[2px] h-[14px] bg-primary ml-0.5 animate-pulse align-text-bottom" />
+    </div>
+  );
+}
+
 export function ChatBubble({ context }: ChatBubbleProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [typing, setTyping] = useState(false); // typewriter in progress
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevTickerRef = useRef<string | undefined>(undefined);
@@ -73,10 +124,12 @@ export function ChatBubble({ context }: ChatBubbleProps) {
         });
         if (cancelled) return;
         if (error) throw error;
-        setMessages([autoMessage, { role: "assistant", content: data.reply }]);
+        setMessages([autoMessage, { role: "assistant", content: data.reply, isTyping: true }]);
+        setTyping(true);
       } catch {
         if (cancelled) return;
-        setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!" }]);
+        setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!", isTyping: true }]);
+        setTyping(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -87,7 +140,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || typing) return;
 
     const userMsg: Message = { role: "user", content: text };
     const newMessages = [...messages, userMsg];
@@ -107,16 +160,19 @@ export function ChatBubble({ context }: ChatBubbleProps) {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.reply },
+        { role: "assistant", content: data.reply, isTyping: true },
       ]);
+      setTyping(true);
     } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content: "Give me a sec... try asking that again!",
+          isTyping: true,
         },
       ]);
+      setTyping(true);
     } finally {
       setLoading(false);
     }
@@ -213,9 +269,23 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                         }`}
                       >
                         {msg.role === "assistant" ? (
-                          <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
-                          </div>
+                          msg.isTyping ? (
+                            <TypewriterMessage
+                              content={msg.content}
+                              onDone={() => {
+                                setTyping(false);
+                                setMessages((prev) =>
+                                  prev.map((m, j) =>
+                                    j === i ? { ...m, isTyping: false } : m
+                                  )
+                                );
+                              }}
+                            />
+                          ) : (
+                            <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
+                              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            </div>
+                          )
                         ) : (
                           msg.content
                         )}
@@ -224,8 +294,12 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                   ))}
                   {loading && (
                     <div className="flex justify-start">
-                      <div className="bg-secondary rounded-xl px-3 py-2 text-sm text-muted-foreground">
-                        <span className="animate-pulse">thinking...</span>
+                      <div className="bg-secondary rounded-xl px-3 py-2 text-sm text-muted-foreground flex items-center gap-1.5">
+                        <span className="flex gap-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
+                        </span>
                       </div>
                     </div>
                   )}
@@ -241,11 +315,11 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask about a ticker or trend..."
                       className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
-                      disabled={loading}
+                      disabled={loading || typing}
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!input.trim() || loading}
+                      disabled={!input.trim() || loading || typing}
                       className="px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 hover:bg-primary/90 transition-colors"
                     >
                       <Send className="w-4 h-4" />
