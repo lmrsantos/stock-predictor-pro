@@ -67,7 +67,7 @@ export function StockHeader({
         <div className="flex gap-2">
           <button
             onClick={() => setHotStocksOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
           >
             <Flame className="w-4 h-4" />
             Hot Stocks
