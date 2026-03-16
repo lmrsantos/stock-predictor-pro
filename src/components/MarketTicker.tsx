@@ -30,7 +30,7 @@ export function MarketTicker({ currentTicker }: MarketTickerProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [adminKey, setAdminKey] = useState(() => localStorage.getItem("mf_admin_key") || "");
   const [showAdmin, setShowAdmin] = useState(false);
-  const [isAdmin] = useState(() => !!localStorage.getItem("mf_admin_key"));
+  const [isAdmin, setIsAdmin] = useState(() => !!localStorage.getItem("mf_admin_key"));
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
