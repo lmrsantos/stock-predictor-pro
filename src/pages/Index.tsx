@@ -4,6 +4,7 @@ import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } fro
 import { computeLinearRegression } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
+import { MarketTicker } from "@/components/MarketTicker";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
