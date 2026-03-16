@@ -100,11 +100,11 @@ const Index = () => {
   const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] h-screen bg-background text-foreground overflow-hidden">
-      {/* Top ticker bar spanning full width */}
-      <div className="col-span-full">
-        <MarketTicker currentTicker={ticker} />
-      </div>
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+      {/* Top ticker bar */}
+      <MarketTicker currentTicker={ticker} />
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
 
       <Sidebar
         searchInput={searchInput}
@@ -165,6 +165,7 @@ const Index = () => {
           </>
         )}
       </main>
+      </div>
     </div>
   );
 };
