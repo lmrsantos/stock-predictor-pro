@@ -13,23 +13,45 @@ serve(async (req) => {
   }
 
   try {
-    const { ticker, adminKey } = await req.json();
-
-    // Simple admin check — only allow posting with the correct key
-    const ADMIN_KEY = Deno.env.get("MARKET_BLOG_ADMIN_KEY");
-    if (!ADMIN_KEY || adminKey !== ADMIN_KEY) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const { ticker, adminKey, auto } = await req.json();
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Auto mode: no admin key needed, but rate-limited (1 per ticker per 10 min)
+    if (auto) {
+      const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const query = supabase
+        .from("market_updates")
+        .select("id")
+        .gte("created_at", tenMinsAgo);
+
+      if (ticker) {
+        query.eq("ticker", ticker);
+      } else {
+        query.is("ticker", null);
+      }
+
+      const { data: recent } = await query.limit(1);
+      if (recent && recent.length > 0) {
+        return new Response(JSON.stringify({ skipped: true, reason: "Recent update exists" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      // Manual mode: require admin key
+      const ADMIN_KEY = Deno.env.get("MARKET_BLOG_ADMIN_KEY");
+      if (!ADMIN_KEY || adminKey !== ADMIN_KEY) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // Fetch recent stock data for context
     let stockContext = "";
@@ -106,7 +128,6 @@ Rules:
     const content = aiData.choices?.[0]?.message?.content;
     if (!content) throw new Error("No content from AI");
 
-    // Store in DB
     const { data: update, error: insertError } = await supabase
       .from("market_updates")
       .insert({
