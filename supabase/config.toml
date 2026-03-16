@@ -1,1 +1,10 @@
 project_id = "xsytjrvpqmbiedcmgebb"
+
+[functions.generate-market-update]
+verify_jwt = false
+
+[functions.fetch-stock-data]
+verify_jwt = false
+
+[functions.search-ticker]
+verify_jwt = false
