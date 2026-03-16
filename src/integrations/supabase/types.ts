@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_updates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          signal_type: string | null
+          ticker: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          signal_type?: string | null
+          ticker?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          signal_type?: string | null
+          ticker?: string | null
+        }
+        Relationships: []
+      }
       stock_fundamentals: {
         Row: {
           company_name: string | null
