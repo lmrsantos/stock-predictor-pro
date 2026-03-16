@@ -69,7 +69,7 @@ export function StockHeader({
             onClick={() => setHotStocksOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
           >
-            <Flame className="w-4 h-4" />
+            <span className="text-base">🔥</span>
             Hot Stocks
           </button>
           <button
@@ -99,7 +99,7 @@ export function StockHeader({
         <DialogContent className="sm:max-w-md bg-background border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Flame className="w-5 h-5 text-primary" />
+              <span className="text-xl">🔥</span>
               QuantPulse™ Hot Stocks
             </DialogTitle>
           </DialogHeader>
