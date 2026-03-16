@@ -85,14 +85,43 @@ serve(async (req) => {
       } catch { /* fall through to fresh computation */ }
     }
 
-    // Fetch trending stocks from FMP
+    // Fetch trending stocks from FMP (try stable endpoints first, then v3 fallback)
+    let actives: StockCandidate[] = [];
+    let gainers: StockCandidate[] = [];
+
+    // Try stable endpoints
     const [activesRes, gainersRes] = await Promise.all([
-      fetch(`https://financialmodelingprep.com/stable/most-active?apikey=${FMP_API_KEY}`),
+      fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
       fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
     ]);
 
-    const actives: StockCandidate[] = activesRes.ok ? await activesRes.json() : [];
-    const gainers: StockCandidate[] = gainersRes.ok ? await gainersRes.json() : [];
+    if (activesRes.ok) {
+      const data = await activesRes.json();
+      actives = Array.isArray(data) ? data : [];
+    }
+    if (gainersRes.ok) {
+      const data = await gainersRes.json();
+      gainers = Array.isArray(data) ? data : [];
+    }
+
+    // Fallback to v3 API if stable returned nothing
+    if (actives.length === 0 && gainers.length === 0) {
+      console.log("Stable endpoints empty, trying v3 fallback...");
+      const [v3ActivesRes, v3GainersRes] = await Promise.all([
+        fetch(`https://financialmodelingprep.com/api/v3/stock_market/actives?apikey=${FMP_API_KEY}`),
+        fetch(`https://financialmodelingprep.com/api/v3/stock_market/gainers?apikey=${FMP_API_KEY}`),
+      ]);
+      if (v3ActivesRes.ok) {
+        const data = await v3ActivesRes.json();
+        actives = Array.isArray(data) ? data : [];
+      }
+      if (v3GainersRes.ok) {
+        const data = await v3GainersRes.json();
+        gainers = Array.isArray(data) ? data : [];
+      }
+    }
+
+    console.log(`Found ${actives.length} actives, ${gainers.length} gainers`);
 
     // Deduplicate and take top candidates
     const seen = new Set<string>();
