@@ -209,7 +209,7 @@ serve(async (req) => {
           scored.push({
             symbol: candidate.symbol,
             name: candidate.name || candidate.symbol,
-            price: candidate.price,
+            price: candidate.price || reg.lastPrice,
             dayChange: candidate.changesPercentage,
             score: Math.round(totalScore * 10) / 10,
             rSquared: Math.round(reg.rSquared * 1000) / 1000,
