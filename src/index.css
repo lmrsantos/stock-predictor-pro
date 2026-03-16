@@ -6,26 +6,26 @@
 
 @layer base {
   :root {
-    --background: 270 20% 4%;
-    --foreground: 270 10% 96%;
+    --background: 265 25% 8%;
+    --foreground: 265 15% 95%;
 
-    --card: 270 18% 7%;
-    --card-foreground: 270 10% 96%;
+    --card: 265 22% 12%;
+    --card-foreground: 265 15% 95%;
 
-    --popover: 270 18% 7%;
-    --popover-foreground: 270 10% 96%;
+    --popover: 265 22% 12%;
+    --popover-foreground: 265 15% 95%;
 
-    --primary: 270 80% 65%;
+    --primary: 265 85% 70%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 270 15% 11%;
-    --secondary-foreground: 270 10% 80%;
+    --secondary: 265 20% 18%;
+    --secondary-foreground: 265 15% 82%;
 
-    --muted: 270 12% 16%;
-    --muted-foreground: 270 10% 55%;
+    --muted: 265 18% 22%;
+    --muted-foreground: 265 12% 60%;
 
-    --accent: 270 15% 13%;
-    --accent-foreground: 270 10% 90%;
+    --accent: 265 20% 20%;
+    --accent-foreground: 265 15% 92%;
 
     --accent-success: 150 80% 50%;
     --accent-danger: 0 80% 60%;
@@ -33,23 +33,23 @@
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 270 12% 14%;
-    --input: 270 12% 14%;
-    --ring: 270 80% 65%;
+    --border: 265 18% 20%;
+    --input: 265 18% 20%;
+    --ring: 265 85% 70%;
 
     --radius: 0.75rem;
 
-    --chart-surface: 270 18% 6%;
-    --chart-grid: 270 12% 12%;
+    --chart-surface: 265 22% 10%;
+    --chart-grid: 265 18% 18%;
 
-    --sidebar-background: 270 20% 5%;
-    --sidebar-foreground: 270 10% 70%;
-    --sidebar-primary: 270 80% 65%;
+    --sidebar-background: 265 25% 9%;
+    --sidebar-foreground: 265 12% 72%;
+    --sidebar-primary: 265 85% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 15% 9%;
-    --sidebar-accent-foreground: 270 10% 90%;
-    --sidebar-border: 270 12% 12%;
-    --sidebar-ring: 270 80% 65%;
+    --sidebar-accent: 265 20% 15%;
+    --sidebar-accent-foreground: 265 15% 92%;
+    --sidebar-border: 265 18% 18%;
+    --sidebar-ring: 265 85% 70%;
 
     --font-mono: 'Geist Mono', ui-monospace, monospace;
     --font-sans: system-ui, -apple-system, sans-serif;
