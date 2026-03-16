@@ -4,7 +4,7 @@ import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
-
+import { HotStocks } from "./HotStocks";
 
 interface SidebarProps {
   searchInput: string;
@@ -266,6 +266,15 @@ export function Sidebar({
           ticker={ticker}
         />
       </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Hot Stocks */}
+      <HotStocks onSelectTicker={(symbol) => {
+        onSearchInputChange(symbol);
+        onSearch(symbol);
+      }} />
 
     </aside>
   );
