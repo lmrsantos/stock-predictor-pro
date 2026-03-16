@@ -272,15 +272,15 @@ export function InvestmentRecommendation({
         {signals.map((s, i) => (
           <TooltipProvider key={i}>
             <Tooltip>
-              <TooltipTrigger>
-                <div className={`px-2 py-1 rounded text-[10px] font-mono border border-border flex items-center gap-1.5 ${
+              <TooltipTrigger asChild>
+                <button className={`px-2 py-1 rounded text-[10px] font-mono border border-border flex items-center gap-1.5 ${
                   s.signal === "bullish" ? "bg-[hsl(var(--accent-success))]/10" :
                   s.signal === "bearish" ? "bg-[hsl(var(--accent-danger))]/10" :
                   "bg-yellow-400/10"
                 }`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${signalDotColor[s.signal]}`} />
                   {s.label}
-                </div>
+                </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs text-xs">
                 {s.detail}
