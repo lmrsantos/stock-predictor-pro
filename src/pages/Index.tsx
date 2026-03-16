@@ -138,6 +138,10 @@ const Index = () => {
           isLoading={isLoading}
           showTable={showTable}
           onToggleTable={() => setShowTable(!showTable)}
+          onSelectTicker={(symbol) => {
+            setSearchInput(symbol);
+            setTicker(symbol);
+          }}
         />
 
         <InvestmentRecommendation
