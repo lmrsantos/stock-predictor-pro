@@ -124,7 +124,8 @@ export function ChatBubble({ context }: ChatBubbleProps) {
         });
         if (cancelled) return;
         if (error) throw error;
-        setMessages([autoMessage, { role: "assistant", content: data.reply }]);
+        setMessages([autoMessage, { role: "assistant", content: data.reply, isTyping: true }]);
+        setTyping(true);
       } catch {
         if (cancelled) return;
         setMessages([autoMessage, { role: "assistant", content: "Hmm, couldn't grab that info right now. Try asking again!" }]);
