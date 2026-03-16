@@ -240,7 +240,7 @@ serve(async (req) => {
       await supabase.from("market_updates").insert({
         content: JSON.stringify(top5),
         ticker: null,
-        signal_type: "hot_stocks",
+        signal_type: "hot_stocks_v2",
       });
     }
 
