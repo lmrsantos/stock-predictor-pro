@@ -128,12 +128,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <InfoTooltip {...metricInfo.regressionLine} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-30" style={{ background: "hsl(210, 100%, 50%)" }} />
+          <span className="w-3 h-3 inline-block rounded opacity-30" style={{ background: bandColor }} />
           1σ Band
           <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: "hsl(210, 100%, 50%)" }} />
+          <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: bandColor }} />
           2σ Band
           <InfoTooltip {...metricInfo.twoSigmaBand} />
         </span>
