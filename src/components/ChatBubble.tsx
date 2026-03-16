@@ -315,7 +315,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask about a ticker or trend..."
                       className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
-                      disabled={loading}
+                      disabled={loading || typing}
                     />
                     <button
                       onClick={sendMessage}
