@@ -220,7 +220,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Actual price */}
           <Line
             dataKey="actual"
-            stroke="hsl(220, 10%, 85%)"
+            stroke="hsl(265, 40%, 30%)"
             strokeWidth={1.5}
             dot={false}
             type="linear"
