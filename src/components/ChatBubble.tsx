@@ -282,7 +282,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                               }}
                             />
                           ) : (
-                            <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
+                            <div className="prose prose-sm max-w-none [&>p]:m-0">
                               <ReactMarkdown>{msg.content}</ReactMarkdown>
                             </div>
                           )
