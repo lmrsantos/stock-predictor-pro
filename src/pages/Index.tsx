@@ -9,6 +9,8 @@ import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
+import { ChatBubble } from "@/components/ChatBubble";
+import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
   const [ticker, setTicker] = useState("^DJI");
@@ -106,6 +108,15 @@ const Index = () => {
   const priceChange = lastPrice - prevPrice;
   const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
 
+  const chatContext = {
+    ticker,
+    price: lastPrice,
+    rSquared: regression?.rSquared,
+    annualReturn: regression && lastPrice ? slopeToAnnualReturn(regression.slope, lastPrice) : undefined,
+    slope: regression?.slope,
+    fundamentals: fundamentals || undefined,
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       {/* Top ticker bar */}
@@ -179,6 +190,8 @@ const Index = () => {
         )}
       </main>
       </div>
+
+      <ChatBubble context={chatContext} />
     </div>
   );
 };
