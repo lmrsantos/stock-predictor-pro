@@ -64,6 +64,15 @@ export function StockHeader({
           <Table2 className="w-4 h-4" />
           Data Table
         </button>
+        <button
+          onClick={() => {
+            const el = document.getElementById("investment-simulator");
+            el?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+        >
+          💰 Simulator
+        </button>
       </div>
     </header>
   );
