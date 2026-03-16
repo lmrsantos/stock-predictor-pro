@@ -16,6 +16,13 @@ const Index = () => {
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showTable && tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [showTable]);
 
   const handleSearch = useCallback((overrideTicker?: string) => {
     const cleaned = (overrideTicker || searchInput).trim().toUpperCase();
