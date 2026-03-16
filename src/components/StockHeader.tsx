@@ -99,7 +99,7 @@ export function StockHeader({
         <DialogContent className="sm:max-w-md bg-background border-border">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Flame className="w-5 h-5 text-primary" />
+              <span className="text-xl">🔥</span>
               QuantPulse™ Hot Stocks
             </DialogTitle>
           </DialogHeader>
