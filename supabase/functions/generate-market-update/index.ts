@@ -7,6 +7,36 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchMarketNews(fmpKey: string, ticker?: string): Promise<string> {
+  try {
+    // Fetch general market news
+    const generalUrl = `https://financialmodelingprep.com/stable/news/stock-latest?page=0&limit=5&apikey=${fmpKey}`;
+    const generalRes = await fetch(generalUrl);
+    const generalNews = generalRes.ok ? await generalRes.json() : [];
+
+    // Fetch ticker-specific news if provided
+    let tickerNews: any[] = [];
+    if (ticker && !ticker.startsWith("^")) {
+      const tickerUrl = `https://financialmodelingprep.com/stable/news/stock?symbols=${ticker}&limit=5&apikey=${fmpKey}`;
+      const tickerRes = await fetch(tickerUrl);
+      tickerNews = tickerRes.ok ? await tickerRes.json() : [];
+    }
+
+    const allNews = [...tickerNews, ...generalNews].slice(0, 8);
+    if (!allNews.length) return "";
+
+    const headlines = allNews
+      .map((n: any) => `- ${n.title || n.text || ""}${n.symbol ? ` (${n.symbol})` : ""}`)
+      .filter((h: string) => h.length > 3)
+      .join("\n");
+
+    return headlines ? `\n\nRECENT NEWS HEADLINES:\n${headlines}` : "";
+  } catch (e) {
+    console.error("Failed to fetch news:", e);
+    return "";
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,7 +70,6 @@ serve(async (req) => {
         });
       }
     } else {
-      // Manual mode: require admin key
       const ADMIN_KEY = Deno.env.get("MARKET_BLOG_ADMIN_KEY");
       if (!ADMIN_KEY || adminKey !== ADMIN_KEY) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -52,6 +81,14 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const FMP_API_KEY = Deno.env.get("FMP_API_KEY");
+
+    // Fetch real news headlines
+    let newsContext = "";
+    if (FMP_API_KEY) {
+      newsContext = await fetchMarketNews(FMP_API_KEY, ticker || undefined);
+    }
 
     // Fetch recent stock data for context
     let stockContext = "";
@@ -84,14 +121,14 @@ serve(async (req) => {
     // Determine if US market is open
     const now = new Date();
     const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    const day = nyTime.getDay(); // 0=Sun, 6=Sat
+    const day = nyTime.getDay();
     const hour = nyTime.getHours();
     const minute = nyTime.getMinutes();
     const timeInMinutes = hour * 60 + minute;
     const isWeekday = day >= 1 && day <= 5;
-    const isMarketHours = isWeekday && timeInMinutes >= 570 && timeInMinutes < 960; // 9:30 AM - 4:00 PM ET
-    const isPreMarket = isWeekday && timeInMinutes >= 240 && timeInMinutes < 570; // 4:00 AM - 9:30 AM ET
-    const isAfterHours = isWeekday && timeInMinutes >= 960 && timeInMinutes < 1200; // 4:00 PM - 8:00 PM ET
+    const isMarketHours = isWeekday && timeInMinutes >= 570 && timeInMinutes < 960;
+    const isPreMarket = isWeekday && timeInMinutes >= 240 && timeInMinutes < 570;
+    const isAfterHours = isWeekday && timeInMinutes >= 960 && timeInMinutes < 1200;
 
     let marketStatus = "";
     if (isMarketHours) {
@@ -117,12 +154,14 @@ Rules:
 - Include relevant emojis sparingly (1-2 max)
 - Reference the ticker if provided
 - Vary your angle: sometimes technical, sometimes fundamental, sometimes industry/sector
-- IMPORTANT: If the market is CLOSED, frame your commentary around the LAST trading session's data, upcoming catalysts, or weekly recap. Do NOT say the market is moving right now or use present-tense action language like "trading cautiously" or "seeing pressure". Use past tense or forward-looking language instead.
-- If it's pre-market or after-hours, acknowledge the session context appropriately.`;
+- IMPORTANT: If the market is CLOSED, frame your commentary around the LAST trading session's data, upcoming catalysts, or weekly recap. Do NOT say the market is moving right now. Use past tense or forward-looking language instead.
+- If it's pre-market or after-hours, acknowledge the session context appropriately.
+- When news headlines are provided, USE THEM to ground your commentary in real events (geopolitical tensions, Fed decisions, earnings, oil prices, etc). Reference specific events naturally.
+- Prioritize the most impactful/relevant news for the ticker or market context.`;
 
     const userPrompt = ticker && stockContext
-      ? `Write a brief market update about ${ticker}. ${stockContext}`
-      : "Write a brief general market trend observation for today. Consider major indices, sector rotations, or notable market themes.";
+      ? `Write a brief market update about ${ticker}. ${stockContext}${newsContext}`
+      : `Write a brief general market trend observation for today. Consider major indices, sector rotations, or notable market themes.${newsContext}`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
