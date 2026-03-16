@@ -108,8 +108,11 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   };
 
   const regressionColor = slopePositive
-    ? "hsl(150, 80%, 50%)"
-    : "hsl(0, 80%, 60%)";
+    ? "hsl(150, 70%, 40%)"
+    : "hsl(0, 75%, 55%)";
+
+  const bandColor = "hsl(265, 80%, 58%)";
+  const bgColor = "hsl(270, 30%, 98%)";
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
