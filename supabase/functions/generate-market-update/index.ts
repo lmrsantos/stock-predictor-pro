@@ -81,7 +81,32 @@ serve(async (req) => {
       }
     }
 
+    // Determine if US market is open
+    const now = new Date();
+    const nyTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const day = nyTime.getDay(); // 0=Sun, 6=Sat
+    const hour = nyTime.getHours();
+    const minute = nyTime.getMinutes();
+    const timeInMinutes = hour * 60 + minute;
+    const isWeekday = day >= 1 && day <= 5;
+    const isMarketHours = isWeekday && timeInMinutes >= 570 && timeInMinutes < 960; // 9:30 AM - 4:00 PM ET
+    const isPreMarket = isWeekday && timeInMinutes >= 240 && timeInMinutes < 570; // 4:00 AM - 9:30 AM ET
+    const isAfterHours = isWeekday && timeInMinutes >= 960 && timeInMinutes < 1200; // 4:00 PM - 8:00 PM ET
+
+    let marketStatus = "";
+    if (isMarketHours) {
+      marketStatus = "The US stock market is currently OPEN (regular trading hours).";
+    } else if (isPreMarket) {
+      marketStatus = "The US market is in PRE-MARKET hours. Regular trading has not started yet.";
+    } else if (isAfterHours) {
+      marketStatus = "The US market is in AFTER-HOURS trading. Regular session has closed.";
+    } else {
+      marketStatus = "The US stock market is currently CLOSED (weekend or outside trading hours). Any price data shown is from the last trading session.";
+    }
+
     const systemPrompt = `You are a concise, professional market analyst writing short updates for a live blog feed on a stock analysis platform called QuantForecast. 
+
+CRITICAL CONTEXT: ${marketStatus}
 
 Rules:
 - Write 1-3 sentences MAX (40-80 words)
@@ -91,7 +116,9 @@ Rules:
 - Never give direct buy/sell advice — frame as observations
 - Include relevant emojis sparingly (1-2 max)
 - Reference the ticker if provided
-- Vary your angle: sometimes technical, sometimes fundamental, sometimes industry/sector`;
+- Vary your angle: sometimes technical, sometimes fundamental, sometimes industry/sector
+- IMPORTANT: If the market is CLOSED, frame your commentary around the LAST trading session's data, upcoming catalysts, or weekly recap. Do NOT say the market is moving right now or use present-tense action language like "trading cautiously" or "seeing pressure". Use past tense or forward-looking language instead.
+- If it's pre-market or after-hours, acknowledge the session context appropriately.`;
 
     const userPrompt = ticker && stockContext
       ? `Write a brief market update about ${ticker}. ${stockContext}`
