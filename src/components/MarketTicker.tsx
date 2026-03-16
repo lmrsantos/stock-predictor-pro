@@ -210,7 +210,10 @@ export function MarketTicker({ currentTicker, onSelectTicker }: MarketTickerProp
           updates.map((u, i) => (
             <span key={u.id} className="inline-flex items-center gap-3 mr-10">
               {u.ticker ? (
-                <span className="text-xs font-mono font-bold text-primary">${u.ticker}</span>
+                <button
+                  onClick={() => onSelectTicker?.(u.ticker!)}
+                  className="text-xs font-mono font-bold text-primary hover:underline cursor-pointer"
+                >${u.ticker}</button>
               ) : (
                 <span className="text-xs font-mono font-semibold text-muted-foreground">MKT</span>
               )}
