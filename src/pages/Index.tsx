@@ -170,10 +170,6 @@ const Index = () => {
                   predictions={regression.predictions}
                 />
               </div>
-                  historicalFit={regression.historicalFit}
-                  predictions={regression.predictions}
-                />
-              </div>
             )}
           </>
         )}
