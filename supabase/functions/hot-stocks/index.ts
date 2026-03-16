@@ -7,6 +7,40 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ── Curated stock universes per sector ──────────────────────────────
+const SECTOR_UNIVERSES: Record<string, string[]> = {
+  Technology: [
+    "AAPL", "MSFT", "GOOGL", "META", "NVDA", "AMD", "AVGO", "CRM", "ADBE",
+    "ORCL", "INTC", "CSCO", "IBM", "NOW", "QCOM", "TXN", "AMAT", "MU",
+    "PANW", "SNPS",
+  ],
+  "Aerospace & Defense": [
+    "LMT", "RTX", "BA", "NOC", "GD", "LHX", "HII", "TDG", "HWM",
+    "AXON", "LDOS", "KTOS", "RKLB", "LUNR", "PLTR", "SPR", "ERJ",
+    "TXT", "CW", "MOG.A",
+  ],
+  Biotech: [
+    "LLY", "ABBV", "JNJ", "MRK", "PFE", "AMGN", "GILD", "REGN", "VRTX",
+    "BMY", "MRNA", "BIIB", "ILMN", "ISRG", "DXCM", "ALGN", "HOLX",
+    "EXAS", "SGEN", "ALNY",
+  ],
+  Consumer: [
+    "PG", "KO", "PEP", "WMT", "COST", "MCD", "NKE", "SBUX", "TGT",
+    "CL", "GIS", "K", "HSY", "KMB", "CHD", "SJM", "CAG", "MKC",
+    "CLX", "KHC",
+  ],
+  "Utilities & Energy": [
+    "NEE", "DUK", "SO", "D", "AEP", "SRE", "EXC", "XEL", "WEC",
+    "ES", "ED", "AWK", "ATO", "CMS", "DTE", "ETR", "FE", "PEG",
+    "PPL", "CEG",
+  ],
+  Financials: [
+    "JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "BLK", "SCHW",
+    "AXP", "SPGI", "ICE", "CME", "MCO", "CB", "AON", "MMC", "TFC",
+    "PNC", "USB",
+  ],
+};
+
 interface ScoredStock {
   symbol: string;
   name: string;
@@ -43,7 +77,11 @@ function computeRegression(closes: number[]) {
   const lastPrice = closes[closes.length - 1];
   const annualReturn = lastPrice > 0 ? (slope * 252) / lastPrice : 0;
 
-  return { slope, intercept, rSquared, annualReturn, lastPrice };
+  // Simple return over period
+  const firstPrice = closes[0];
+  const periodReturn = firstPrice > 0 ? (lastPrice - firstPrice) / firstPrice : 0;
+
+  return { slope, intercept, rSquared, annualReturn, lastPrice, periodReturn };
 }
 
 function formatMktCap(v: number): string {
@@ -66,18 +104,20 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse optional sector filter from request body
+    // Parse optional filters
     let sectorFilter: string | null = null;
     let topN = 5;
     try {
       const body = await req.json();
-      sectorFilter = body.sector || body.sectors || null;
+      sectorFilter = body.sector || null;
       if (body.limit) topN = Math.min(body.limit, 20);
-    } catch { /* no body = default scan */ }
+    } catch { /* no body */ }
 
-    const cacheKey = sectorFilter ? `hot_stocks_v3_${sectorFilter}` : "hot_stocks_v2";
+    const cacheKey = sectorFilter
+      ? `hot_stocks_v4_${sectorFilter}`
+      : "hot_stocks_v4_all";
 
-    // Check cache — reuse results from last 30 minutes
+    // Check cache (30 min)
     const cacheWindow = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("market_updates")
@@ -98,157 +138,148 @@ serve(async (req) => {
       } catch { /* fall through */ }
     }
 
-    // Step 1: Use FMP Stock Screener
-    const sectorParam = sectorFilter ? `&sector=${encodeURIComponent(sectorFilter)}` : "";
-    const screenerUrl = `https://financialmodelingprep.com/stable/company-screener?marketCapMoreThan=500000000&priceMoreThan=5&exchange=NYSE,NASDAQ&isActivelyTrading=true${sectorParam}&limit=80&apikey=${FMP_API_KEY}`;
-    
-    console.log("Fetching stock screener...");
-    const screenerRes = await fetch(screenerUrl);
-    let screenerStocks: any[] = [];
+    // ── Build candidate list from sector universes ──────────────────
+    const sectorsToScan = sectorFilter
+      ? { [sectorFilter]: SECTOR_UNIVERSES[sectorFilter] || [] }
+      : SECTOR_UNIVERSES;
 
-    if (screenerRes.ok) {
-      const data = await screenerRes.json();
-      screenerStocks = Array.isArray(data) ? data : [];
-      console.log(`Screener returned ${screenerStocks.length} stocks`);
-    } else {
-      const errText = await screenerRes.text();
-      console.error(`Screener failed (${screenerRes.status}): ${errText.substring(0, 200)}`);
-    }
-
-    // Also try to pull market movers for extra candidates (skip when sector filtering)
-    let movers: any[] = [];
-    if (!sectorFilter) {
-      try {
-        const [activesRes, gainersRes] = await Promise.all([
-          fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
-          fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
-        ]);
-        if (activesRes.ok) {
-          const d = await activesRes.json();
-          if (Array.isArray(d)) movers.push(...d);
-        } else { await activesRes.text(); }
-        if (gainersRes.ok) {
-          const d = await gainersRes.json();
-          if (Array.isArray(d)) movers.push(...d);
-        } else { await gainersRes.text(); }
-      } catch (e) {
-        console.error("Movers fetch error:", e);
+    const allSymbols: Array<{ symbol: string; sector: string }> = [];
+    for (const [sector, symbols] of Object.entries(sectorsToScan)) {
+      for (const sym of symbols) {
+        allSymbols.push({ symbol: sym, sector });
       }
     }
 
-    // Merge all candidates, deduplicate
-    const seen = new Set<string>();
-    const candidates: Array<{ symbol: string; name: string; price: number; change: number; sector: string; marketCap: number }> = [];
+    console.log(`Scanning ${allSymbols.length} stocks across ${Object.keys(sectorsToScan).length} sectors`);
 
-    for (const stock of [...movers, ...screenerStocks]) {
-      const sym = stock.symbol || stock.ticker;
-      if (!sym || seen.has(sym) || sym.includes(".") || sym.includes("-")) continue;
-      seen.add(sym);
-      candidates.push({
-        symbol: sym,
-        name: stock.companyName || stock.name || sym,
-        price: stock.price || stock.lastPrice || 0,
-        change: stock.changesPercentage || stock.change || 0,
-        sector: stock.sector || "",
-        marketCap: stock.marketCap || stock.mktCap || 0,
-      });
-    }
-
-    console.log(`Total unique candidates: ${candidates.length}`);
-
-    if (candidates.length === 0) {
-      // Ultimate fallback
-      return new Response(JSON.stringify({ 
-        stocks: [], 
-        cached: false, 
-        message: "Market data temporarily unavailable. Try again during trading hours." 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Step 2: For each candidate, get price history and run regression
+    // ── Fetch price history & run regression for each ───────────────
     const scored: ScoredStock[] = [];
-    let processed = 0;
+    const batchSize = 5; // Process in parallel batches of 5
 
-    for (const candidate of candidates) {
-      if (processed >= 40) break; // Limit API calls
-      processed++;
+    for (let i = 0; i < allSymbols.length; i += batchSize) {
+      const batch = allSymbols.slice(i, i + batchSize);
 
-      try {
-        // Try DB first
-        const { data: dbPrices } = await supabase
-          .from("stock_prices")
-          .select("close")
-          .eq("ticker", candidate.symbol)
-          .order("date", { ascending: true })
-          .limit(200);
+      const results = await Promise.allSettled(
+        batch.map(async ({ symbol, sector }) => {
+          // Try DB first
+          const { data: dbPrices } = await supabase
+            .from("stock_prices")
+            .select("close")
+            .eq("ticker", symbol)
+            .order("date", { ascending: true })
+            .limit(200);
 
-        let closes: number[] = [];
+          let closes: number[] = [];
 
-        if (dbPrices && dbPrices.length >= 50) {
-          closes = dbPrices.map(p => p.close);
-        } else {
-          // Fetch from FMP historical
-          const histRes = await fetch(
-            `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${candidate.symbol}&apikey=${FMP_API_KEY}`
-          );
-          if (histRes.ok) {
-            const histData = await histRes.json();
-            if (Array.isArray(histData) && histData.length >= 50) {
-              closes = histData.slice(0, 252).reverse().map((d: any) => d.close);
-            }
+          if (dbPrices && dbPrices.length >= 50) {
+            closes = dbPrices.map((p) => p.close);
           } else {
-            await histRes.text(); // consume body
+            // Fetch from FMP historical
+            const histRes = await fetch(
+              `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_API_KEY}`
+            );
+            if (histRes.ok) {
+              const histData = await histRes.json();
+              if (Array.isArray(histData) && histData.length >= 50) {
+                // Take ~6 months (126 trading days)
+                closes = histData.slice(0, 126).reverse().map((d: any) => d.close);
+              }
+            } else {
+              await histRes.text();
+            }
           }
+
+          if (closes.length < 30) return null;
+
+          const reg = computeRegression(closes);
+          if (!reg || reg.slope <= 0) return null;
+
+          // Scoring: optimized for strong, reliable uptrends
+          const rScore = Math.max(0, reg.rSquared) * 30;
+          const returnCapped = Math.min(2, Math.max(0, reg.annualReturn));
+          const returnScore = returnCapped * 15; // max 30
+          const periodReturnScore = Math.min(1, Math.max(0, reg.periodReturn)) * 20;
+          const slopeBonus = reg.slope > 0 ? 10 : 0;
+          const synergy = Math.max(0, reg.rSquared) * returnCapped * 5;
+          const totalScore = rScore + returnScore + periodReturnScore + slopeBonus + synergy;
+
+          // Get quote info for name/price/change
+          let name = symbol;
+          let price = reg.lastPrice;
+          let dayChange = 0;
+          let marketCap = 0;
+
+          try {
+            const quoteRes = await fetch(
+              `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`
+            );
+            if (quoteRes.ok) {
+              const quoteData = await quoteRes.json();
+              if (Array.isArray(quoteData) && quoteData.length > 0) {
+                const q = quoteData[0];
+                name = q.companyName || symbol;
+                price = q.price || reg.lastPrice;
+                dayChange = q.changes || 0;
+                marketCap = q.mktCap || 0;
+              }
+            } else {
+              await quoteRes.text();
+            }
+          } catch { /* skip quote data */ }
+
+          if (reg.rSquared > 0.25 && reg.annualReturn > 0.05) {
+            return {
+              symbol,
+              name,
+              price,
+              dayChange,
+              score: Math.round(totalScore * 10) / 10,
+              rSquared: Math.round(reg.rSquared * 1000) / 1000,
+              annualReturn: Math.round(reg.annualReturn * 1000) / 10,
+              momentum:
+                reg.annualReturn > 0.5
+                  ? "Strong"
+                  : reg.annualReturn > 0.2
+                  ? "Moderate"
+                  : "Mild",
+              sector,
+              marketCap: formatMktCap(marketCap),
+            } as ScoredStock;
+          }
+          return null;
+        })
+      );
+
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+          scored.push(result.value);
         }
-
-        if (closes.length < 50) continue;
-
-        const reg = computeRegression(closes);
-        if (!reg) continue;
-
-        // Scoring: weighted combination optimized for strong sustained trends
-        // - R² (trend consistency): 35% — higher = more reliable trend
-        // - Annual return strength: 35% — higher = stronger momentum
-        // - Positive slope bonus: 20% — must be upward
-        // - R² * return synergy: 10% — rewards stocks with BOTH high R² AND high return
-        
-        const rScore = Math.max(0, reg.rSquared) * 35;
-        const returnCapped = Math.min(2, Math.max(0, reg.annualReturn)); // cap at 200%
-        const returnScore = returnCapped * 17.5; // max 35
-        const slopeBonus = reg.slope > 0 ? 20 : 0;
-        const synergy = Math.max(0, reg.rSquared) * returnCapped * 5; // max ~10
-        const totalScore = rScore + returnScore + slopeBonus + synergy;
-
-        // Only include stocks with clear upward momentum and meaningful trend
-        if (reg.slope > 0 && reg.rSquared > 0.3 && reg.annualReturn > 0.1) {
-          scored.push({
-            symbol: candidate.symbol,
-            name: candidate.name,
-            price: candidate.price || reg.lastPrice,
-            dayChange: candidate.change,
-            score: Math.round(totalScore * 10) / 10,
-            rSquared: Math.round(reg.rSquared * 1000) / 1000,
-            annualReturn: Math.round(reg.annualReturn * 1000) / 10,
-            momentum: reg.annualReturn > 0.5 ? "Strong" : reg.annualReturn > 0.2 ? "Moderate" : "Mild",
-            sector: candidate.sector,
-            marketCap: formatMktCap(candidate.marketCap),
-          });
-        }
-      } catch (e) {
-        console.error(`Error processing ${candidate.symbol}:`, e);
-        continue;
       }
     }
 
-    console.log(`Scored ${scored.length} stocks with positive trends out of ${processed} processed`);
+    console.log(`Scored ${scored.length} qualifying stocks`);
 
-    // Sort by score and take top N
-    scored.sort((a, b) => b.score - a.score);
-    const topResults = scored.slice(0, topN);
+    // ── Pick top performers per sector, then overall top N ──────────
+    // First get top 10 per sector
+    const bySector: Record<string, ScoredStock[]> = {};
+    for (const s of scored) {
+      if (!bySector[s.sector]) bySector[s.sector] = [];
+      bySector[s.sector].push(s);
+    }
 
-    // Cache the result
+    const sectorTopPicks: ScoredStock[] = [];
+    for (const [sector, stocks] of Object.entries(bySector)) {
+      stocks.sort((a, b) => b.score - a.score);
+      const top10 = stocks.slice(0, 10);
+      console.log(`${sector}: ${top10.length} qualifying (top: ${top10[0]?.symbol} @ ${top10[0]?.score})`);
+      sectorTopPicks.push(...top10);
+    }
+
+    // Then pick overall top N from the sector winners
+    sectorTopPicks.sort((a, b) => b.score - a.score);
+    const topResults = sectorTopPicks.slice(0, topN);
+
+    // Cache
     if (topResults.length > 0) {
       await supabase.from("market_updates").insert({
         content: JSON.stringify(topResults),
@@ -257,9 +288,10 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ stocks: topResults, cached: false, sector: sectorFilter }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ stocks: topResults, cached: false, sectorsScanned: Object.keys(sectorsToScan) }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
     console.error("Error finding hot stocks:", error);
     return new Response(
