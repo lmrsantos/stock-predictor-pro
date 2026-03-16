@@ -101,4 +101,12 @@
   .crosshair-line {
     transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
   }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
