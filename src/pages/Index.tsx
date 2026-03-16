@@ -108,6 +108,15 @@ const Index = () => {
   const priceChange = lastPrice - prevPrice;
   const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
 
+  const chatContext = {
+    ticker,
+    price: lastPrice,
+    rSquared: regression?.rSquared,
+    annualReturn: regression && lastPrice ? slopeToAnnualReturn(regression.slope, lastPrice) : undefined,
+    slope: regression?.slope,
+    fundamentals: fundamentals || undefined,
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       {/* Top ticker bar */}
