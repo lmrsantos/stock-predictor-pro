@@ -7,13 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-interface StockCandidate {
-  symbol: string;
-  name: string;
-  price: number;
-  changesPercentage: number;
-}
-
 interface ScoredStock {
   symbol: string;
   name: string;
@@ -23,11 +16,13 @@ interface ScoredStock {
   rSquared: number;
   annualReturn: number;
   momentum: string;
+  sector: string;
+  marketCap: string;
 }
 
 function computeRegression(closes: number[]) {
   const n = closes.length;
-  if (n < 10) return null;
+  if (n < 20) return null;
 
   const xs = closes.map((_, i) => i);
   const ys = closes;
@@ -40,17 +35,22 @@ function computeRegression(closes: number[]) {
   const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
   const intercept = (sumY - slope * sumX) / n;
 
-  // R²
   const meanY = sumY / n;
   const ssTotal = ys.reduce((acc, y) => acc + (y - meanY) ** 2, 0);
   const ssResidual = ys.reduce((acc, y, i) => acc + (y - (slope * xs[i] + intercept)) ** 2, 0);
   const rSquared = ssTotal > 0 ? 1 - ssResidual / ssTotal : 0;
 
-  // Implied annual return
   const lastPrice = closes[closes.length - 1];
   const annualReturn = lastPrice > 0 ? (slope * 252) / lastPrice : 0;
 
   return { slope, intercept, rSquared, annualReturn, lastPrice };
+}
+
+function formatMktCap(v: number): string {
+  if (v >= 1e12) return `${(v / 1e12).toFixed(1)}T`;
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+  return `${v}`;
 }
 
 serve(async (req) => {
@@ -66,106 +66,105 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check cache — reuse results from last 4 hours
-    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
+    // Check cache — reuse results from last 2 hours
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("market_updates")
       .select("content")
       .eq("signal_type", "hot_stocks")
-      .gte("created_at", fourHoursAgo)
+      .gte("created_at", twoHoursAgo)
       .order("created_at", { ascending: false })
       .limit(1);
 
     if (cached && cached.length > 0) {
       try {
         const parsed = JSON.parse(cached[0].content);
-        return new Response(JSON.stringify({ stocks: parsed, cached: true }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      } catch { /* fall through to fresh computation */ }
-    }
-
-    // Fetch trending stocks from FMP
-    let actives: StockCandidate[] = [];
-    let gainers: StockCandidate[] = [];
-
-    // Try multiple endpoint formats
-    const endpoints = [
-      { url: `https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`, type: "actives" },
-      { url: `https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`, type: "gainers" },
-      { url: `https://financialmodelingprep.com/api/v3/stock_market/actives?apikey=${FMP_API_KEY}`, type: "actives" },
-      { url: `https://financialmodelingprep.com/api/v3/stock_market/gainers?apikey=${FMP_API_KEY}`, type: "gainers" },
-    ];
-
-    for (const ep of endpoints) {
-      if (ep.type === "actives" && actives.length > 0) continue;
-      if (ep.type === "gainers" && gainers.length > 0) continue;
-      try {
-        const res = await fetch(ep.url);
-        const text = await res.text();
-        console.log(`FMP ${ep.type} (${res.status}): ${text.substring(0, 200)}`);
-        if (res.ok) {
-          const data = JSON.parse(text);
-          if (Array.isArray(data) && data.length > 0) {
-            if (ep.type === "actives") actives = data;
-            else gainers = data;
-          }
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return new Response(JSON.stringify({ stocks: parsed, cached: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
-      } catch (e) {
-        console.error(`FMP endpoint failed: ${ep.url}`, e);
-      }
+      } catch { /* fall through */ }
     }
 
-    console.log(`Found ${actives.length} actives, ${gainers.length} gainers`);
+    // Step 1: Use FMP Stock Screener to get a broad universe
+    // Pull stocks with market cap > $500M, price > $5, US exchange, sorted by volume
+    const screenerUrl = `https://financialmodelingprep.com/stable/company-screener?marketCapMoreThan=500000000&priceMoreThan=5&exchange=NYSE,NASDAQ&isActivelyTrading=true&limit=80&apikey=${FMP_API_KEY}`;
+    
+    console.log("Fetching stock screener...");
+    const screenerRes = await fetch(screenerUrl);
+    let screenerStocks: any[] = [];
 
-    // If FMP market movers are unavailable (market closed/plan limitation),
-    // fall back to a curated list of popular large-cap stocks
-    const fallbackTickers = [
-      { symbol: "AAPL", name: "Apple Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "MSFT", name: "Microsoft Corp.", price: 0, changesPercentage: 0 },
-      { symbol: "GOOGL", name: "Alphabet Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "AMZN", name: "Amazon.com Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "NVDA", name: "NVIDIA Corp.", price: 0, changesPercentage: 0 },
-      { symbol: "META", name: "Meta Platforms Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "TSLA", name: "Tesla Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "JPM", name: "JPMorgan Chase", price: 0, changesPercentage: 0 },
-      { symbol: "V", name: "Visa Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "UNH", name: "UnitedHealth Group", price: 0, changesPercentage: 0 },
-      { symbol: "XOM", name: "Exxon Mobil", price: 0, changesPercentage: 0 },
-      { symbol: "LLY", name: "Eli Lilly", price: 0, changesPercentage: 0 },
-      { symbol: "WMT", name: "Walmart Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "MA", name: "Mastercard Inc.", price: 0, changesPercentage: 0 },
-      { symbol: "COST", name: "Costco Wholesale", price: 0, changesPercentage: 0 },
-    ];
-
-    // Deduplicate and take top candidates
-    const allCandidates = [...gainers, ...actives];
-    const useFallback = allCandidates.length === 0;
-    if (useFallback) {
-      console.log("Using fallback stock list (market movers unavailable)");
+    if (screenerRes.ok) {
+      const data = await screenerRes.json();
+      screenerStocks = Array.isArray(data) ? data : [];
+      console.log(`Screener returned ${screenerStocks.length} stocks`);
+    } else {
+      const errText = await screenerRes.text();
+      console.error(`Screener failed (${screenerRes.status}): ${errText.substring(0, 200)}`);
     }
-    const pool = useFallback ? fallbackTickers : allCandidates;
 
+    // Also try to pull market movers for extra candidates
+    let movers: any[] = [];
+    try {
+      const [activesRes, gainersRes] = await Promise.all([
+        fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
+        fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
+      ]);
+      if (activesRes.ok) {
+        const d = await activesRes.json();
+        if (Array.isArray(d)) movers.push(...d);
+      } else { await activesRes.text(); }
+      if (gainersRes.ok) {
+        const d = await gainersRes.json();
+        if (Array.isArray(d)) movers.push(...d);
+      } else { await gainersRes.text(); }
+    } catch (e) {
+      console.error("Movers fetch error:", e);
+    }
+
+    // Merge all candidates, deduplicate
     const seen = new Set<string>();
-    const candidates: StockCandidate[] = [];
-    for (const stock of pool) {
-      if (!stock.symbol || seen.has(stock.symbol) || stock.symbol.includes(".")) continue;
-      seen.add(stock.symbol);
-      candidates.push(stock);
-      if (candidates.length >= 15) break;
+    const candidates: Array<{ symbol: string; name: string; price: number; change: number; sector: string; marketCap: number }> = [];
+
+    for (const stock of [...movers, ...screenerStocks]) {
+      const sym = stock.symbol || stock.ticker;
+      if (!sym || seen.has(sym) || sym.includes(".") || sym.includes("-")) continue;
+      seen.add(sym);
+      candidates.push({
+        symbol: sym,
+        name: stock.companyName || stock.name || sym,
+        price: stock.price || stock.lastPrice || 0,
+        change: stock.changesPercentage || stock.change || 0,
+        sector: stock.sector || "",
+        marketCap: stock.marketCap || stock.mktCap || 0,
+      });
     }
+
+    console.log(`Total unique candidates: ${candidates.length}`);
 
     if (candidates.length === 0) {
-      throw new Error("No trending stocks found from FMP");
+      // Ultimate fallback
+      return new Response(JSON.stringify({ 
+        stocks: [], 
+        cached: false, 
+        message: "Market data temporarily unavailable. Try again during trading hours." 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // For each candidate, try to get price history from DB or fetch it
+    // Step 2: For each candidate, get price history and run regression
     const scored: ScoredStock[] = [];
+    let processed = 0;
 
     for (const candidate of candidates) {
+      if (processed >= 40) break; // Limit API calls
+      processed++;
+
       try {
-        // Check if we have recent price data
-        const { data: prices } = await supabase
+        // Try DB first
+        const { data: dbPrices } = await supabase
           .from("stock_prices")
           .select("close")
           .eq("ticker", candidate.symbol)
@@ -174,8 +173,8 @@ serve(async (req) => {
 
         let closes: number[] = [];
 
-        if (prices && prices.length >= 30) {
-          closes = prices.map(p => p.close);
+        if (dbPrices && dbPrices.length >= 50) {
+          closes = dbPrices.map(p => p.close);
         } else {
           // Fetch from FMP historical
           const histRes = await fetch(
@@ -183,38 +182,45 @@ serve(async (req) => {
           );
           if (histRes.ok) {
             const histData = await histRes.json();
-            if (Array.isArray(histData) && histData.length >= 30) {
-              // FMP returns newest first
-              closes = histData.slice(0, 200).reverse().map((d: any) => d.close);
+            if (Array.isArray(histData) && histData.length >= 50) {
+              closes = histData.slice(0, 252).reverse().map((d: any) => d.close);
             }
+          } else {
+            await histRes.text(); // consume body
           }
         }
 
-        if (closes.length < 30) continue;
+        if (closes.length < 50) continue;
 
         const reg = computeRegression(closes);
         if (!reg) continue;
 
-        // Score: weighted combination
-        // - R² quality (0-1): weight 30%
-        // - Positive momentum: weight 40%
-        // - Annual return strength: weight 30%
-        const rScore = Math.max(0, reg.rSquared) * 30;
-        const momentumScore = reg.slope > 0 ? Math.min(40, reg.annualReturn * 100) : 0;
-        const returnScore = Math.min(30, Math.max(0, reg.annualReturn * 50));
-        const totalScore = rScore + momentumScore + returnScore;
+        // Scoring: weighted combination optimized for strong sustained trends
+        // - R² (trend consistency): 35% — higher = more reliable trend
+        // - Annual return strength: 35% — higher = stronger momentum
+        // - Positive slope bonus: 20% — must be upward
+        // - R² * return synergy: 10% — rewards stocks with BOTH high R² AND high return
+        
+        const rScore = Math.max(0, reg.rSquared) * 35;
+        const returnCapped = Math.min(2, Math.max(0, reg.annualReturn)); // cap at 200%
+        const returnScore = returnCapped * 17.5; // max 35
+        const slopeBonus = reg.slope > 0 ? 20 : 0;
+        const synergy = Math.max(0, reg.rSquared) * returnCapped * 5; // max ~10
+        const totalScore = rScore + returnScore + slopeBonus + synergy;
 
-        // Only include stocks with positive momentum and decent R²
-        if (reg.slope > 0 && reg.rSquared > 0.15) {
+        // Only include stocks with clear upward momentum and meaningful trend
+        if (reg.slope > 0 && reg.rSquared > 0.3 && reg.annualReturn > 0.1) {
           scored.push({
             symbol: candidate.symbol,
-            name: candidate.name || candidate.symbol,
+            name: candidate.name,
             price: candidate.price || reg.lastPrice,
-            dayChange: candidate.changesPercentage,
+            dayChange: candidate.change,
             score: Math.round(totalScore * 10) / 10,
             rSquared: Math.round(reg.rSquared * 1000) / 1000,
             annualReturn: Math.round(reg.annualReturn * 1000) / 10,
             momentum: reg.annualReturn > 0.5 ? "Strong" : reg.annualReturn > 0.2 ? "Moderate" : "Mild",
+            sector: candidate.sector,
+            marketCap: formatMktCap(candidate.marketCap),
           });
         }
       } catch (e) {
@@ -222,6 +228,8 @@ serve(async (req) => {
         continue;
       }
     }
+
+    console.log(`Scored ${scored.length} stocks with positive trends out of ${processed} processed`);
 
     // Sort by score and take top 5
     scored.sort((a, b) => b.score - a.score);
