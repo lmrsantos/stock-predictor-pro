@@ -164,7 +164,18 @@ const Index = () => {
               slopePositive={regression ? regression.slope >= 0 : true}
             />
             {showTable && regression && (
-              <div ref={tableRef}>
+              <div ref={tableRef} className="space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      const el = document.getElementById("investment-simulator");
+                      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+                  >
+                    💰 Go to Simulator
+                  </button>
+                </div>
                 <DataTable
                   historicalFit={regression.historicalFit}
                   predictions={regression.predictions}

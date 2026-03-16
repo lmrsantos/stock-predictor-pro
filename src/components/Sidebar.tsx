@@ -259,11 +259,13 @@ export function Sidebar({
       <div className="border-t border-border" />
 
       {/* Investment Simulator */}
-      <InvestmentSimulator
-        regression={regression}
-        lastPrice={lastPrice}
-        ticker={ticker}
-      />
+      <div id="investment-simulator">
+        <InvestmentSimulator
+          regression={regression}
+          lastPrice={lastPrice}
+          ticker={ticker}
+        />
+      </div>
 
     </aside>
   );
