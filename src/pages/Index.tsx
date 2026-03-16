@@ -190,6 +190,8 @@ const Index = () => {
         )}
       </main>
       </div>
+
+      <ChatBubble context={chatContext} />
     </div>
   );
 };
