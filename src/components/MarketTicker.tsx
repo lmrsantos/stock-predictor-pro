@@ -23,6 +23,7 @@ function timeAgo(dateStr: string): string {
 
 interface MarketTickerProps {
   currentTicker: string;
+  onSelectTicker?: (symbol: string) => void;
 }
 
 export function MarketTicker({ currentTicker }: MarketTickerProps) {
