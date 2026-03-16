@@ -85,48 +85,70 @@ serve(async (req) => {
       } catch { /* fall through to fresh computation */ }
     }
 
-    // Fetch trending stocks from FMP (try stable endpoints first, then v3 fallback)
+    // Fetch trending stocks from FMP
     let actives: StockCandidate[] = [];
     let gainers: StockCandidate[] = [];
 
-    // Try stable endpoints
-    const [activesRes, gainersRes] = await Promise.all([
-      fetch(`https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`),
-      fetch(`https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`),
-    ]);
+    // Try multiple endpoint formats
+    const endpoints = [
+      { url: `https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_API_KEY}`, type: "actives" },
+      { url: `https://financialmodelingprep.com/stable/most-gainer?apikey=${FMP_API_KEY}`, type: "gainers" },
+      { url: `https://financialmodelingprep.com/api/v3/stock_market/actives?apikey=${FMP_API_KEY}`, type: "actives" },
+      { url: `https://financialmodelingprep.com/api/v3/stock_market/gainers?apikey=${FMP_API_KEY}`, type: "gainers" },
+    ];
 
-    if (activesRes.ok) {
-      const data = await activesRes.json();
-      actives = Array.isArray(data) ? data : [];
-    }
-    if (gainersRes.ok) {
-      const data = await gainersRes.json();
-      gainers = Array.isArray(data) ? data : [];
-    }
-
-    // Fallback to v3 API if stable returned nothing
-    if (actives.length === 0 && gainers.length === 0) {
-      console.log("Stable endpoints empty, trying v3 fallback...");
-      const [v3ActivesRes, v3GainersRes] = await Promise.all([
-        fetch(`https://financialmodelingprep.com/api/v3/stock_market/actives?apikey=${FMP_API_KEY}`),
-        fetch(`https://financialmodelingprep.com/api/v3/stock_market/gainers?apikey=${FMP_API_KEY}`),
-      ]);
-      if (v3ActivesRes.ok) {
-        const data = await v3ActivesRes.json();
-        actives = Array.isArray(data) ? data : [];
-      }
-      if (v3GainersRes.ok) {
-        const data = await v3GainersRes.json();
-        gainers = Array.isArray(data) ? data : [];
+    for (const ep of endpoints) {
+      if (ep.type === "actives" && actives.length > 0) continue;
+      if (ep.type === "gainers" && gainers.length > 0) continue;
+      try {
+        const res = await fetch(ep.url);
+        const text = await res.text();
+        console.log(`FMP ${ep.type} (${res.status}): ${text.substring(0, 200)}`);
+        if (res.ok) {
+          const data = JSON.parse(text);
+          if (Array.isArray(data) && data.length > 0) {
+            if (ep.type === "actives") actives = data;
+            else gainers = data;
+          }
+        }
+      } catch (e) {
+        console.error(`FMP endpoint failed: ${ep.url}`, e);
       }
     }
 
     console.log(`Found ${actives.length} actives, ${gainers.length} gainers`);
 
+    // If FMP market movers are unavailable (market closed/plan limitation),
+    // fall back to a curated list of popular large-cap stocks
+    const fallbackTickers = [
+      { symbol: "AAPL", name: "Apple Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "MSFT", name: "Microsoft Corp.", price: 0, changesPercentage: 0 },
+      { symbol: "GOOGL", name: "Alphabet Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "AMZN", name: "Amazon.com Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "NVDA", name: "NVIDIA Corp.", price: 0, changesPercentage: 0 },
+      { symbol: "META", name: "Meta Platforms Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "TSLA", name: "Tesla Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "JPM", name: "JPMorgan Chase", price: 0, changesPercentage: 0 },
+      { symbol: "V", name: "Visa Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "UNH", name: "UnitedHealth Group", price: 0, changesPercentage: 0 },
+      { symbol: "XOM", name: "Exxon Mobil", price: 0, changesPercentage: 0 },
+      { symbol: "LLY", name: "Eli Lilly", price: 0, changesPercentage: 0 },
+      { symbol: "WMT", name: "Walmart Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "MA", name: "Mastercard Inc.", price: 0, changesPercentage: 0 },
+      { symbol: "COST", name: "Costco Wholesale", price: 0, changesPercentage: 0 },
+    ];
+
     // Deduplicate and take top candidates
+    const allCandidates = [...gainers, ...actives];
+    const useFallback = allCandidates.length === 0;
+    if (useFallback) {
+      console.log("Using fallback stock list (market movers unavailable)");
+    }
+    const pool = useFallback ? fallbackTickers : allCandidates;
+
     const seen = new Set<string>();
     const candidates: StockCandidate[] = [];
-    for (const stock of [...gainers, ...actives]) {
+    for (const stock of pool) {
       if (!stock.symbol || seen.has(stock.symbol) || stock.symbol.includes(".")) continue;
       seen.add(stock.symbol);
       candidates.push(stock);
@@ -187,7 +209,7 @@ serve(async (req) => {
           scored.push({
             symbol: candidate.symbol,
             name: candidate.name || candidate.symbol,
-            price: candidate.price,
+            price: candidate.price || reg.lastPrice,
             dayChange: candidate.changesPercentage,
             score: Math.round(totalScore * 10) / 10,
             rSquared: Math.round(reg.rSquared * 1000) / 1000,
