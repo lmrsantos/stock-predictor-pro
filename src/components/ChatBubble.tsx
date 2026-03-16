@@ -269,9 +269,23 @@ export function ChatBubble({ context }: ChatBubbleProps) {
                         }`}
                       >
                         {msg.role === "assistant" ? (
-                          <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
-                          </div>
+                          msg.isTyping ? (
+                            <TypewriterMessage
+                              content={msg.content}
+                              onDone={() => {
+                                setTyping(false);
+                                setMessages((prev) =>
+                                  prev.map((m, j) =>
+                                    j === i ? { ...m, isTyping: false } : m
+                                  )
+                                );
+                              }}
+                            />
+                          ) : (
+                            <div className="prose prose-sm prose-invert max-w-none [&>p]:m-0">
+                              <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            </div>
+                          )
                         ) : (
                           msg.content
                         )}
