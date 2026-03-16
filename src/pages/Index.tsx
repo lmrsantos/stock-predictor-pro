@@ -11,8 +11,8 @@ import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
 
 const Index = () => {
-  const [ticker, setTicker] = useState("AAPL");
-  const [searchInput, setSearchInput] = useState("AAPL");
+  const [ticker, setTicker] = useState("^DJI");
+  const [searchInput, setSearchInput] = useState("^DJI");
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
