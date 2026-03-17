@@ -78,10 +78,13 @@ serve(async (req) => {
       authHeaders["Cookie"] = auth.cookie;
     }
 
-    // Fetch chart data + quote (with crumb auth) + FMP profile in parallel
+    // Fetch chart data + quote/profile metadata + FMP profile in parallel
     const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(cleanTicker)}?range=${period}&interval=1d&includePrePost=false`;
     const quoteUrl = auth
       ? `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(cleanTicker)}&crumb=${encodeURIComponent(auth.crumb)}`
+      : null;
+    const quoteSummaryUrl = auth
+      ? `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(cleanTicker)}?modules=assetProfile&crumb=${encodeURIComponent(auth.crumb)}`
       : null;
 
     const fmpKey = Deno.env.get("FMP_API_KEY");
@@ -96,6 +99,7 @@ serve(async (req) => {
       fetch(chartUrl, { headers: authHeaders }),
     ];
     if (quoteUrl) fetchPromises.push(fetch(quoteUrl, { headers: authHeaders }));
+    if (quoteSummaryUrl) fetchPromises.push(fetch(quoteSummaryUrl, { headers: authHeaders }));
     if (fmpProfileUrl) fetchPromises.push(fetch(fmpProfileUrl));
     if (fmpRatingUrl) fetchPromises.push(fetch(fmpRatingUrl));
 
@@ -103,6 +107,7 @@ serve(async (req) => {
     const chartRes = responses[0];
     let responseIdx = 1;
     const quoteRes = quoteUrl ? responses[responseIdx++] : null;
+    const quoteSummaryRes = quoteSummaryUrl ? responses[responseIdx++] : null;
     const fmpProfileRes = fmpProfileUrl ? responses[responseIdx++] : null;
     const fmpRatingRes = fmpRatingUrl ? responses[responseIdx++] : null;
 
@@ -157,6 +162,22 @@ serve(async (req) => {
         console.warn("FMP profile parse failed:", e);
       }
     }
+
+    let yahooAssetProfile: Record<string, any> = {};
+    if (quoteSummaryRes) {
+      try {
+        if (quoteSummaryRes.ok) {
+          const quoteSummaryJson = await quoteSummaryRes.json();
+          yahooAssetProfile = quoteSummaryJson.quoteSummary?.result?.[0]?.assetProfile || {};
+        } else {
+          console.warn("Yahoo quoteSummary returned:", quoteSummaryRes.status);
+        }
+      } catch (e) {
+        console.warn("Yahoo quoteSummary parse failed:", e);
+      }
+    }
+
+    const website = fmpProfile.website || yahooAssetProfile.website || null;
 
     // Parse FMP rating for analyst recommendations
     let fmpRating: Record<string, any> = {};
@@ -271,7 +292,7 @@ serve(async (req) => {
           fifty_two_week_high: fundamentals.fifty_two_week_high,
           fifty_two_week_low: fundamentals.fifty_two_week_low,
         },
-        website: fmpProfile.website || null,
+        website,
         analystRating,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
