@@ -174,25 +174,13 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* 2-sigma band (just the upper area, low opacity) */}
-          <Area
-            dataKey="upper2Sigma"
-            stroke="none"
-            fill={bandColor}
-            fillOpacity={0.12}
-            type="linear"
-            isAnimationActive={false}
-          />
+          {/* 2-sigma band — outer, lighter gray */}
+          <Area dataKey="upper2Sigma" stroke="none" fill={band2Color} fillOpacity={0.25} type="linear" isAnimationActive={false} />
+          <Area dataKey="lower2Sigma" stroke="none" fill={band2Color} fillOpacity={0.25} type="linear" isAnimationActive={false} />
 
-          {/* 1-sigma band */}
-          <Area
-            dataKey="upper1Sigma"
-            stroke="none"
-            fill={bandColor}
-            fillOpacity={0.2}
-            type="linear"
-            isAnimationActive={false}
-          />
+          {/* 1-sigma band — inner, darker gray */}
+          <Area dataKey="upper1Sigma" stroke="none" fill={band1Color} fillOpacity={0.3} type="linear" isAnimationActive={false} />
+          <Area dataKey="lower1Sigma" stroke="none" fill={band1Color} fillOpacity={0.3} type="linear" isAnimationActive={false} />
 
           {/* Regression / Forecast line */}
           <Line
