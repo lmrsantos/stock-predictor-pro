@@ -132,7 +132,7 @@ export function GeopoliticalSentiment() {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold tracking-wider text-muted-foreground">
+            <span className="text-xs font-mono font-bold tracking-wider text-neutral-400">
               GLOBAL TENSION INDEX
             </span>
             <span className="inline-flex items-center h-4 px-1 rounded bg-white/40 text-[9px]">
