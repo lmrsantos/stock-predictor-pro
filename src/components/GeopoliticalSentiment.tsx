@@ -118,28 +118,28 @@ export function GeopoliticalSentiment() {
   const events = (sentiment.key_events || []) as KeyEvent[];
 
   return (
-    <div className={`rounded-xl border ${config.borderColor} bg-neutral-900 transition-all duration-300`}>
+    <div className={`rounded-xl border ${config.borderColor} bg-card transition-all duration-300`}>
       {/* Main banner */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 text-left flex items-center gap-4 hover:opacity-95 transition-opacity"
       >
         {/* Icon */}
-        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.textColor} bg-white/10`}>
+        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.textColor} bg-muted`}>
           <Icon className="w-5 h-5" />
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold tracking-wider text-neutral-400">
+            <span className="text-xs font-mono font-bold tracking-wider text-muted-foreground">
               GLOBAL TENSION INDEX
             </span>
-            <span className="inline-flex items-center h-4 px-1 rounded bg-white/10 text-[9px] text-neutral-300">
+            <span className="inline-flex items-center h-4 px-1 rounded bg-muted text-[9px] text-muted-foreground">
               🔴 LIVE
             </span>
           </div>
-          <p className="text-sm text-neutral-300 leading-snug truncate">
+          <p className="text-sm text-foreground/80 leading-snug truncate">
             {sentiment.summary}
           </p>
         </div>
@@ -157,22 +157,22 @@ export function GeopoliticalSentiment() {
         {/* Expand icon */}
         <div className="flex-shrink-0 ml-1">
           {expanded ? (
-            <ChevronUp className="w-4 h-4 text-neutral-500" />
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-neutral-500" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           )}
         </div>
       </button>
 
       {/* Tension bar */}
       <div className="px-4 pb-3">
-        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${config.barColor} transition-all duration-1000 shadow-sm`}
             style={{ width: `${sentiment.tension_score}%` }}
           />
         </div>
-        <div className="flex justify-between mt-1 text-[9px] font-mono text-neutral-600">
+        <div className="flex justify-between mt-1 text-[9px] font-mono text-muted-foreground/60">
           <span>0 · CALM</span>
           <span>50 · ELEVATED</span>
           <span>100 · SEVERE</span>
@@ -181,12 +181,12 @@ export function GeopoliticalSentiment() {
 
       {/* Expanded events */}
       {expanded && events.length > 0 && (
-        <div className="px-4 pb-4 border-t border-white/40">
+        <div className="px-4 pb-4 border-t border-border">
           <div className="grid gap-2 mt-3 sm:grid-cols-2 lg:grid-cols-3">
             {events.map((evt, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 p-2.5 bg-white/5 rounded-lg border border-white/10"
+                className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-lg border border-border"
               >
                 <span className={`flex-shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${impactBadge[evt.impact] || impactBadge.medium}`}>
                   {evt.impact?.toUpperCase()}
