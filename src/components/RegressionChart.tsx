@@ -91,10 +91,8 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     );
   }
 
-  // Find the forecast boundary
   const forecastStartIndex = data.findIndex((d) => d.isForecast);
 
-  // Determine if data spans multiple years
   const firstYear = new Date(data[0]?.date).getFullYear();
   const lastYear = new Date(data[data.length - 1]?.date).getFullYear();
   const spanMultipleYears = firstYear !== lastYear;
@@ -107,12 +105,25 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const regressionColor = slopePositive
-    ? "hsl(150, 70%, 40%)"
-    : "hsl(0, 75%, 55%)";
+  // Resolve CSS variables for recharts (which needs raw color strings)
+  const getColor = (varName: string) => {
+    const style = getComputedStyle(document.documentElement);
+    const hsl = style.getPropertyValue(varName).trim();
+    return hsl ? `hsl(${hsl})` : "";
+  };
 
-  const bandColor = "hsl(265, 80%, 58%)";
-  const bgColor = "hsl(270, 30%, 98%)";
+  const isDark = document.documentElement.classList.contains("dark");
+
+  const regressionColor = slopePositive
+    ? getColor("--accent-success")
+    : getColor("--accent-danger");
+
+  const bandColor = getColor("--primary");
+  const bgColor = getColor("--background");
+  const gridColor = getColor("--border");
+  const tickColor = getColor("--muted-foreground");
+  const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
+  const primaryColor = getColor("--primary");
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
@@ -147,22 +158,22 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
           <CartesianGrid
-            stroke="hsl(268, 25%, 88%)"
+            stroke={gridColor}
             strokeDasharray="3 3"
             vertical={false}
           />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
-            axisLine={{ stroke: "hsl(268, 25%, 88%)" }}
+            tick={{ fill: tickColor, fontSize: 11 }}
+            axisLine={{ stroke: gridColor }}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={60}
           />
           <YAxis
             domain={["auto", "auto"]}
-            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
+            tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => `$${v.toFixed(0)}`}
@@ -220,7 +231,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Actual price */}
           <Line
             dataKey="actual"
-            stroke="hsl(265, 40%, 30%)"
+            stroke={priceLineColor}
             strokeWidth={1.5}
             dot={false}
             type="linear"
@@ -231,7 +242,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Predicted price (forecast zone) */}
           <Line
             dataKey="predicted"
-            stroke="hsl(265, 80%, 58%)"
+            stroke={primaryColor}
             strokeWidth={2}
             dot={false}
             type="linear"
@@ -243,12 +254,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {forecastStartIndex > 0 && (
             <ReferenceLine
               x={data[forecastStartIndex]?.date}
-              stroke="hsl(268, 25%, 75%)"
+              stroke={gridColor}
               strokeDasharray="4 4"
               label={{
                 value: "Forecast →",
                 position: "insideTopRight",
-                fill: "hsl(265, 15%, 45%)",
+                fill: tickColor,
                 fontSize: 10,
               }}
             />
