@@ -111,8 +111,8 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     ? "hsl(150, 70%, 40%)"
     : "hsl(0, 75%, 55%)";
 
-  const bandColor = isDark ? "hsl(0, 0%, 60%)" : "hsl(0, 0%, 50%)";
-  const bgColor = isDark ? "hsl(0, 0%, 11%)" : "hsl(270, 30%, 96%)";
+  const band1Color = isDark ? "hsl(0, 0%, 45%)" : "hsl(0, 0%, 70%)";
+  const band2Color = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 82%)";
   const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(268, 25%, 88%)";
   const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(265, 15%, 45%)";
   const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
@@ -132,12 +132,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <InfoTooltip {...metricInfo.regressionLine} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded bg-muted-foreground/30" />
+          <span className="w-3 h-3 inline-block rounded" style={{ background: band1Color, opacity: 0.3 }} />
           1σ Band
           <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded bg-muted-foreground/15" />
+          <span className="w-3 h-3 inline-block rounded" style={{ background: band2Color, opacity: 0.25 }} />
           2σ Band
           <InfoTooltip {...metricInfo.twoSigmaBand} />
         </span>
@@ -174,25 +174,13 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* 2-sigma band (just the upper area, low opacity) */}
-          <Area
-            dataKey="upper2Sigma"
-            stroke="none"
-            fill={bandColor}
-            fillOpacity={0.12}
-            type="linear"
-            isAnimationActive={false}
-          />
+          {/* 2-sigma band — outer, lighter gray */}
+          <Area dataKey="upper2Sigma" stroke="none" fill={band2Color} fillOpacity={0.25} type="linear" isAnimationActive={false} />
+          <Area dataKey="lower2Sigma" stroke="none" fill={band2Color} fillOpacity={0.25} type="linear" isAnimationActive={false} />
 
-          {/* 1-sigma band */}
-          <Area
-            dataKey="upper1Sigma"
-            stroke="none"
-            fill={bandColor}
-            fillOpacity={0.2}
-            type="linear"
-            isAnimationActive={false}
-          />
+          {/* 1-sigma band — inner, darker gray */}
+          <Area dataKey="upper1Sigma" stroke="none" fill={band1Color} fillOpacity={0.3} type="linear" isAnimationActive={false} />
+          <Area dataKey="lower1Sigma" stroke="none" fill={band1Color} fillOpacity={0.3} type="linear" isAnimationActive={false} />
 
           {/* Regression / Forecast line */}
           <Line
