@@ -192,10 +192,10 @@ export function GeopoliticalSentiment() {
                   {evt.impact?.toUpperCase()}
                 </span>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono font-bold text-foreground/60 block">
+                  <span className="text-[10px] font-mono font-bold text-neutral-500 block">
                     {evt.region}
                   </span>
-                  <p className="text-xs text-foreground/80 leading-snug mt-0.5">
+                  <p className="text-xs text-neutral-300 leading-snug mt-0.5">
                     {evt.event}
                   </p>
                 </div>
