@@ -59,6 +59,7 @@ serve(async (req) => {
         if (f.market_cap != null) systemContent += `- Market Cap: $${(f.market_cap / 1e9).toFixed(1)}B\n`;
       }
       if (context.website) systemContent += `- Company website: ${context.website}\n`;
+    }
 
     const apiMessages = [
       { role: "system", content: systemContent },
