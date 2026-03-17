@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   ComposedChart,
   Area,
@@ -19,10 +20,28 @@ interface RegressionChartProps {
   slopePositive: boolean;
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+interface StackedPoint {
+  date: string;
+  actual?: number;
+  predicted?: number;
+  fitted?: number;
+  isForecast: boolean;
+  // Stacked band fields
+  base2: number;       // lower2Sigma (invisible base)
+  band2Lower: number;  // lower2Sigma → lower1Sigma
+  band1: number;       // lower1Sigma → upper1Sigma
+  band2Upper: number;  // upper1Sigma → upper2Sigma
+  // Original for tooltip
+  upper1Sigma: number;
+  lower1Sigma: number;
+  upper2Sigma: number;
+  lower2Sigma: number;
+}
+
+function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
 
-  const point = payload[0]?.payload as ChartDataPoint;
+  const point = payload[0]?.payload as StackedPoint;
   if (!point) return null;
 
   const dateStr = new Date(point.date).toLocaleDateString("en-US", {
@@ -72,6 +91,31 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+  // Transform data into stacked format for proper band rendering
+  const stackedData = useMemo(() => {
+    return data.map((d): StackedPoint => {
+      const l2 = d.lower2Sigma ?? 0;
+      const l1 = d.lower1Sigma ?? 0;
+      const u1 = d.upper1Sigma ?? 0;
+      const u2 = d.upper2Sigma ?? 0;
+      return {
+        date: d.date,
+        actual: d.actual,
+        predicted: d.predicted,
+        fitted: d.fitted,
+        isForecast: d.isForecast,
+        base2: l2,
+        band2Lower: l1 - l2,
+        band1: u1 - l1,
+        band2Upper: u2 - u1,
+        upper1Sigma: u1,
+        lower1Sigma: l1,
+        upper2Sigma: u2,
+        lower2Sigma: l2,
+      };
+    });
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="flex-1 chart-surface flex items-center justify-center min-h-[400px]">
@@ -111,18 +155,19 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     ? "hsl(150, 70%, 40%)"
     : "hsl(0, 75%, 55%)";
 
-  const band1Color = isDark ? "hsl(0, 0%, 45%)" : "hsl(0, 0%, 70%)";
-  const band2Color = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 82%)";
-  const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(268, 25%, 88%)";
-  const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(265, 15%, 45%)";
-  const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
-  const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(268, 25%, 75%)";
+  const band1Fill = isDark ? "hsl(0, 0%, 50%)" : "hsl(0, 0%, 60%)";
+  const band2Fill = isDark ? "hsl(0, 0%, 38%)" : "hsl(0, 0%, 78%)";
+  const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(0, 0%, 88%)";
+  const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(0, 0%, 45%)";
+  const priceLineColor = isDark ? "hsl(0, 0%, 88%)" : "hsl(265, 40%, 25%)";
+  const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 75%)";
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
+      {/* Legend */}
       <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-wrap">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-foreground inline-block rounded" />
+          <span className="w-3 h-0.5 inline-block rounded" style={{ background: priceLineColor }} />
           Price
           <InfoTooltip {...metricInfo.price} />
         </span>
@@ -132,12 +177,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <InfoTooltip {...metricInfo.regressionLine} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded" style={{ background: band1Color, opacity: 0.3 }} />
+          <span className="w-3 h-3 inline-block rounded" style={{ background: band1Fill, opacity: 0.35 }} />
           1σ Band
           <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded" style={{ background: band2Color, opacity: 0.25 }} />
+          <span className="w-3 h-3 inline-block rounded" style={{ background: band2Fill, opacity: 0.25 }} />
           2σ Band
           <InfoTooltip {...metricInfo.twoSigmaBand} />
         </span>
@@ -149,11 +194,11 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       </div>
 
       <ResponsiveContainer width="100%" height="90%">
-        <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+        <ComposedChart data={stackedData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
           <CartesianGrid
             stroke={gridColor}
             strokeDasharray="3 3"
-            vertical={true}
+            vertical={false}
           />
           <XAxis
             dataKey="date"
@@ -174,13 +219,42 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* 2-sigma band — outer, lighter gray */}
-          <Area dataKey="upper2Sigma" stroke="none" fill={band2Color} fillOpacity={0.25} type="linear" isAnimationActive={false} />
-          <Area dataKey="lower2Sigma" stroke="none" fill={band2Color} fillOpacity={0.25} type="linear" isAnimationActive={false} />
-
-          {/* 1-sigma band — inner, darker gray */}
-          <Area dataKey="upper1Sigma" stroke="none" fill={band1Color} fillOpacity={0.3} type="linear" isAnimationActive={false} />
-          <Area dataKey="lower1Sigma" stroke="none" fill={band1Color} fillOpacity={0.3} type="linear" isAnimationActive={false} />
+          {/* Stacked bands: base2 (invisible) → band2Lower → band1 → band2Upper */}
+          <Area
+            dataKey="base2"
+            stackId="bands"
+            stroke="none"
+            fill="transparent"
+            type="linear"
+            isAnimationActive={false}
+          />
+          <Area
+            dataKey="band2Lower"
+            stackId="bands"
+            stroke="none"
+            fill={band2Fill}
+            fillOpacity={0.2}
+            type="linear"
+            isAnimationActive={false}
+          />
+          <Area
+            dataKey="band1"
+            stackId="bands"
+            stroke="none"
+            fill={band1Fill}
+            fillOpacity={0.25}
+            type="linear"
+            isAnimationActive={false}
+          />
+          <Area
+            dataKey="band2Upper"
+            stackId="bands"
+            stroke="none"
+            fill={band2Fill}
+            fillOpacity={0.2}
+            type="linear"
+            isAnimationActive={false}
+          />
 
           {/* Regression / Forecast line */}
           <Line
