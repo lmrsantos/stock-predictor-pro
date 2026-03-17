@@ -18,18 +18,38 @@ interface SentimentData {
   created_at: string;
 }
 
-const severityConfig: Record<string, { icon: typeof Globe; colorClass: string; bgClass: string }> = {
-  low: { icon: Shield, colorClass: "text-accent-profit", bgClass: "bg-accent-profit/10" },
-  moderate: { icon: Globe, colorClass: "text-yellow-500", bgClass: "bg-yellow-500/10" },
-  elevated: { icon: AlertTriangle, colorClass: "text-orange-500", bgClass: "bg-orange-500/10" },
-  high: { icon: Flame, colorClass: "text-accent-danger", bgClass: "bg-accent-danger/10" },
-  severe: { icon: Skull, colorClass: "text-red-600", bgClass: "bg-red-600/10" },
+const severityConfig: Record<string, { icon: typeof Globe; label: string; gradient: string; textColor: string; barColor: string; borderColor: string }> = {
+  low: {
+    icon: Shield, label: "LOW",
+    gradient: "from-emerald-50 to-green-50", textColor: "text-emerald-700",
+    barColor: "bg-emerald-500", borderColor: "border-emerald-200",
+  },
+  moderate: {
+    icon: Globe, label: "MODERATE",
+    gradient: "from-yellow-50 to-amber-50", textColor: "text-yellow-700",
+    barColor: "bg-yellow-500", borderColor: "border-yellow-200",
+  },
+  elevated: {
+    icon: AlertTriangle, label: "ELEVATED",
+    gradient: "from-orange-50 to-amber-50", textColor: "text-orange-700",
+    barColor: "bg-orange-500", borderColor: "border-orange-200",
+  },
+  high: {
+    icon: Flame, label: "HIGH",
+    gradient: "from-red-50 to-orange-50", textColor: "text-red-600",
+    barColor: "bg-red-500", borderColor: "border-red-200",
+  },
+  severe: {
+    icon: Skull, label: "SEVERE",
+    gradient: "from-red-100 to-red-50", textColor: "text-red-700",
+    barColor: "bg-red-600", borderColor: "border-red-300",
+  },
 };
 
-const impactColors: Record<string, string> = {
-  low: "bg-accent-profit/20 text-accent-profit",
-  medium: "bg-orange-500/20 text-orange-500",
-  high: "bg-accent-danger/20 text-accent-danger",
+const impactBadge: Record<string, string> = {
+  low: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  medium: "bg-orange-100 text-orange-700 border-orange-200",
+  high: "bg-red-100 text-red-700 border-red-200",
 };
 
 export function GeopoliticalSentiment() {
@@ -40,13 +60,12 @@ export function GeopoliticalSentiment() {
   useEffect(() => {
     loadSentiment();
 
-    // Realtime
     const channel = supabase
       .channel("geo-sentiment")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "geopolitical_sentiment" },
-        (payload) => setSentiment(payload.new as SentimentData)
+        (payload) => setSentiment(payload.new as unknown as SentimentData)
       )
       .subscribe();
 
@@ -54,7 +73,6 @@ export function GeopoliticalSentiment() {
   }, []);
 
   const loadSentiment = async () => {
-    // First check DB for recent
     const { data: existing } = await supabase
       .from("geopolitical_sentiment")
       .select("*")
@@ -66,11 +84,10 @@ export function GeopoliticalSentiment() {
       setIsLoading(false);
     }
 
-    // Trigger generation (will be rate-limited server-side)
     try {
       const { data } = await supabase.functions.invoke("geopolitical-sentiment");
       if (data?.sentiment) {
-        setSentiment(data.sentiment as SentimentData);
+        setSentiment(data.sentiment as unknown as SentimentData);
       }
     } catch {
       // Silent fail
@@ -81,9 +98,15 @@ export function GeopoliticalSentiment() {
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-16 w-full" />
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-3 w-full" />
+          </div>
+          <Skeleton className="h-12 w-16 rounded-lg" />
+        </div>
       </div>
     );
   }
@@ -95,75 +118,90 @@ export function GeopoliticalSentiment() {
   const events = (sentiment.key_events || []) as KeyEvent[];
 
   return (
-    <div className="space-y-2">
-      <label className="label-upper flex items-center gap-1.5">
-        <Globe className="w-3.5 h-3.5" />
-        Global Tension Index
-      </label>
-
+    <div className={`rounded-xl border ${config.borderColor} bg-gradient-to-r ${config.gradient} overflow-hidden transition-all duration-300`}>
+      {/* Main banner */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className={`w-full ${config.bgClass} rounded-lg p-3 border border-border/50 text-left transition-colors hover:opacity-90`}
+        className="w-full p-4 text-left flex items-center gap-4 hover:opacity-95 transition-opacity"
       >
-        {/* Score bar */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Icon className={`w-4 h-4 ${config.colorClass}`} />
-            <span className={`text-2xl font-mono font-black ${config.colorClass}`}>
-              {sentiment.tension_score}
-            </span>
-            <span className={`text-[10px] font-mono font-bold uppercase ${config.colorClass}`}>
-              {sentiment.severity}
-            </span>
-          </div>
-          {expanded ? (
-            <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-          )}
+        {/* Icon */}
+        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.textColor} bg-white/60 shadow-sm`}>
+          <Icon className="w-5 h-5" />
         </div>
 
-        {/* Tension bar */}
-        <div className="w-full h-1.5 bg-background/50 rounded-full overflow-hidden">
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-mono font-bold tracking-wider text-muted-foreground">
+              GLOBAL TENSION INDEX
+            </span>
+            <span className="inline-flex items-center h-4 px-1 rounded bg-white/40 text-[9px]">
+              🔴 LIVE
+            </span>
+          </div>
+          <p className="text-sm text-foreground/80 leading-snug truncate">
+            {sentiment.summary}
+          </p>
+        </div>
+
+        {/* Score */}
+        <div className="flex-shrink-0 flex flex-col items-center">
+          <span className={`text-3xl font-mono font-black ${config.textColor} leading-none`}>
+            {sentiment.tension_score}
+          </span>
+          <span className={`text-[10px] font-mono font-bold tracking-widest ${config.textColor} mt-0.5`}>
+            {config.label}
+          </span>
+        </div>
+
+        {/* Expand icon */}
+        <div className="flex-shrink-0 ml-1">
+          {expanded ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {/* Tension bar */}
+      <div className="px-4 pb-3">
+        <div className="w-full h-2 bg-white/50 rounded-full overflow-hidden shadow-inner">
           <div
-            className={`h-full rounded-full transition-all duration-1000 ${
-              sentiment.tension_score > 80 ? "bg-red-600" :
-              sentiment.tension_score > 60 ? "bg-accent-danger" :
-              sentiment.tension_score > 40 ? "bg-orange-500" :
-              sentiment.tension_score > 20 ? "bg-yellow-500" :
-              "bg-accent-profit"
-            }`}
+            className={`h-full rounded-full ${config.barColor} transition-all duration-1000 shadow-sm`}
             style={{ width: `${sentiment.tension_score}%` }}
           />
         </div>
-
-        {/* Summary */}
-        <p className="text-[11px] text-foreground/80 mt-2 leading-relaxed">
-          {sentiment.summary}
-        </p>
-      </button>
+        <div className="flex justify-between mt-1 text-[9px] font-mono text-muted-foreground/60">
+          <span>0 · CALM</span>
+          <span>50 · ELEVATED</span>
+          <span>100 · SEVERE</span>
+        </div>
+      </div>
 
       {/* Expanded events */}
       {expanded && events.length > 0 && (
-        <div className="space-y-1.5 pl-1">
-          {events.map((evt, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-2 p-2 bg-secondary/50 rounded border border-border/30"
-            >
-              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${impactColors[evt.impact] || impactColors.medium}`}>
-                {evt.impact?.toUpperCase()}
-              </span>
-              <div className="flex-1 min-w-0">
-                <span className="text-[10px] font-mono font-bold text-muted-foreground">
-                  {evt.region}
+        <div className="px-4 pb-4 border-t border-white/40">
+          <div className="grid gap-2 mt-3 sm:grid-cols-2 lg:grid-cols-3">
+            {events.map((evt, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 p-2.5 bg-white/60 rounded-lg border border-white/80 shadow-sm"
+              >
+                <span className={`flex-shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${impactBadge[evt.impact] || impactBadge.medium}`}>
+                  {evt.impact?.toUpperCase()}
                 </span>
-                <p className="text-[11px] text-foreground/80 leading-snug">
-                  {evt.event}
-                </p>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-mono font-bold text-foreground/60 block">
+                    {evt.region}
+                  </span>
+                  <p className="text-xs text-foreground/80 leading-snug mt-0.5">
+                    {evt.event}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
