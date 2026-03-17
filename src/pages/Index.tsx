@@ -61,6 +61,7 @@ const Index = () => {
 
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
   const analystRating = meta?.analystRating || null;
+  const website = meta?.website || null;
 
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
@@ -116,6 +117,7 @@ const Index = () => {
     annualReturn: regression && lastPrice ? slopeToAnnualReturn(regression.slope, lastPrice) : undefined,
     slope: regression?.slope,
     fundamentals: fundamentals || undefined,
+    website: website || undefined,
   };
 
   return (
@@ -157,6 +159,7 @@ const Index = () => {
             setSearchInput(symbol);
             setTicker(symbol);
           }}
+          website={website}
         />
 
         <GeopoliticalSentiment />

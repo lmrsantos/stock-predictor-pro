@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Table2, Flame } from "lucide-react";
+import { Table2, Globe, FileText } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
@@ -21,6 +21,7 @@ interface StockHeaderProps {
   showTable: boolean;
   onToggleTable: () => void;
   onSelectTicker: (ticker: string) => void;
+  website?: string | null;
 }
 
 export function StockHeader({
@@ -33,6 +34,7 @@ export function StockHeader({
   showTable,
   onToggleTable,
   onSelectTicker,
+  website,
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
@@ -48,10 +50,36 @@ export function StockHeader({
             </div>
           ) : (
             <>
-              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-                {ticker}{" "}
-                <span className="text-muted-foreground font-normal text-lg">{name}</span>
-              </h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
+                  {ticker}{" "}
+                  <span className="text-muted-foreground font-normal text-lg">{name}</span>
+                </h1>
+                {website && (
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      title="Company Website"
+                    >
+                      <Globe className="w-3 h-3" />
+                      Website
+                    </a>
+                    <a
+                      href={`${website.replace(/\/$/, '')}/investors`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
+                      title="Investor Relations"
+                    >
+                      <FileText className="w-3 h-3" />
+                      IR
+                    </a>
+                  </div>
+                )}
+              </div>
               <div className="flex items-baseline gap-3 mt-2">
                 <span className="text-3xl lg:text-4xl font-mono font-bold">
                   ${formatPrice(price)}

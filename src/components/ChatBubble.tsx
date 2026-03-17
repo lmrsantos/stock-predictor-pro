@@ -19,6 +19,7 @@ interface ChatContext {
   annualReturn?: number;
   slope?: number;
   fundamentals?: any;
+  website?: string;
 }
 
 interface ChatBubbleProps {
@@ -112,7 +113,7 @@ export function ChatBubble({ context }: ChatBubbleProps) {
     let cancelled = false;
 
     // Clear previous conversation and auto-fetch insight
-    const autoMessage: Message = { role: "user", content: `Give me a quick overview of ${ticker}` };
+    const autoMessage: Message = { role: "user", content: `Give me a quick overview of ${ticker}${context?.website ? '. Also mention that I can visit the company website and investor relations page using the links next to the ticker symbol above.' : ''}` };
     setMessages([autoMessage]);
     setOpen(true);
     setLoading(true);
