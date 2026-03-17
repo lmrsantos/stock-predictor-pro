@@ -117,6 +117,7 @@ const Index = () => {
     annualReturn: regression && lastPrice ? slopeToAnnualReturn(regression.slope, lastPrice) : undefined,
     slope: regression?.slope,
     fundamentals: fundamentals || undefined,
+    website: website || undefined,
   };
 
   return (
