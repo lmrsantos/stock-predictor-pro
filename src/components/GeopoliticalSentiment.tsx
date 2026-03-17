@@ -125,7 +125,7 @@ export function GeopoliticalSentiment() {
         className="w-full p-4 text-left flex items-center gap-4 hover:opacity-95 transition-opacity"
       >
         {/* Icon */}
-        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.textColor} bg-white/60 shadow-sm`}>
+        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.textColor} bg-white/10`}>
           <Icon className="w-5 h-5" />
         </div>
 
