@@ -62,6 +62,7 @@ const Index = () => {
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
   const analystRating = meta?.analystRating || null;
   const website = meta?.website || null;
+  const irWebsite = meta?.irWebsite || null;
 
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
@@ -160,6 +161,7 @@ const Index = () => {
             setTicker(symbol);
           }}
           website={website}
+          irWebsite={irWebsite}
         />
 
         <GeopoliticalSentiment />

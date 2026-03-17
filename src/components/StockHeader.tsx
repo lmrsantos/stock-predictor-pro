@@ -22,6 +22,7 @@ interface StockHeaderProps {
   onToggleTable: () => void;
   onSelectTicker: (ticker: string) => void;
   website?: string | null;
+  irWebsite?: string | null;
 }
 
 export function StockHeader({
@@ -35,6 +36,7 @@ export function StockHeader({
   onToggleTable,
   onSelectTicker,
   website,
+  irWebsite,
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
@@ -68,7 +70,7 @@ export function StockHeader({
                       Website
                     </a>
                     <a
-                      href={`${website.replace(/\/$/, '')}/investors`}
+                      href={irWebsite || `${website.replace(/\/$/, '')}/investors`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"

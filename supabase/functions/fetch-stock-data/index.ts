@@ -178,6 +178,8 @@ serve(async (req) => {
     }
 
     const website = fmpProfile.website || yahooAssetProfile.website || null;
+    const irWebsite = yahooAssetProfile.irWebsite || null;
+    console.log("Website:", website, "IR Website:", irWebsite);
 
     // Parse FMP rating for analyst recommendations
     let fmpRating: Record<string, any> = {};
@@ -293,6 +295,7 @@ serve(async (req) => {
           fifty_two_week_low: fundamentals.fifty_two_week_low,
         },
         website,
+        irWebsite,
         analystRating,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
