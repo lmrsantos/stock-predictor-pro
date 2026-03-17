@@ -135,7 +135,7 @@ export function GeopoliticalSentiment() {
             <span className="text-xs font-mono font-bold tracking-wider text-neutral-400">
               GLOBAL TENSION INDEX
             </span>
-            <span className="inline-flex items-center h-4 px-1 rounded bg-white/40 text-[9px]">
+            <span className="inline-flex items-center h-4 px-1 rounded bg-white/10 text-[9px] text-neutral-300">
               🔴 LIVE
             </span>
           </div>
