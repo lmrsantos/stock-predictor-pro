@@ -295,6 +295,7 @@ serve(async (req) => {
           fifty_two_week_low: fundamentals.fifty_two_week_low,
         },
         website,
+        irWebsite,
         analystRating,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
