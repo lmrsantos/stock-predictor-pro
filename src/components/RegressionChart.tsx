@@ -158,15 +158,6 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const isDark = useSyncExternalStore(
-    (cb) => {
-      const observer = new MutationObserver(cb);
-      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-      return () => observer.disconnect();
-    },
-    () => document.documentElement.classList.contains("dark")
-  );
-
   const regressionColor = slopePositive
     ? "hsl(150, 70%, 40%)"
     : "hsl(0, 75%, 55%)";
