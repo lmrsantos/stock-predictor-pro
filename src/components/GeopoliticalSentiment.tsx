@@ -62,7 +62,7 @@ export function GeopoliticalSentiment() {
       .limit(1);
 
     if (existing?.length) {
-      setSentiment(existing[0] as SentimentData);
+      setSentiment(existing[0] as unknown as SentimentData);
       setIsLoading(false);
     }
 
