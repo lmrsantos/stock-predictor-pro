@@ -159,6 +159,7 @@ const Index = () => {
             setSearchInput(symbol);
             setTicker(symbol);
           }}
+          website={website}
         />
 
         <GeopoliticalSentiment />
