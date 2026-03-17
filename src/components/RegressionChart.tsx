@@ -189,7 +189,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             dataKey="upper1Sigma"
             stroke="none"
             fill={bandColor}
-            fillOpacity={0.1}
+            fillOpacity={0.2}
             type="linear"
             isAnimationActive={false}
           />
