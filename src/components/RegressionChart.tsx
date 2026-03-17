@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import {
   ComposedChart,
   Area,
@@ -91,6 +91,15 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+  const isDark = useSyncExternalStore(
+    (cb) => {
+      const observer = new MutationObserver(cb);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      return () => observer.disconnect();
+    },
+    () => document.documentElement.classList.contains("dark")
+  );
+
   // Transform data into stacked format for proper band rendering
   const stackedData = useMemo(() => {
     return data.map((d): StackedPoint => {
@@ -149,8 +158,6 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const isDark = document.documentElement.classList.contains("dark");
-
   const regressionColor = slopePositive
     ? "hsl(150, 70%, 40%)"
     : "hsl(0, 75%, 55%)";
@@ -159,7 +166,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   const band2Fill = isDark ? "hsl(0, 0%, 38%)" : "hsl(0, 0%, 78%)";
   const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(0, 0%, 88%)";
   const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(0, 0%, 45%)";
-  const priceLineColor = isDark ? "hsl(0, 0%, 88%)" : "hsl(265, 40%, 25%)";
+  const priceLineColor = isDark ? "hsl(0, 0%, 88%)" : "hsl(265, 60%, 40%)";
   const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 75%)";
 
   return (
