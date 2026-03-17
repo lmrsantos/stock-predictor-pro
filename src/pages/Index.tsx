@@ -159,6 +159,8 @@ const Index = () => {
           }}
         />
 
+        <GeopoliticalSentiment />
+
         <InvestmentRecommendation
           regression={regression}
           fundamentals={fundamentals}
