@@ -163,6 +163,22 @@ serve(async (req) => {
       }
     }
 
+    let yahooAssetProfile: Record<string, any> = {};
+    if (quoteSummaryRes) {
+      try {
+        if (quoteSummaryRes.ok) {
+          const quoteSummaryJson = await quoteSummaryRes.json();
+          yahooAssetProfile = quoteSummaryJson.quoteSummary?.result?.[0]?.assetProfile || {};
+        } else {
+          console.warn("Yahoo quoteSummary returned:", quoteSummaryRes.status);
+        }
+      } catch (e) {
+        console.warn("Yahoo quoteSummary parse failed:", e);
+      }
+    }
+
+    const website = fmpProfile.website || yahooAssetProfile.website || null;
+
     // Parse FMP rating for analyst recommendations
     let fmpRating: Record<string, any> = {};
     if (fmpRatingRes) {
