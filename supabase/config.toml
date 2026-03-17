@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.chat-insights]
 verify_jwt = false
+
+[functions.geopolitical-sentiment]
+verify_jwt = false
