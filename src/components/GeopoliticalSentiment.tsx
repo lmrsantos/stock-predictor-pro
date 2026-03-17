@@ -18,38 +18,38 @@ interface SentimentData {
   created_at: string;
 }
 
-const severityConfig: Record<string, { icon: typeof Globe; label: string; gradient: string; textColor: string; barColor: string; borderColor: string }> = {
+const severityConfig: Record<string, { icon: typeof Globe; label: string; textColor: string; barColor: string; borderColor: string }> = {
   low: {
     icon: Shield, label: "LOW",
-    gradient: "from-emerald-50 to-green-50", textColor: "text-emerald-700",
-    barColor: "bg-emerald-500", borderColor: "border-emerald-200",
+    textColor: "text-emerald-400",
+    barColor: "bg-emerald-500", borderColor: "border-emerald-900",
   },
   moderate: {
     icon: Globe, label: "MODERATE",
-    gradient: "from-yellow-50 to-amber-50", textColor: "text-yellow-700",
-    barColor: "bg-yellow-500", borderColor: "border-yellow-200",
+    textColor: "text-yellow-400",
+    barColor: "bg-yellow-500", borderColor: "border-yellow-900",
   },
   elevated: {
     icon: AlertTriangle, label: "ELEVATED",
-    gradient: "from-orange-50 to-amber-50", textColor: "text-orange-700",
-    barColor: "bg-orange-500", borderColor: "border-orange-200",
+    textColor: "text-orange-400",
+    barColor: "bg-orange-500", borderColor: "border-orange-900",
   },
   high: {
     icon: Flame, label: "HIGH",
-    gradient: "from-red-50 to-orange-50", textColor: "text-red-600",
-    barColor: "bg-red-500", borderColor: "border-red-200",
+    textColor: "text-red-400",
+    barColor: "bg-red-500", borderColor: "border-red-900",
   },
   severe: {
     icon: Skull, label: "SEVERE",
-    gradient: "from-red-100 to-red-50", textColor: "text-red-700",
-    barColor: "bg-red-600", borderColor: "border-red-300",
+    textColor: "text-red-500",
+    barColor: "bg-red-600", borderColor: "border-red-800",
   },
 };
 
 const impactBadge: Record<string, string> = {
-  low: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  medium: "bg-orange-100 text-orange-700 border-orange-200",
-  high: "bg-red-100 text-red-700 border-red-200",
+  low: "bg-emerald-900/50 text-emerald-400 border-emerald-700",
+  medium: "bg-orange-900/50 text-orange-400 border-orange-700",
+  high: "bg-red-900/50 text-red-400 border-red-700",
 };
 
 export function GeopoliticalSentiment() {
