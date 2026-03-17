@@ -5,6 +5,7 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
+import { GeopoliticalSentiment } from "./GeopoliticalSentiment";
 
 interface SidebarProps {
   searchInput: string;
