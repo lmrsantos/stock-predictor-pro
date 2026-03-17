@@ -186,7 +186,7 @@ export function GeopoliticalSentiment() {
             {events.map((evt, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 p-2.5 bg-white/60 rounded-lg border border-white/80 shadow-sm"
+                className="flex items-start gap-2 p-2.5 bg-white/5 rounded-lg border border-white/10"
               >
                 <span className={`flex-shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${impactBadge[evt.impact] || impactBadge.medium}`}>
                   {evt.impact?.toUpperCase()}
