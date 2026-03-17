@@ -34,6 +34,7 @@ export function StockHeader({
   showTable,
   onToggleTable,
   onSelectTicker,
+  website,
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
