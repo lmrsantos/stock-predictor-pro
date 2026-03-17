@@ -118,7 +118,7 @@ export function GeopoliticalSentiment() {
   const events = (sentiment.key_events || []) as KeyEvent[];
 
   return (
-    <div className={`rounded-xl border-2 ${config.borderColor} bg-gradient-to-r ${config.gradient} transition-all duration-300`}>
+    <div className={`rounded-xl border ${config.borderColor} bg-neutral-900 transition-all duration-300`}>
       {/* Main banner */}
       <button
         onClick={() => setExpanded(!expanded)}
