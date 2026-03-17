@@ -139,7 +139,7 @@ export function GeopoliticalSentiment() {
               🔴 LIVE
             </span>
           </div>
-          <p className="text-sm text-foreground/80 leading-snug truncate">
+          <p className="text-sm text-neutral-300 leading-snug truncate">
             {sentiment.summary}
           </p>
         </div>
