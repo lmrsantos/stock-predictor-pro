@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Table2, Flame } from "lucide-react";
+import { Table2, Globe, FileText } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
@@ -21,6 +21,7 @@ interface StockHeaderProps {
   showTable: boolean;
   onToggleTable: () => void;
   onSelectTicker: (ticker: string) => void;
+  website?: string | null;
 }
 
 export function StockHeader({
