@@ -72,47 +72,26 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
-  if (isLoading) {
-    return (
-      <div className="flex-1 chart-surface flex items-center justify-center min-h-[400px]">
-        <div className="space-y-3 text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground text-xs font-mono">Loading market data…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!data.length) {
-    return (
-      <div className="flex-1 chart-surface flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground text-sm">Enter a ticker to begin analysis</p>
-      </div>
-    );
-  }
-
-  // Find the forecast boundary
-  const forecastStartIndex = data.findIndex((d) => d.isForecast);
-
-  // Determine if data spans multiple years
-  const firstYear = new Date(data[0]?.date).getFullYear();
-  const lastYear = new Date(data[data.length - 1]?.date).getFullYear();
-  const spanMultipleYears = firstYear !== lastYear;
-
-  const formatDate = (date: string) => {
-    const d = new Date(date);
-    if (spanMultipleYears) {
-      return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-    }
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // Resolve CSS variables for recharts (which needs raw color strings)
+  const getColor = (varName: string) => {
+    const style = getComputedStyle(document.documentElement);
+    const hsl = style.getPropertyValue(varName).trim();
+    return hsl ? `hsl(${hsl})` : "";
   };
 
-  const regressionColor = slopePositive
-    ? "hsl(150, 70%, 40%)"
-    : "hsl(0, 75%, 55%)";
+  const isDark = document.documentElement.classList.contains("dark");
 
-  const bandColor = "hsl(265, 80%, 58%)";
-  const bgColor = "hsl(270, 30%, 98%)";
+  const regressionColor = slopePositive
+    ? getColor("--accent-success")
+    : getColor("--accent-danger");
+
+  const bandColor = getColor("--primary");
+  const bgColor = getColor("--background");
+  const gridColor = getColor("--chart-grid");
+  const tickColor = getColor("--muted-foreground");
+  const borderColor = getColor("--border");
+  const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
+  const primaryColor = getColor("--primary");
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
