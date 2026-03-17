@@ -166,7 +166,7 @@ export function GeopoliticalSentiment() {
 
       {/* Tension bar */}
       <div className="px-4 pb-3">
-        <div className="w-full h-2 bg-white/50 rounded-full overflow-hidden shadow-inner">
+        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full ${config.barColor} transition-all duration-1000 shadow-sm`}
             style={{ width: `${sentiment.tension_score}%` }}
