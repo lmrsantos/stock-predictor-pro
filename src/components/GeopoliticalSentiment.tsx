@@ -172,7 +172,7 @@ export function GeopoliticalSentiment() {
             style={{ width: `${sentiment.tension_score}%` }}
           />
         </div>
-        <div className="flex justify-between mt-1 text-[9px] font-mono text-muted-foreground/60">
+        <div className="flex justify-between mt-1 text-[9px] font-mono text-neutral-600">
           <span>0 · CALM</span>
           <span>50 · ELEVATED</span>
           <span>100 · SEVERE</span>
