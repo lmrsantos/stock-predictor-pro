@@ -178,6 +178,8 @@ serve(async (req) => {
     }
 
     const website = fmpProfile.website || yahooAssetProfile.website || null;
+    const irWebsite = yahooAssetProfile.irWebsite || null;
+    console.log("Website:", website, "IR Website:", irWebsite);
 
     // Parse FMP rating for analyst recommendations
     let fmpRating: Record<string, any> = {};
