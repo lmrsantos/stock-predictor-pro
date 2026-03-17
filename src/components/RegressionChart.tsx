@@ -124,6 +124,8 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   const tickColor = getColor("--muted-foreground");
   const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
   const primaryColor = getColor("--primary");
+
+  return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
       <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-wrap">
         <span className="flex items-center gap-1.5">
