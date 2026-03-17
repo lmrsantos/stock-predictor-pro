@@ -247,7 +247,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {forecastStartIndex > 0 && (
             <ReferenceLine
               x={data[forecastStartIndex]?.date}
-              stroke={gridColor}
+              stroke={refLineColor}
               strokeDasharray="4 4"
               label={{
                 value: "Forecast →",
