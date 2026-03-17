@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Table2, Flame } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { HotStocks } from "./HotStocks";
