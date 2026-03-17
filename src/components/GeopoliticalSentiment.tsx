@@ -47,9 +47,9 @@ const severityConfig: Record<string, { icon: typeof Globe; label: string; textCo
 };
 
 const impactBadge: Record<string, string> = {
-  low: "bg-emerald-900/50 text-emerald-400 border-emerald-700",
-  medium: "bg-orange-900/50 text-orange-400 border-orange-700",
-  high: "bg-red-900/50 text-red-400 border-red-700",
+  low: "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-400 dark:border-emerald-700",
+  medium: "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/50 dark:text-orange-400 dark:border-orange-700",
+  high: "bg-red-100 text-red-700 border-red-300 dark:bg-red-900/50 dark:text-red-400 dark:border-red-700",
 };
 
 export function GeopoliticalSentiment() {
