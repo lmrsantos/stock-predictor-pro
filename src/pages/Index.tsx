@@ -161,6 +161,7 @@ const Index = () => {
             setTicker(symbol);
           }}
           website={website}
+          irWebsite={irWebsite}
         />
 
         <GeopoliticalSentiment />

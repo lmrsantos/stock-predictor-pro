@@ -32,7 +32,7 @@ export interface AnalystRating {
 export async function fetchAndStoreStockData(
   ticker: string,
   period: string = "1y"
-): Promise<{ name: string; currency: string; fundamentals: StockFundamentals | null; analystRating: AnalystRating | null; website: string | null }> {
+): Promise<{ name: string; currency: string; fundamentals: StockFundamentals | null; analystRating: AnalystRating | null; website: string | null; irWebsite: string | null }> {
   const { data, error } = await supabase.functions.invoke("fetch-stock-data", {
     body: { ticker, period },
   });
@@ -46,6 +46,7 @@ export async function fetchAndStoreStockData(
     fundamentals: data.fundamentals || null,
     analystRating: data.analystRating || null,
     website: data.website || null,
+    irWebsite: data.irWebsite || null,
   };
 }
 
