@@ -102,6 +102,13 @@ export function StockHeader({
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          <Link
+            to="/backtest"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <FlaskConical className="w-4 h-4" />
+            Backtest
+          </Link>
           <button
             onClick={() => setHotStocksOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
