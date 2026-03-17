@@ -158,22 +158,22 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
           <CartesianGrid
-            stroke="hsl(268, 25%, 88%)"
+            stroke={gridColor}
             strokeDasharray="3 3"
             vertical={false}
           />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
-            axisLine={{ stroke: "hsl(268, 25%, 88%)" }}
+            tick={{ fill: tickColor, fontSize: 11 }}
+            axisLine={{ stroke: gridColor }}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={60}
           />
           <YAxis
             domain={["auto", "auto"]}
-            tick={{ fill: "hsl(265, 15%, 45%)", fontSize: 11 }}
+            tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => `$${v.toFixed(0)}`}
@@ -231,7 +231,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Actual price */}
           <Line
             dataKey="actual"
-            stroke="hsl(265, 40%, 30%)"
+            stroke={priceLineColor}
             strokeWidth={1.5}
             dot={false}
             type="linear"
@@ -242,7 +242,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Predicted price (forecast zone) */}
           <Line
             dataKey="predicted"
-            stroke="hsl(265, 80%, 58%)"
+            stroke={primaryColor}
             strokeWidth={2}
             dot={false}
             type="linear"
@@ -254,12 +254,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {forecastStartIndex > 0 && (
             <ReferenceLine
               x={data[forecastStartIndex]?.date}
-              stroke="hsl(268, 25%, 75%)"
+              stroke={gridColor}
               strokeDasharray="4 4"
               label={{
                 value: "Forecast →",
                 position: "insideTopRight",
-                fill: "hsl(265, 15%, 45%)",
+                fill: tickColor,
                 fontSize: 10,
               }}
             />
