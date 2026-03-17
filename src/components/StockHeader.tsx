@@ -22,6 +22,7 @@ interface StockHeaderProps {
   onToggleTable: () => void;
   onSelectTicker: (ticker: string) => void;
   website?: string | null;
+  irWebsite?: string | null;
 }
 
 export function StockHeader({
