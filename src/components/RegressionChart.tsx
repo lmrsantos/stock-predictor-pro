@@ -91,6 +91,15 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+  const isDark = useSyncExternalStore(
+    (cb) => {
+      const observer = new MutationObserver(cb);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      return () => observer.disconnect();
+    },
+    () => document.documentElement.classList.contains("dark")
+  );
+
   // Transform data into stacked format for proper band rendering
   const stackedData = useMemo(() => {
     return data.map((d): StackedPoint => {
