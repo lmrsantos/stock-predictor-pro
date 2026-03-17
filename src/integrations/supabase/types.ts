@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      geopolitical_sentiment: {
+        Row: {
+          created_at: string
+          id: string
+          key_events: Json
+          severity: string
+          summary: string
+          tension_score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_events?: Json
+          severity?: string
+          summary: string
+          tension_score: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_events?: Json
+          severity?: string
+          summary?: string
+          tension_score?: number
+        }
+        Relationships: []
+      }
       market_updates: {
         Row: {
           content: string

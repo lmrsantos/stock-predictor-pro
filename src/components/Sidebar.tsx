@@ -5,6 +5,7 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
+import { GeopoliticalSentiment } from "./GeopoliticalSentiment";
 
 interface SidebarProps {
   searchInput: string;
@@ -266,6 +267,12 @@ export function Sidebar({
           ticker={ticker}
         />
       </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Geopolitical Sentiment */}
+      <GeopoliticalSentiment />
 
       {/* Divider */}
       <div className="border-t border-border" />
