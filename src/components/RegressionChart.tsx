@@ -111,8 +111,8 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     ? "hsl(150, 70%, 40%)"
     : "hsl(0, 75%, 55%)";
 
-  const bandColor = isDark ? "hsl(0, 0%, 60%)" : "hsl(0, 0%, 50%)";
-  const bgColor = isDark ? "hsl(0, 0%, 11%)" : "hsl(270, 30%, 96%)";
+  const band1Color = isDark ? "hsl(0, 0%, 45%)" : "hsl(0, 0%, 70%)";
+  const band2Color = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 82%)";
   const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(268, 25%, 88%)";
   const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(265, 15%, 45%)";
   const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
