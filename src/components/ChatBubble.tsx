@@ -19,6 +19,7 @@ interface ChatContext {
   annualReturn?: number;
   slope?: number;
   fundamentals?: any;
+  website?: string;
 }
 
 interface ChatBubbleProps {
