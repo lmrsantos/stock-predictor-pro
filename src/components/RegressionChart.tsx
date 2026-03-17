@@ -105,25 +105,18 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  // Resolve CSS variables for recharts (which needs raw color strings)
-  const getColor = (varName: string) => {
-    const style = getComputedStyle(document.documentElement);
-    const hsl = style.getPropertyValue(varName).trim();
-    return hsl ? `hsl(${hsl})` : "";
-  };
-
   const isDark = document.documentElement.classList.contains("dark");
 
   const regressionColor = slopePositive
-    ? getColor("--accent-success")
-    : getColor("--accent-danger");
+    ? "hsl(150, 70%, 40%)"
+    : "hsl(0, 75%, 55%)";
 
-  const bandColor = getColor("--primary");
-  const bgColor = getColor("--background");
-  const gridColor = getColor("--border");
-  const tickColor = getColor("--muted-foreground");
+  const bandColor = "hsl(265, 80%, 58%)";
+  const bgColor = isDark ? "hsl(0, 0%, 7%)" : "hsl(270, 30%, 98%)";
+  const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(268, 25%, 88%)";
+  const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(265, 15%, 45%)";
   const priceLineColor = isDark ? "hsl(0, 0%, 85%)" : "hsl(265, 40%, 30%)";
-  const primaryColor = getColor("--primary");
+  const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(268, 25%, 75%)";
 
   return (
     <div className="flex-1 chart-surface min-h-[400px] p-4 lg:p-6">
