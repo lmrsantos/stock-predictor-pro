@@ -235,7 +235,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           {/* Predicted price (forecast zone) */}
           <Line
             dataKey="predicted"
-            stroke={primaryColor}
+            stroke="hsl(265, 80%, 58%)"
             strokeWidth={2}
             dot={false}
             type="linear"
