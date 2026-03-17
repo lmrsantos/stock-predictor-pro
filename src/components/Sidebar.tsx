@@ -271,6 +271,12 @@ export function Sidebar({
       {/* Divider */}
       <div className="border-t border-border" />
 
+      {/* Geopolitical Sentiment */}
+      <GeopoliticalSentiment />
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
       {/* Hot Stocks */}
       <div>
         <label className="label-upper mb-3 block">Hot Stocks</label>
