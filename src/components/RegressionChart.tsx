@@ -111,7 +111,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     ? "hsl(150, 70%, 40%)"
     : "hsl(0, 75%, 55%)";
 
-  const bandColor = "hsl(265, 80%, 58%)";
+  const bandColor = isDark ? "hsl(0, 0%, 60%)" : "hsl(0, 0%, 50%)";
   const bgColor = isDark ? "hsl(0, 0%, 11%)" : "hsl(270, 30%, 96%)";
   const gridColor = isDark ? "hsl(0, 0%, 20%)" : "hsl(268, 25%, 88%)";
   const tickColor = isDark ? "hsl(0, 0%, 55%)" : "hsl(265, 15%, 45%)";
@@ -132,12 +132,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <InfoTooltip {...metricInfo.regressionLine} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-30" style={{ background: bandColor }} />
+          <span className="w-3 h-3 inline-block rounded bg-muted-foreground/30" />
           1σ Band
           <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: bandColor }} />
+          <span className="w-3 h-3 inline-block rounded bg-muted-foreground/15" />
           2σ Band
           <InfoTooltip {...metricInfo.twoSigmaBand} />
         </span>
@@ -179,7 +179,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             dataKey="upper2Sigma"
             stroke="none"
             fill={bandColor}
-            fillOpacity={0.06}
+            fillOpacity={0.12}
             type="linear"
             isAnimationActive={false}
           />
@@ -189,7 +189,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             dataKey="upper1Sigma"
             stroke="none"
             fill={bandColor}
-            fillOpacity={0.1}
+            fillOpacity={0.2}
             type="linear"
             isAnimationActive={false}
           />
