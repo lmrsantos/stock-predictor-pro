@@ -153,7 +153,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <CartesianGrid
             stroke={gridColor}
             strokeDasharray="3 3"
-            vertical={false}
+            vertical={true}
           />
           <XAxis
             dataKey="date"
@@ -174,20 +174,12 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* 2-sigma band */}
+          {/* 2-sigma band (just the upper area, low opacity) */}
           <Area
             dataKey="upper2Sigma"
             stroke="none"
             fill={bandColor}
-            fillOpacity={0.08}
-            type="linear"
-            isAnimationActive={false}
-          />
-          <Area
-            dataKey="lower2Sigma"
-            stroke="none"
-            fill={bgColor}
-            fillOpacity={1}
+            fillOpacity={0.06}
             type="linear"
             isAnimationActive={false}
           />
@@ -197,15 +189,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             dataKey="upper1Sigma"
             stroke="none"
             fill={bandColor}
-            fillOpacity={0.15}
-            type="linear"
-            isAnimationActive={false}
-          />
-          <Area
-            dataKey="lower1Sigma"
-            stroke="none"
-            fill={bgColor}
-            fillOpacity={1}
+            fillOpacity={0.1}
             type="linear"
             isAnimationActive={false}
           />
