@@ -137,7 +137,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           <InfoTooltip {...metricInfo.oneSigmaBand} />
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 inline-block rounded opacity-15" style={{ background: bandColor }} />
+          <span className="w-3 h-3 inline-block rounded bg-muted-foreground/15" />
           2σ Band
           <InfoTooltip {...metricInfo.twoSigmaBand} />
         </span>
