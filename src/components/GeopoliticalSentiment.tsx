@@ -157,9 +157,9 @@ export function GeopoliticalSentiment() {
         {/* Expand icon */}
         <div className="flex-shrink-0 ml-1">
           {expanded ? (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            <ChevronUp className="w-4 h-4 text-neutral-500" />
           ) : (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <ChevronDown className="w-4 h-4 text-neutral-500" />
           )}
         </div>
       </button>
