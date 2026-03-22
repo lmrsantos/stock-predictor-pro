@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { InfoTooltip } from "@/components/InfoTooltip";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { runAllModels, BacktestResult, ModelType } from "@/lib/backtesting";
@@ -153,12 +154,60 @@ function TickerBacktest({ ticker, splitRatio }: { ticker: string; splitRatio: nu
           <thead>
             <tr className="border-b border-border text-muted-foreground">
               <th className="text-left px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">Model</th>
-              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">MAPE</th>
-              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">RMSE</th>
-              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">MAE</th>
-              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">Direction %</th>
-              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">Final Error</th>
-              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">R² (Train)</th>
+              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">
+                <span className="inline-flex items-center">MAPE
+                  <InfoTooltip
+                    title="MAPE (Mean Absolute Percentage Error)"
+                    what="The average percentage difference between predicted and actual prices across all test days. It measures how far off the model's predictions were, regardless of direction."
+                    howToRead="Lower is better. MAPE < 5% = excellent accuracy. 5–10% = good. 10–20% = moderate. > 20% = poor. Example: MAPE of 3.5% means predictions were off by 3.5% on average — a $100 stock would be predicted within ±$3.50."
+                  />
+                </span>
+              </th>
+              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">
+                <span className="inline-flex items-center">RMSE
+                  <InfoTooltip
+                    title="RMSE (Root Mean Squared Error)"
+                    what="The square root of the average squared differences between predicted and actual prices. It penalizes large errors more heavily than small ones."
+                    howToRead="Lower is better. Measured in dollars. RMSE is always ≥ MAE — if RMSE is much larger than MAE, it means the model has some very large outlier errors. Example: RMSE of $8.50 on a $200 stock means typical errors are around $8.50, but some individual days had bigger misses."
+                  />
+                </span>
+              </th>
+              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">
+                <span className="inline-flex items-center">MAE
+                  <InfoTooltip
+                    title="MAE (Mean Absolute Error)"
+                    what="The average dollar difference between predicted and actual prices, ignoring whether the model was too high or too low."
+                    howToRead="Lower is better. Measured in dollars. Easier to interpret than RMSE. Example: MAE of $5.00 means the model's prediction was off by about $5 on average each day. Compare it to the stock price — $5 on a $20 stock is 25% error, but on a $500 stock it's only 1%."
+                  />
+                </span>
+              </th>
+              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">
+                <span className="inline-flex items-center">Direction %
+                  <InfoTooltip
+                    title="Directional Accuracy"
+                    what="The percentage of test days where the model correctly predicted whether the price would go up or down compared to the previous day."
+                    howToRead="Above 50% is better than a coin flip. > 55% = decent. > 60% = strong. Example: Direction % of 52% means the model guessed the daily direction correctly about half the time — typical for simple regression models since daily moves are noisy."
+                  />
+                </span>
+              </th>
+              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">
+                <span className="inline-flex items-center">Final Error
+                  <InfoTooltip
+                    title="Final Day Error"
+                    what="The percentage difference between the model's predicted price and the actual price on the last day of the test period."
+                    howToRead="Positive (+) means the model predicted higher than reality (optimistic). Negative (−) means it predicted lower (pessimistic). Closer to 0% is better. Example: Final Error of +12% means the model predicted a price 12% above where the stock actually ended up."
+                  />
+                </span>
+              </th>
+              <th className="text-right px-4 py-2.5 font-bold uppercase tracking-widest text-[10px]">
+                <span className="inline-flex items-center">R² (Train)
+                  <InfoTooltip
+                    title="R² (Training R-Squared)"
+                    what="How well the regression line fit the training data (0 to 1). It shows how 'linear' or predictable the stock's movement was during the training period."
+                    howToRead="R² > 0.7 = strong trend in training data. 0.4–0.7 = moderate. < 0.4 = choppy. High R² doesn't guarantee good predictions — it only means the training data had a clean trend. Example: R² of 0.92 means the training period had a very consistent trend, but the stock might still behave differently in the test period."
+                  />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
