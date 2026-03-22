@@ -52,6 +52,14 @@ const Index = () => {
     staleTime: 10 * 60 * 1000,
   });
 
+  // Step 3: Read fundamentals from DB
+  const { data: dbFundamentals } = useQuery({
+    queryKey: ["fundamentals-db", ticker],
+    queryFn: () => getFundamentalsFromDB(ticker),
+    enabled: !!meta,
+    staleTime: 10 * 60 * 1000,
+  });
+
   // Step 3.5: Fetch VIX level for risk context
   const { data: vixData } = useQuery({
     queryKey: ["vix-risk"],
