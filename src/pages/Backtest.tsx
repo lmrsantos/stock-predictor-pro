@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { InfoTooltip } from "@/components/InfoTooltip";
 import { useQuery } from "@tanstack/react-query";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { runAllModels, BacktestResult, ModelType } from "@/lib/backtesting";
