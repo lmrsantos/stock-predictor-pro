@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
-import { computeLinearRegression } from "@/lib/regression";
+import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
 import { GeopoliticalSentiment } from "@/components/GeopoliticalSentiment";
