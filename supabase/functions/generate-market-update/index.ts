@@ -12,21 +12,31 @@ async function fetchMarketNews(fmpKey: string, ticker?: string): Promise<string>
     // Fetch general market news
     const generalUrl = `https://financialmodelingprep.com/stable/news/stock-latest?page=0&limit=5&apikey=${fmpKey}`;
     const generalRes = await fetch(generalUrl);
-    const generalNews = generalRes.ok ? await generalRes.json() : [];
+    let generalNews: any[] = [];
+    if (generalRes.ok) {
+      const raw = await generalRes.json();
+      generalNews = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+    }
 
-    // Fetch ticker-specific news if provided
     let tickerNews: any[] = [];
     if (ticker && !ticker.startsWith("^")) {
       const tickerUrl = `https://financialmodelingprep.com/stable/news/stock?symbols=${ticker}&limit=5&apikey=${fmpKey}`;
       const tickerRes = await fetch(tickerUrl);
-      tickerNews = tickerRes.ok ? await tickerRes.json() : [];
+      if (tickerRes.ok) {
+        const raw = await tickerRes.json();
+        tickerNews = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+      }
     }
 
     const allNews = [...tickerNews, ...generalNews].slice(0, 8);
     if (!allNews.length) return "";
 
     const headlines = allNews
-      .map((n: any) => `- ${n.title || n.text || ""}${n.symbol ? ` (${n.symbol})` : ""}`)
+      .map((n: any) => {
+        const title = typeof n === 'string' ? n : (n?.title || n?.text || "");
+        const symbol = typeof n === 'object' ? n?.symbol : "";
+        return title ? `- ${title}${symbol ? ` (${symbol})` : ""}` : "";
+      })
       .filter((h: string) => h.length > 3)
       .join("\n");
 
