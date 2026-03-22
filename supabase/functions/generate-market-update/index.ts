@@ -210,7 +210,10 @@ Rules:
       .replace(/\*\*(.*?)\*\*/g, '$1')
       .replace(/\*(.*?)\*/g, '$1')
       .replace(/^#+\s*/gm, '')
-      .replace(/^[-*]\s+/gm, '');
+      .replace(/^[-*]\s+/gm, '')
+      .replace(/[{}[\]"]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
 
     const { data: update, error: insertError } = await supabase
       .from("market_updates")
