@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
-import { computeLinearRegression } from "@/lib/regression";
+import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
 import { GeopoliticalSentiment } from "@/components/GeopoliticalSentiment";
@@ -59,6 +60,36 @@ const Index = () => {
     staleTime: 10 * 60 * 1000,
   });
 
+  // Step 3.5: Fetch VIX level for risk context
+  const { data: vixData } = useQuery({
+    queryKey: ["vix-risk"],
+    queryFn: async () => {
+      // Fetch recent VIX close price from DB (if available)
+      const { data } = await supabase
+        .from("stock_prices")
+        .select("close")
+        .eq("ticker", "^VIX")
+        .order("date", { ascending: false })
+        .limit(1);
+      return data?.[0]?.close ? Number(data[0].close) : null;
+    },
+    staleTime: 30 * 60 * 1000, // 30 min
+  });
+
+  // Step 3.6: Fetch geopolitical tension score
+  const { data: tensionData } = useQuery({
+    queryKey: ["tension-risk"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("geopolitical_sentiment")
+        .select("tension_score")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return data?.[0]?.tension_score ?? null;
+    },
+    staleTime: 30 * 60 * 1000,
+  });
+
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
   const analystRating = meta?.analystRating || null;
   const website = meta?.website || null;
@@ -67,8 +98,14 @@ const Index = () => {
   const isLoading = isFetching || isQuerying;
   const error = fetchError || queryError;
 
+  // Build risk context from VIX + geopolitical tension
+  const riskContext: RiskContext | undefined = (vixData || tensionData) ? {
+    vixLevel: vixData ?? undefined,
+    tensionScore: tensionData ?? undefined,
+  } : undefined;
+
   const regression = stockData?.length
-    ? computeLinearRegression(stockData, forecastDays)
+    ? computeLinearRegression(stockData, forecastDays, riskContext)
     : null;
 
   // Build unified chart data

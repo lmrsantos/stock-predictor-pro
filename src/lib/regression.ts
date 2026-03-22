@@ -1,17 +1,60 @@
 import { StockDataPoint, RegressionResult, PredictionPoint, FitPoint } from "./types";
 
 /**
- * Dampened Weighted Log-Linear Regression
+ * Risk context from VIX and geopolitical tension.
+ * Used to discount predictions during high-fear regimes.
+ */
+export interface RiskContext {
+  vixLevel?: number;       // Current VIX value (long-term avg ~19-20)
+  tensionScore?: number;   // 0-100 geopolitical tension
+}
+
+/**
+ * Compute a risk discount factor based on VIX + geopolitical tension.
+ * 
+ * - VIX component: When VIX > 20, apply increasing discount.
+ *   VIX 20 → 0% discount, VIX 30 → ~3% discount, VIX 40 → ~6% discount
+ * - Tension component: tension 50+ adds additional discount.
+ *   Tension 50 → 0%, tension 75 → ~2%, tension 100 → ~4%
+ * - Combined max discount capped at ~12%
+ */
+function computeRiskDiscount(risk?: RiskContext): number {
+  if (!risk) return 0;
+
+  let discount = 0;
+
+  // VIX component — elevated fear = lower expected returns
+  const vix = risk.vixLevel ?? 20;
+  if (vix > 20) {
+    // Each point above 20 adds ~0.3% discount, capped contribution at 8%
+    discount += Math.min((vix - 20) * 0.003, 0.08);
+  }
+
+  // Geopolitical tension component
+  const tension = risk.tensionScore ?? 0;
+  if (tension > 40) {
+    // Each point above 40 adds ~0.07% discount, capped at 4%
+    discount += Math.min((tension - 40) * 0.0007, 0.04);
+  }
+
+  // Total cap at 12%
+  return Math.min(discount, 0.12);
+}
+
+/**
+ * Dampened Weighted Log-Linear Regression with Risk Adjustment
  * 
  * Fixes for optimistic bias:
  * 1. Exponential weighting — recent data matters more (decay = 0.008)
  * 2. Log-space regression — models compounding, not linear growth
  * 3. Mean-reversion dampening — forecast slope decays toward zero over time
- *    so projections don't blindly extend bullish/bearish trends
+ * 4. **Risk discount** — VIX & geopolitical tension pull predictions lower
+ *    during high-fear market regimes
  */
 export function computeLinearRegression(
   data: StockDataPoint[],
-  forecastDays: number = 30
+  forecastDays: number = 30,
+  riskContext?: RiskContext
 ): RegressionResult {
   const n = data.length;
   if (n < 2) {
@@ -56,7 +99,7 @@ export function computeLinearRegression(
   const ssResidual = residuals.reduce((acc, r) => acc + r * r, 0);
   const rSquared = ssTotal > 0 ? 1 - ssResidual / ssTotal : 0;
 
-  // Historical fit points
+  // Historical fit points (no risk discount applied to historical fit)
   const historicalFit: FitPoint[] = data.map((d, i) => {
     const fitted = fittedValues[i];
     return {
@@ -72,9 +115,11 @@ export function computeLinearRegression(
     };
   });
 
-  // Future predictions with mean-reversion dampening
-  // The slope decays exponentially so projections don't run away
-  const dampeningHalfLife = 15; // slope halves every 15 trading days
+  // Risk discount from VIX + geopolitical tension
+  const riskDiscount = computeRiskDiscount(riskContext);
+
+  // Future predictions with mean-reversion dampening + risk discount
+  const dampeningHalfLife = 15;
   const lastDate = new Date(data[n - 1].date);
   const predictions: PredictionPoint[] = [];
 
@@ -82,13 +127,19 @@ export function computeLinearRegression(
     const dayIndex = n - 1 + i;
     
     // Dampened prediction: slope decays toward zero
-    const dampeningFactor = Math.exp(-0.693 * i / dampeningHalfLife); // ln(2) ≈ 0.693
+    const dampeningFactor = Math.exp(-0.693 * i / dampeningHalfLife);
     const dampenedLogSlope = logSlope * dampeningFactor;
     
     // Predict using dampened slope from last known point
-    const predicted = Math.exp(
+    let predicted = Math.exp(
       logSlope * (n - 1) + logIntercept + dampenedLogSlope * i
     );
+
+    // Apply risk discount — pulls prediction toward last known price
+    // The discount grows with forecast horizon (more discount further out)
+    const horizonFactor = Math.min(i / forecastDays, 1);
+    const appliedDiscount = riskDiscount * horizonFactor;
+    predicted = predicted * (1 - appliedDiscount);
     
     const futureDate = new Date(lastDate);
     futureDate.setDate(futureDate.getDate() + i);
@@ -97,8 +148,9 @@ export function computeLinearRegression(
     const dow = futureDate.getDay();
     if (dow === 0 || dow === 6) continue;
 
-    // Widen uncertainty bands over time
-    const timeUncertainty = standardDeviation * Math.sqrt(i / n + 1);
+    // Widen uncertainty bands during high-risk regimes
+    const riskVolMultiplier = 1 + riskDiscount * 2; // e.g., 10% discount → 20% wider bands
+    const timeUncertainty = standardDeviation * Math.sqrt(i / n + 1) * riskVolMultiplier;
 
     predictions.push({
       date: futureDate.toISOString().split("T")[0],
