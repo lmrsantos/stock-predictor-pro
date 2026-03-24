@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { runAllModels, BacktestResult, ModelType } from "@/lib/backtesting";
 import { Link } from "react-router-dom";
-import { ArrowLeft, FlaskConical, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, TrendingUp, TrendingDown, Loader2, Plus, X } from "lucide-react";
+import { TickerSearch } from "@/components/TickerSearch";
 import {
   ComposedChart,
   Line,
