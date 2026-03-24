@@ -11,45 +11,112 @@ export interface RiskContext {
 
 /**
  * Compute a risk discount factor based on VIX + geopolitical tension.
- * 
- * - VIX component: When VIX > 20, apply increasing discount.
- *   VIX 20 → 0% discount, VIX 30 → ~3% discount, VIX 40 → ~6% discount
- * - Tension component: tension 50+ adds additional discount.
- *   Tension 50 → 0%, tension 75 → ~2%, tension 100 → ~4%
- * - Combined max discount capped at ~12%
  */
 function computeRiskDiscount(risk?: RiskContext): number {
   if (!risk) return 0;
 
   let discount = 0;
 
-  // VIX component — elevated fear = lower expected returns
   const vix = risk.vixLevel ?? 20;
   if (vix > 20) {
-    // Each point above 20 adds ~0.3% discount, capped contribution at 8%
     discount += Math.min((vix - 20) * 0.003, 0.08);
   }
 
-  // Geopolitical tension component
   const tension = risk.tensionScore ?? 0;
   if (tension > 40) {
-    // Each point above 40 adds ~0.07% discount, capped at 4%
     discount += Math.min((tension - 40) * 0.0007, 0.04);
   }
 
-  // Total cap at 12%
   return Math.min(discount, 0.12);
 }
 
+// ============================================
+// IMPROVEMENT 1: Momentum Factor
+// Compares short-term vs long-term moving average
+// to detect trend acceleration/deceleration
+// ============================================
+function computeMomentumFactor(prices: number[]): number {
+  const n = prices.length;
+  if (n < 50) return 1.0; // not enough data
+
+  const shortWindow = Math.min(20, Math.floor(n * 0.1));
+  const longWindow = Math.min(50, Math.floor(n * 0.3));
+
+  const shortMA = prices.slice(-shortWindow).reduce((a, b) => a + b, 0) / shortWindow;
+  const longMA = prices.slice(-longWindow).reduce((a, b) => a + b, 0) / longWindow;
+
+  // Ratio > 1 = bullish momentum, < 1 = bearish momentum
+  const ratio = shortMA / longMA;
+
+  // Clamp between 0.85 and 1.15 to avoid extreme adjustments
+  return Math.max(0.85, Math.min(1.15, ratio));
+}
+
+// ============================================
+// IMPROVEMENT 2: Own-Volatility Regime Detection
+// Uses the stock's own recent volatility vs historical
+// ============================================
+function computeOwnVolatilityMultiplier(prices: number[]): number {
+  const n = prices.length;
+  if (n < 30) return 1.0;
+
+  // Compute daily returns
+  const returns: number[] = [];
+  for (let i = 1; i < n; i++) {
+    returns.push((prices[i] - prices[i - 1]) / prices[i - 1]);
+  }
+
+  // Recent volatility (last 20 days)
+  const recentReturns = returns.slice(-20);
+  const recentMean = recentReturns.reduce((a, b) => a + b, 0) / recentReturns.length;
+  const recentVol = Math.sqrt(recentReturns.reduce((acc, r) => acc + (r - recentMean) ** 2, 0) / recentReturns.length);
+
+  // Historical volatility (full period)
+  const histMean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const histVol = Math.sqrt(returns.reduce((acc, r) => acc + (r - histMean) ** 2, 0) / returns.length);
+
+  if (histVol === 0) return 1.0;
+
+  // Ratio > 1 means elevated recent volatility → widen bands, dampen more
+  const volRatio = recentVol / histVol;
+
+  // Clamp between 0.7 and 2.0
+  return Math.max(0.7, Math.min(2.0, volRatio));
+}
+
+// ============================================
+// IMPROVEMENT 5: Residual Bias Correction
+// Analyzes recent residuals and subtracts systematic bias
+// ============================================
+function computeResidualBias(residuals: number[], prices: number[]): number {
+  const n = residuals.length;
+  if (n < 20) return 0;
+
+  // Look at last 20% of residuals (recent bias)
+  const recentCount = Math.max(10, Math.floor(n * 0.2));
+  const recentResiduals = residuals.slice(-recentCount);
+
+  // Mean residual as percentage of price
+  const recentPrices = prices.slice(-recentCount);
+  const biasRatios = recentResiduals.map((r, i) => r / recentPrices[i]);
+  const meanBias = biasRatios.reduce((a, b) => a + b, 0) / biasRatios.length;
+
+  // If model consistently overshoots (positive residuals mean actual > fitted),
+  // the bias will be positive. We return this to correct predictions.
+  // Clamp to ±5%
+  return Math.max(-0.05, Math.min(0.05, meanBias));
+}
+
 /**
- * Dampened Weighted Log-Linear Regression with Risk Adjustment
+ * Enhanced Regression Model v2
  * 
- * Fixes for optimistic bias:
- * 1. Exponential weighting — recent data matters more (decay = 0.008)
- * 2. Log-space regression — models compounding, not linear growth
- * 3. Mean-reversion dampening — forecast slope decays toward zero over time
- * 4. **Risk discount** — VIX & geopolitical tension pull predictions lower
- *    during high-fear market regimes
+ * Improvements over v1:
+ * 1. Momentum Factor — adjusts slope based on short vs long MA crossover
+ * 2. Own-Volatility Regime — widens bands when stock's own vol is elevated
+ * 3. R² Confidence Scaling — weak trends → predictions closer to current price
+ * 4. Asymmetric Confidence Bands — downside bands 25% wider than upside
+ * 5. Residual Bias Correction — corrects systematic over/undershoot
+ * 6. Horizon-Adaptive Decay — different decay rates for different forecast lengths
  */
 export function computeLinearRegression(
   data: StockDataPoint[],
@@ -99,7 +166,23 @@ export function computeLinearRegression(
   const ssResidual = residuals.reduce((acc, r) => acc + r * r, 0);
   const rSquared = ssTotal > 0 ? 1 - ssResidual / ssTotal : 0;
 
-  // Historical fit points (no risk discount applied to historical fit)
+  // ============ NEW: Compute enhancement factors ============
+
+  // IMPROVEMENT 1: Momentum
+  const momentumFactor = computeMomentumFactor(ys);
+
+  // IMPROVEMENT 2: Own-volatility regime
+  const ownVolMultiplier = computeOwnVolatilityMultiplier(ys);
+
+  // IMPROVEMENT 3: R² confidence scaling
+  // When R² is low, pull predictions toward current price more aggressively
+  // R² of 0.9 → scale 1.0, R² of 0.5 → scale 0.5, R² of 0 → scale 0.1
+  const r2ConfidenceScale = Math.max(0.1, Math.min(1.0, rSquared));
+
+  // IMPROVEMENT 5: Residual bias correction
+  const biasFraction = computeResidualBias(residuals, ys);
+
+  // Historical fit points (no adjustments applied)
   const historicalFit: FitPoint[] = data.map((d, i) => {
     const fitted = fittedValues[i];
     return {
@@ -118,29 +201,44 @@ export function computeLinearRegression(
   // Risk discount from VIX + geopolitical tension
   const riskDiscount = computeRiskDiscount(riskContext);
 
-  // Future predictions with mean-reversion dampening + risk discount
-  const dampeningHalfLife = 15;
+  // IMPROVEMENT 6: Horizon-adaptive decay
+  // Shorter forecasts trust momentum more; longer forecasts revert faster
+  const baseHalfLife = forecastDays <= 30 ? 20 : forecastDays <= 90 ? 12 : 8;
+
+  const lastPrice = ys[n - 1];
   const lastDate = new Date(data[n - 1].date);
   const predictions: PredictionPoint[] = [];
 
   for (let i = 1; i <= forecastDays; i++) {
     const dayIndex = n - 1 + i;
-    
-    // Dampened prediction: slope decays toward zero
-    const dampeningFactor = Math.exp(-0.693 * i / dampeningHalfLife);
+
+    // IMPROVEMENT 6: Adaptive dampening
+    const dampeningFactor = Math.exp(-0.693 * i / baseHalfLife);
     const dampenedLogSlope = logSlope * dampeningFactor;
-    
-    // Predict using dampened slope from last known point
+
+    // Base prediction from regression
     let predicted = Math.exp(
       logSlope * (n - 1) + logIntercept + dampenedLogSlope * i
     );
 
-    // Apply risk discount — pulls prediction toward last known price
-    // The discount grows with forecast horizon (more discount further out)
+    // IMPROVEMENT 1: Apply momentum adjustment
+    // Momentum pulls prediction in the direction of recent trend
+    const momentumAdjustment = (momentumFactor - 1.0) * dampeningFactor;
+    predicted = predicted * (1 + momentumAdjustment);
+
+    // IMPROVEMENT 3: R² confidence scaling
+    // Blend predicted with lastPrice based on R² confidence
+    predicted = lastPrice + (predicted - lastPrice) * r2ConfidenceScale;
+
+    // IMPROVEMENT 5: Bias correction
+    // Subtract systematic bias (if model consistently overshoots)
+    predicted = predicted * (1 - biasFraction * dampeningFactor);
+
+    // Risk discount — pulls prediction toward last known price
     const horizonFactor = Math.min(i / forecastDays, 1);
     const appliedDiscount = riskDiscount * horizonFactor;
     predicted = predicted * (1 - appliedDiscount);
-    
+
     const futureDate = new Date(lastDate);
     futureDate.setDate(futureDate.getDate() + i);
 
@@ -148,18 +246,22 @@ export function computeLinearRegression(
     const dow = futureDate.getDay();
     if (dow === 0 || dow === 6) continue;
 
-    // Widen uncertainty bands during high-risk regimes
-    const riskVolMultiplier = 1 + riskDiscount * 2; // e.g., 10% discount → 20% wider bands
-    const timeUncertainty = standardDeviation * Math.sqrt(i / n + 1) * riskVolMultiplier;
+    // IMPROVEMENT 2: Own-volatility widens bands
+    // IMPROVEMENT 4: Asymmetric bands (downside 25% wider)
+    const riskVolMultiplier = 1 + riskDiscount * 2;
+    const baseUncertainty = standardDeviation * Math.sqrt(i / n + 1) * riskVolMultiplier * ownVolMultiplier;
+
+    const upperUncertainty = baseUncertainty;         // Upside band
+    const lowerUncertainty = baseUncertainty * 1.25;  // IMPROVEMENT 4: Downside 25% wider
 
     predictions.push({
       date: futureDate.toISOString().split("T")[0],
       timestamp: futureDate.getTime() / 1000,
       predicted,
-      upper1Sigma: predicted + timeUncertainty,
-      lower1Sigma: predicted - timeUncertainty,
-      upper2Sigma: predicted + 2 * timeUncertainty,
-      lower2Sigma: predicted - 2 * timeUncertainty,
+      upper1Sigma: predicted + upperUncertainty,
+      lower1Sigma: predicted - lowerUncertainty,
+      upper2Sigma: predicted + 2 * upperUncertainty,
+      lower2Sigma: predicted - 2 * lowerUncertainty,
       dayIndex,
     });
   }
@@ -183,6 +285,5 @@ export function formatPercent(value: number): string {
 }
 
 export function slopeToAnnualReturn(slope: number, currentPrice: number): number {
-  // Approximate: slope is per trading day, ~252 trading days/year
   return (slope * 252) / currentPrice;
 }
