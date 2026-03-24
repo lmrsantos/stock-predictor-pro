@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
@@ -5,6 +6,7 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
+import { Briefcase, FlaskConical } from "lucide-react";
 
 
 interface SidebarProps {
@@ -278,6 +280,28 @@ export function Sidebar({
           onSearchInputChange(symbol);
           onSearch(symbol);
         }} />
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
+      {/* Navigation Links */}
+      <div className="space-y-2">
+        <label className="label-upper">Tools</label>
+        <Link
+          to="/portfolio"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <Briefcase className="w-4 h-4" />
+          My Portfolio
+        </Link>
+        <Link
+          to="/backtest"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <FlaskConical className="w-4 h-4" />
+          Model Backtester
+        </Link>
       </div>
 
     </aside>

@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { runAllModels, BacktestResult, ModelType } from "@/lib/backtesting";
 import { Link } from "react-router-dom";
-import { ArrowLeft, FlaskConical, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, TrendingUp, TrendingDown, Loader2, Plus, X } from "lucide-react";
+import { TickerSearch } from "@/components/TickerSearch";
 import {
   ComposedChart,
   Line,
@@ -16,7 +17,7 @@ import {
   ReferenceLine,
 } from "recharts";
 
-const TEST_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "JPM", "JNJ", "DIS"];
+const DEFAULT_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "JPM", "JNJ", "DIS"];
 
 const TRAINING_SPLITS = [
   { label: "Train 6mo → Test rest", ratio: 0.5 },
@@ -245,15 +246,31 @@ export default function Backtest() {
   const [selectedSplit, setSelectedSplit] = useState(1);
   const [runningTickers, setRunningTickers] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [customTickers, setCustomTickers] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState("");
+
+  const allTickers = [...DEFAULT_TICKERS, ...customTickers.filter(t => !DEFAULT_TICKERS.includes(t))];
+
+  const addCustomTicker = (symbol?: string) => {
+    const ticker = (symbol || customInput).trim().toUpperCase();
+    if (ticker && !allTickers.includes(ticker)) {
+      setCustomTickers(prev => [...prev, ticker]);
+      setCustomInput("");
+    }
+  };
+
+  const removeCustomTicker = (ticker: string) => {
+    setCustomTickers(prev => prev.filter(t => t !== ticker));
+    setRunningTickers(prev => prev.filter(t => t !== ticker));
+  };
 
   const startBacktest = () => {
     setIsRunning(true);
     setRunningTickers([]);
-    // Stagger ticker loading to avoid hitting rate limits
-    TEST_TICKERS.forEach((ticker, i) => {
+    allTickers.forEach((ticker, i) => {
       setTimeout(() => {
         setRunningTickers(prev => [...prev, ticker]);
-      }, i * 1500); // 1.5s between each
+      }, i * 1500);
     });
   };
 
@@ -319,20 +336,34 @@ export default function Backtest() {
             </div>
           </div>
 
+          {/* Custom ticker input */}
+          <div className="flex items-end gap-2">
+            <div className="space-y-1">
+              <label className="label-upper">Add Your Symbol</label>
+              <div className="w-48">
+                <TickerSearch
+                  value={customInput}
+                  onChange={setCustomInput}
+                  onSelect={addCustomTicker}
+                />
+              </div>
+            </div>
+          </div>
+
           <button
             onClick={startBacktest}
-            disabled={isRunning && runningTickers.length < TEST_TICKERS.length}
+            disabled={isRunning && runningTickers.length < allTickers.length}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {isRunning && runningTickers.length < TEST_TICKERS.length ? (
+            {isRunning && runningTickers.length < allTickers.length ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Testing {runningTickers.length}/{TEST_TICKERS.length}…
+                Testing {runningTickers.length}/{allTickers.length}…
               </>
             ) : (
               <>
                 <FlaskConical className="w-4 h-4" />
-                Run Backtest ({TEST_TICKERS.length} stocks)
+                Run Backtest ({allTickers.length} stocks)
               </>
             )}
           </button>
@@ -340,18 +371,28 @@ export default function Backtest() {
 
         {/* Ticker list */}
         <div className="flex flex-wrap gap-2 text-xs font-mono">
-          {TEST_TICKERS.map(t => (
-            <span
-              key={t}
-              className={`px-2 py-1 rounded ${
-                runningTickers.includes(t)
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "bg-secondary text-muted-foreground"
-              }`}
-            >
-              {t}
-            </span>
-          ))}
+          {allTickers.map(t => {
+            const isCustom = customTickers.includes(t);
+            return (
+              <span
+                key={t}
+                className={`px-2 py-1 rounded flex items-center gap-1 ${
+                  runningTickers.includes(t)
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : isCustom
+                    ? "bg-accent text-accent-foreground border border-accent"
+                    : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {t}
+                {isCustom && (
+                  <button onClick={() => removeCustomTicker(t)} className="hover:text-destructive transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
 
         {/* Results */}
