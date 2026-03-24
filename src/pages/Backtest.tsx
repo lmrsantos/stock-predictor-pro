@@ -16,7 +16,7 @@ import {
   ReferenceLine,
 } from "recharts";
 
-const TEST_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "JPM", "JNJ", "DIS"];
+const DEFAULT_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "JPM", "JNJ", "DIS"];
 
 const TRAINING_SPLITS = [
   { label: "Train 6mo → Test rest", ratio: 0.5 },
