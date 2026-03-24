@@ -336,20 +336,34 @@ export default function Backtest() {
             </div>
           </div>
 
+          {/* Custom ticker input */}
+          <div className="flex items-end gap-2">
+            <div className="space-y-1">
+              <label className="label-upper">Add Your Symbol</label>
+              <div className="w-48">
+                <TickerSearch
+                  value={customInput}
+                  onChange={setCustomInput}
+                  onSelect={addCustomTicker}
+                />
+              </div>
+            </div>
+          </div>
+
           <button
             onClick={startBacktest}
-            disabled={isRunning && runningTickers.length < TEST_TICKERS.length}
+            disabled={isRunning && runningTickers.length < allTickers.length}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
           >
-            {isRunning && runningTickers.length < TEST_TICKERS.length ? (
+            {isRunning && runningTickers.length < allTickers.length ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Testing {runningTickers.length}/{TEST_TICKERS.length}…
+                Testing {runningTickers.length}/{allTickers.length}…
               </>
             ) : (
               <>
                 <FlaskConical className="w-4 h-4" />
-                Run Backtest ({TEST_TICKERS.length} stocks)
+                Run Backtest ({allTickers.length} stocks)
               </>
             )}
           </button>
@@ -357,18 +371,28 @@ export default function Backtest() {
 
         {/* Ticker list */}
         <div className="flex flex-wrap gap-2 text-xs font-mono">
-          {TEST_TICKERS.map(t => (
-            <span
-              key={t}
-              className={`px-2 py-1 rounded ${
-                runningTickers.includes(t)
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "bg-secondary text-muted-foreground"
-              }`}
-            >
-              {t}
-            </span>
-          ))}
+          {allTickers.map(t => {
+            const isCustom = customTickers.includes(t);
+            return (
+              <span
+                key={t}
+                className={`px-2 py-1 rounded flex items-center gap-1 ${
+                  runningTickers.includes(t)
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : isCustom
+                    ? "bg-accent text-accent-foreground border border-accent"
+                    : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {t}
+                {isCustom && (
+                  <button onClick={() => removeCustomTicker(t)} className="hover:text-destructive transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
 
         {/* Results */}
