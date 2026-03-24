@@ -101,9 +101,91 @@ function weightedLogLinearRegression(xs: number[], ys: number[], decay: number =
 }
 
 // ============================================
+// ENHANCED MODEL: Momentum + Vol + R² + Bias corrected
+// ============================================
+function computeMomentumFactor(prices: number[]): number {
+  const n = prices.length;
+  if (n < 50) return 1.0;
+  const shortW = Math.min(20, Math.floor(n * 0.1));
+  const longW = Math.min(50, Math.floor(n * 0.3));
+  const shortMA = prices.slice(-shortW).reduce((a, b) => a + b, 0) / shortW;
+  const longMA = prices.slice(-longW).reduce((a, b) => a + b, 0) / longW;
+  return Math.max(0.85, Math.min(1.15, shortMA / longMA));
+}
+
+function computeOwnVolMultiplier(prices: number[]): number {
+  const n = prices.length;
+  if (n < 30) return 1.0;
+  const returns: number[] = [];
+  for (let i = 1; i < n; i++) returns.push((prices[i] - prices[i - 1]) / prices[i - 1]);
+  const recentR = returns.slice(-20);
+  const recentMean = recentR.reduce((a, b) => a + b, 0) / recentR.length;
+  const recentVol = Math.sqrt(recentR.reduce((acc, r) => acc + (r - recentMean) ** 2, 0) / recentR.length);
+  const histMean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const histVol = Math.sqrt(returns.reduce((acc, r) => acc + (r - histMean) ** 2, 0) / returns.length);
+  if (histVol === 0) return 1.0;
+  return Math.max(0.7, Math.min(2.0, recentVol / histVol));
+}
+
+function computeResidualBias(residuals: number[], prices: number[]): number {
+  const n = residuals.length;
+  if (n < 20) return 0;
+  const cnt = Math.max(10, Math.floor(n * 0.2));
+  const recentRes = residuals.slice(-cnt);
+  const recentP = prices.slice(-cnt);
+  const biasRatios = recentRes.map((r, i) => r / recentP[i]);
+  const mean = biasRatios.reduce((a, b) => a + b, 0) / biasRatios.length;
+  return Math.max(-0.05, Math.min(0.05, mean));
+}
+
+function enhancedPredict(
+  trainXs: number[], trainYs: number[], testDayIndex: number, trainingSize: number, forecastDays: number
+): number {
+  const n = trainXs.length;
+  const logYs = trainYs.map(y => Math.log(y));
+  const decay = 0.008;
+  const weights = trainXs.map((_, i) => Math.exp(decay * (i - n + 1)));
+  const totalW = weights.reduce((a, b) => a + b, 0);
+
+  const wSumX = trainXs.reduce((acc, x, i) => acc + weights[i] * x, 0);
+  const wSumY = logYs.reduce((acc, y, i) => acc + weights[i] * y, 0);
+  const wSumXY = trainXs.reduce((acc, x, i) => acc + weights[i] * x * logYs[i], 0);
+  const wSumX2 = trainXs.reduce((acc, x, i) => acc + weights[i] * x * x, 0);
+
+  const logSlope = (totalW * wSumXY - wSumX * wSumY) / (totalW * wSumX2 - wSumX * wSumX);
+  const logIntercept = (wSumY - logSlope * wSumX) / totalW;
+
+  // Fitted values and residuals
+  const fittedValues = trainXs.map(x => Math.exp(logSlope * x + logIntercept));
+  const residuals = trainYs.map((y, i) => y - fittedValues[i]);
+  const meanY = trainYs.reduce((a, b) => a + b, 0) / n;
+  const ssTotal = trainYs.reduce((acc, y) => acc + (y - meanY) ** 2, 0);
+  const ssRes = residuals.reduce((acc, r) => acc + r * r, 0);
+  const rSquared = ssTotal > 0 ? 1 - ssRes / ssTotal : 0;
+
+  // Enhancement factors
+  const momentum = computeMomentumFactor(trainYs);
+  const r2Scale = Math.max(0.1, Math.min(1.0, rSquared));
+  const biasFrac = computeResidualBias(residuals, trainYs);
+
+  const lastPrice = trainYs[n - 1];
+  const daysAhead = testDayIndex - (trainingSize - 1);
+  const baseHalfLife = forecastDays <= 30 ? 20 : forecastDays <= 90 ? 12 : 8;
+  const dampFactor = Math.exp(-0.693 * daysAhead / baseHalfLife);
+  const dampenedSlope = logSlope * dampFactor;
+
+  let predicted = Math.exp(logSlope * (n - 1) + logIntercept + dampenedSlope * daysAhead);
+  predicted *= (1 + (momentum - 1.0) * dampFactor);
+  predicted = lastPrice + (predicted - lastPrice) * r2Scale;
+  predicted *= (1 - biasFrac * dampFactor);
+
+  return predicted;
+}
+
+// ============================================
 // Backtest execution
 // ============================================
-export type ModelType = "linear" | "log-linear" | "weighted-linear" | "weighted-log-linear";
+export type ModelType = "linear" | "log-linear" | "weighted-linear" | "weighted-log-linear" | "enhanced-v2";
 
 function predictWithModel(
   model: ModelType,
@@ -127,6 +209,7 @@ function trainModel(
     case "log-linear": return logLinearRegression(xs, ys);
     case "weighted-linear": return weightedLinearRegression(xs, ys);
     case "weighted-log-linear": return weightedLogLinearRegression(xs, ys);
+    case "enhanced-v2": return weightedLogLinearRegression(xs, ys, 0.008);
   }
 }
 
@@ -150,7 +233,12 @@ export function runBacktest(
 
   for (let i = 0; i < testData.length; i++) {
     const dayIndex = trainingSize + i;
-    const predicted = predictWithModel(model, slope, intercept, dayIndex);
+
+    // Enhanced model uses its own prediction logic with all improvements
+    const predicted = model === "enhanced-v2"
+      ? enhancedPredict(xs, ys, dayIndex, trainingSize, testData.length)
+      : predictWithModel(model, slope, intercept, dayIndex);
+
     const actual = testData[i].close;
     const error = ((predicted - actual) / actual) * 100;
 
@@ -161,10 +249,12 @@ export function runBacktest(
       error,
     });
 
-    // Directional accuracy: did the model predict the right direction from prev day?
     if (i > 0) {
       const prevActual = testData[i - 1].close;
-      const prevPredicted = predictWithModel(model, slope, intercept, trainingSize + i - 1);
+      const prevDayIndex = trainingSize + i - 1;
+      const prevPredicted = model === "enhanced-v2"
+        ? enhancedPredict(xs, ys, prevDayIndex, trainingSize, testData.length)
+        : predictWithModel(model, slope, intercept, prevDayIndex);
       const actualDirection = actual > prevActual;
       const predictedDirection = predicted > prevPredicted;
       if (actualDirection === predictedDirection) correctDirections++;
@@ -204,7 +294,7 @@ export function runAllModels(
   allData: StockDataPoint[],
   trainingSize: number
 ): BacktestResult[] {
-  const models: ModelType[] = ["linear", "log-linear", "weighted-linear", "weighted-log-linear"];
+  const models: ModelType[] = ["linear", "log-linear", "weighted-linear", "weighted-log-linear", "enhanced-v2"];
   const results: BacktestResult[] = [];
 
   for (const model of models) {
