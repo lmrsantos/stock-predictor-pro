@@ -246,15 +246,31 @@ export default function Backtest() {
   const [selectedSplit, setSelectedSplit] = useState(1);
   const [runningTickers, setRunningTickers] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [customTickers, setCustomTickers] = useState<string[]>([]);
+  const [customInput, setCustomInput] = useState("");
+
+  const allTickers = [...DEFAULT_TICKERS, ...customTickers.filter(t => !DEFAULT_TICKERS.includes(t))];
+
+  const addCustomTicker = (symbol?: string) => {
+    const ticker = (symbol || customInput).trim().toUpperCase();
+    if (ticker && !allTickers.includes(ticker)) {
+      setCustomTickers(prev => [...prev, ticker]);
+      setCustomInput("");
+    }
+  };
+
+  const removeCustomTicker = (ticker: string) => {
+    setCustomTickers(prev => prev.filter(t => t !== ticker));
+    setRunningTickers(prev => prev.filter(t => t !== ticker));
+  };
 
   const startBacktest = () => {
     setIsRunning(true);
     setRunningTickers([]);
-    // Stagger ticker loading to avoid hitting rate limits
-    TEST_TICKERS.forEach((ticker, i) => {
+    allTickers.forEach((ticker, i) => {
       setTimeout(() => {
         setRunningTickers(prev => [...prev, ticker]);
-      }, i * 1500); // 1.5s between each
+      }, i * 1500);
     });
   };
 
