@@ -418,7 +418,7 @@ function detectRegime(slice: BacktestDataPoint[]): RegimeResult {
 const WINDOW_SIZES = [10, 15, 20, 30, 40];
 const WALK_FORWARD_DAYS = 30;
 
-export function runBacktest(
+export function backtest(
   historicalData: BacktestDataPoint[],
   lookbackMonths: 3 | 6,
   forecastDays = 30,
