@@ -201,6 +201,7 @@ const Index = () => {
           }}
           website={website}
           irWebsite={irWebsite}
+          onRunBacktest={() => setShowBacktest(true)}
         />
 
         <GeopoliticalSentiment />
