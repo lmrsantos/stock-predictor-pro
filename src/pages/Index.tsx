@@ -21,6 +21,7 @@ const Index = () => {
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
+  const [showBacktest, setShowBacktest] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
