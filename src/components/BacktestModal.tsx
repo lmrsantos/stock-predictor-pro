@@ -97,10 +97,10 @@ function ForecastChart({ result }: { result: BacktestResult }) {
     actual: d.actual,
     forecast: null as number | null,
   }));
-  const forecastPts = result.forecastPath.map((d) => ({
+  const forecastPts = result.forecastPoints.map((d) => ({
     date: new Date(d.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     actual: null as number | null,
-    forecast: d.actual,
+    forecast: d.mean,
   }));
   const data = [...tail, ...forecastPts];
 
