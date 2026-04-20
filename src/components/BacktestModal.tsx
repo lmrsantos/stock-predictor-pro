@@ -97,10 +97,10 @@ function ForecastChart({ result }: { result: BacktestResult }) {
     actual: d.actual,
     forecast: null as number | null,
   }));
-  const forecastPts = result.forecastPath.map((d) => ({
+  const forecastPts = result.forecastPoints.map((d) => ({
     date: new Date(d.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     actual: null as number | null,
-    forecast: d.actual,
+    forecast: d.mean,
   }));
   const data = [...tail, ...forecastPts];
 
@@ -126,19 +126,23 @@ function ForecastChart({ result }: { result: BacktestResult }) {
 // ─── Training loss chart ──────────────────────────────────────────────────────
 
 function TrainingChart({ result }: { result: BacktestResult }) {
-  const step = Math.max(1, Math.floor(result.trainingLog.length / 8));
+  const data = result.models.map((m) => ({
+    window: `w=${m.windowSize}`,
+    reconError: m.reconError,
+    epochs: m.epochsRun,
+  }));
   return (
     <ResponsiveContainer width="100%" height={160}>
-      <LineChart data={result.trainingLog} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+      <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-        <XAxis dataKey="epoch" tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
-          interval={step - 1} axisLine={false} tickLine={false} label={{ value: "Epoch", position: "insideBottom", fill: "#52525b", fontSize: 10, fontFamily: "monospace" }} />
+        <XAxis dataKey="window" tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
+          axisLine={false} tickLine={false} label={{ value: "Model", position: "insideBottom", fill: "#52525b", fontSize: 10, fontFamily: "monospace" }} />
         <YAxis tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
           axisLine={false} tickLine={false} width={48} />
         <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 11, fontFamily: "monospace" }} />
         <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: "#a1a1aa" }} />
-        <Line type="monotone" dataKey="reconstructionLoss" stroke="#a78bfa" strokeWidth={1.5} dot={false} name="MSE Loss" />
-        <Line type="monotone" dataKey="forecastError" stroke="#fb923c" strokeWidth={1.5} dot={false} name="Endpoint Error %" />
+        <Line type="monotone" dataKey="reconError" stroke="#a78bfa" strokeWidth={1.5} dot name="Recon Error %" />
+        <Line type="monotone" dataKey="epochs" stroke="#fb923c" strokeWidth={1.5} dot name="Epochs Run" />
       </LineChart>
     </ResponsiveContainer>
   );
