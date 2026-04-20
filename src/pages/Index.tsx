@@ -12,6 +12,7 @@ import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
 import { ChatBubble } from "@/components/ChatBubble";
+import { BacktestModal } from "@/components/BacktestModal";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
