@@ -104,6 +104,15 @@ export function StockHeader({
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
+          {onRunBacktest && (
+            <button
+              onClick={onRunBacktest}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <FlaskConical className="w-4 h-4" />
+              Run Backtest
+            </button>
+          )}
           <Link
             to="/backtest"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
