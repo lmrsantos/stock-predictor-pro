@@ -4,7 +4,7 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Legend, CartesianGrid, ReferenceLine,
 } from "recharts";
-import { runBacktest, BacktestResult } from "@/lib/backtest";
+import { backtest as runBacktest, BacktestResult } from "@/lib/backtest";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 
 interface StockPoint { date: string; timestamp: number; close: number; }
