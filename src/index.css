@@ -29,6 +29,8 @@
 
     --accent-success: 150 70% 40%;
     --accent-danger: 0 75% 55%;
+    --accent-warning: 38 92% 50%;
+    --accent-info: 210 90% 56%;
 
     --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
