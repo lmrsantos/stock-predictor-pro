@@ -4,7 +4,7 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Legend, CartesianGrid, ReferenceLine,
 } from "recharts";
-import { backtest as runBacktest, BacktestResult } from "@/lib/backtest";
+import { backtest, BacktestResult } from "@/lib/backtest";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 
 interface StockPoint { date: string; timestamp: number; close: number; }
@@ -378,7 +378,7 @@ export function BacktestModal({ isOpen, onClose, ticker }: BacktestModalProps) {
     setTimeout(() => {
       clearInterval(iv);
       try {
-        const res = runBacktest(dataPoints, lookback);
+        const res = backtest(dataPoints, lookback);
         setResult(res);
         setProgressPct(100);
         setProgress("");
