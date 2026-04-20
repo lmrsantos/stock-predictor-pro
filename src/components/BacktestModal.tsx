@@ -302,6 +302,286 @@ function RegimePanel({ regime }: { regime: BacktestResult["regime"] }) {
   );
 }
 
+
+// ─── How to Read This guide ───────────────────────────────────────────────────
+
+function HowToReadGuide() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">📖</span>
+          <span className="text-xs font-mono font-semibold text-zinc-300 uppercase tracking-widest">
+            How to Read This Model
+          </span>
+        </div>
+        <span className="text-zinc-500 text-xs font-mono">{open ? "▲ hide" : "▼ show"}</span>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 flex flex-col gap-4 border-t border-zinc-800">
+
+          {/* Signal 1 */}
+          <div className="mt-4">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">
+              1 · Forecast Direction
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
+                <p className="text-[10px] font-mono text-emerald-400 font-semibold">↑ Forecast going UP</p>
+                <p className="text-[10px] font-mono text-zinc-500 mt-0.5">Bullish bias → consider buying</p>
+              </div>
+              <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-3 py-2">
+                <p className="text-[10px] font-mono text-red-400 font-semibold">↓ Forecast going DOWN</p>
+                <p className="text-[10px] font-mono text-zinc-500 mt-0.5">Bearish bias → consider selling</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Signal 2 */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">
+              2 · Uncertainty Cone Width
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
+                <p className="text-[10px] font-mono text-emerald-400 font-semibold">NARROW cone + UP forecast</p>
+                <p className="text-[10px] font-mono text-zinc-500 mt-0.5">High conviction → strong BUY signal</p>
+              </div>
+              <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2">
+                <p className="text-[10px] font-mono text-amber-400 font-semibold">WIDE cone (any direction)</p>
+                <p className="text-[10px] font-mono text-zinc-500 mt-0.5">Models disagree → wait or reduce size</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Signal 3 */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">
+              3 · Confidence Score Thresholds
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                { range: "75–100", label: "Strong signal", action: "Full position", color: "#34d399" },
+                { range: "50–74",  label: "Moderate signal", action: "Half position", color: "#fbbf24" },
+                { range: "25–49",  label: "Weak signal", action: "Paper trade only", color: "#fb923c" },
+                { range: "0–24",   label: "No signal", action: "Stay out", color: "#f87171" },
+              ].map(({ range, label, action, color }) => (
+                <div key={range} className="rounded-lg bg-white/[0.02] border border-zinc-800 px-3 py-2">
+                  <p className="text-[11px] font-mono font-bold" style={{ color }}>{range}</p>
+                  <p className="text-[9px] font-mono text-zinc-400 mt-0.5">{label}</p>
+                  <p className="text-[9px] font-mono text-zinc-600 mt-0.5">→ {action}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Signal 4 */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">
+              4 · Walk-Forward Hit Rate
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { range: "> 60%", label: "Model has directional edge", action: "Trust the forecast", color: "#34d399" },
+                { range: "50–60%", label: "Coin flip territory", action: "Be cautious", color: "#fbbf24" },
+                { range: "< 50%", label: "Worse than random", action: "Ignore forecast", color: "#f87171" },
+              ].map(({ range, label, action, color }) => (
+                <div key={range} className="rounded-lg bg-white/[0.02] border border-zinc-800 px-3 py-2">
+                  <p className="text-[11px] font-mono font-bold" style={{ color }}>{range}</p>
+                  <p className="text-[9px] font-mono text-zinc-400 mt-0.5">{label}</p>
+                  <p className="text-[9px] font-mono text-zinc-600 mt-0.5">→ {action}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Signal 5 */}
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">
+              5 · Regime Detection
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { status: "NORMAL", desc: "Within training conditions", action: "Trust the model", color: "#34d399" },
+                { status: "SHIFTED", desc: "Higher vol than training", action: "Reduce position size", color: "#fbbf24" },
+                { status: "EXTREME", desc: "Market regime changed", action: "Do not trade", color: "#f87171" },
+              ].map(({ status, desc, action, color }) => (
+                <div key={status} className="rounded-lg bg-white/[0.02] border border-zinc-800 px-3 py-2">
+                  <p className="text-[11px] font-mono font-bold" style={{ color }}>{status}</p>
+                  <p className="text-[9px] font-mono text-zinc-400 mt-0.5">{desc}</p>
+                  <p className="text-[9px] font-mono text-zinc-600 mt-0.5">→ {action}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="rounded-lg bg-zinc-800/60 border border-zinc-700 px-3 py-2">
+            <p className="text-[10px] font-mono text-zinc-500 leading-relaxed">
+              ⚠ This model identifies statistical patterns in historical price data. It does not know
+              about earnings, news, Fed decisions, or geopolitical events. Use it as one input among
+              several — not as a standalone buy/sell signal.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Recommendation panel ─────────────────────────────────────────────────────
+
+function RecommendationPanel({ result, ticker }: { result: BacktestResult; ticker: string }) {
+  // Derive forecast direction from first vs last forecast point
+  const firstForecast = result.forecastPoints[0]?.mean ?? 0;
+  const lastForecast = result.forecastPoints[result.forecastPoints.length - 1]?.mean ?? 0;
+  const lastActual = result.actualPath[result.actualPath.length - 1]?.actual ?? 0;
+  const forecastChangePct = lastActual > 0 ? ((lastForecast - lastActual) / lastActual) * 100 : 0;
+  const forecastUp = forecastChangePct > 0;
+
+  const confidence = result.confidenceScore;
+  const hitRate = result.walkForward.hitRate;
+  const agreement = result.ensembleAgreement;
+  const regime = result.regime;
+  const coneNarrow = agreement > 0.6;
+
+  // Decision logic — mirrors the decision matrix
+  let signal: "BUY" | "SELL" | "WAIT" | "STAY OUT" = "WAIT";
+  let signalColor = "#fbbf24";
+  let signalBg = "rgba(251,191,36,0.05)";
+  let signalBorder = "rgba(251,191,36,0.2)";
+  let emoji = "⏳";
+
+  if (regime.ratio > 2.5) {
+    signal = "STAY OUT";
+    signalColor = "#f87171";
+    signalBg = "rgba(248,113,113,0.05)";
+    signalBorder = "rgba(248,113,113,0.2)";
+    emoji = "🚫";
+  } else if (hitRate < 50) {
+    signal = "STAY OUT";
+    signalColor = "#f87171";
+    signalBg = "rgba(248,113,113,0.05)";
+    signalBorder = "rgba(248,113,113,0.2)";
+    emoji = "🚫";
+  } else if (!coneNarrow) {
+    signal = "WAIT";
+    signalColor = "#fbbf24";
+    signalBg = "rgba(251,191,36,0.05)";
+    signalBorder = "rgba(251,191,36,0.2)";
+    emoji = "⏳";
+  } else if (confidence >= 50 && forecastUp && hitRate >= 50) {
+    signal = "BUY";
+    signalColor = "#34d399";
+    signalBg = "rgba(52,211,153,0.05)";
+    signalBorder = "rgba(52,211,153,0.2)";
+    emoji = "✅";
+  } else if (confidence >= 50 && !forecastUp && hitRate >= 50) {
+    signal = "SELL";
+    signalColor = "#f87171";
+    signalBg = "rgba(248,113,113,0.05)";
+    signalBorder = "rgba(248,113,113,0.2)";
+    emoji = "🔴";
+  }
+
+  // Position size recommendation
+  let positionSize = "Stay flat";
+  if (signal === "BUY" || signal === "SELL") {
+    if (confidence >= 75 && !regime.outsideDistribution) positionSize = "Full position";
+    else if (confidence >= 50 && !regime.outsideDistribution) positionSize = "Half position";
+    else if (regime.outsideDistribution) positionSize = "Quarter position (regime risk)";
+  }
+
+  // Build reasoning lines
+  const reasons: { text: string; positive: boolean }[] = [
+    {
+      text: `Forecast projects ${forecastUp ? "+" : ""}${forecastChangePct.toFixed(1)}% over ${result.forecastPoints.length} days`,
+      positive: forecastUp,
+    },
+    {
+      text: `Confidence score: ${confidence.toFixed(0)}/100 — ${confidence >= 75 ? "strong" : confidence >= 50 ? "moderate" : "weak"} signal`,
+      positive: confidence >= 50,
+    },
+    {
+      text: `Walk-forward hit rate: ${hitRate.toFixed(1)}% — ${hitRate >= 60 ? "model has directional edge" : hitRate >= 50 ? "marginal edge" : "worse than random"}`,
+      positive: hitRate >= 55,
+    },
+    {
+      text: `Ensemble agreement: ${(agreement * 100).toFixed(0)}% — cone is ${coneNarrow ? "narrow (high conviction)" : "wide (models disagree)"}`,
+      positive: coneNarrow,
+    },
+    {
+      text: `Regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× vol ratio) — elevated uncertainty` : "NORMAL — model within trained conditions"}`,
+      positive: !regime.outsideDistribution,
+    },
+    {
+      text: `${result.models.filter(m => m.converged).length}/${result.models.length} ensemble models converged`,
+      positive: result.models.filter(m => m.converged).length >= 3,
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border-2 p-5 flex flex-col gap-4"
+      style={{ borderColor: signalBorder, background: signalBg }}>
+
+      {/* Signal header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">{emoji}</span>
+          <div>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+              Model Recommendation for {ticker}
+            </p>
+            <p className="text-3xl font-mono font-bold mt-0.5" style={{ color: signalColor }}>
+              {signal}
+            </p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Position Size</p>
+          <p className="text-sm font-mono font-semibold mt-0.5" style={{ color: signalColor }}>
+            {positionSize}
+          </p>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t" style={{ borderColor: signalBorder }} />
+
+      {/* Reasoning */}
+      <div>
+        <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">
+          Reasoning
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {reasons.map(({ text, positive }, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-[11px] mt-0.5 shrink-0" style={{ color: positive ? "#34d399" : "#f87171" }}>
+                {positive ? "✓" : "✗"}
+              </span>
+              <span className="text-[11px] font-mono text-zinc-400">{text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <div className="rounded-lg bg-black/20 px-3 py-2">
+        <p className="text-[9px] font-mono text-zinc-600 leading-relaxed">
+          This recommendation is generated by a statistical model trained on historical price patterns only.
+          It does not account for earnings, news, macro events, or fundamental analysis.
+          Always combine with your own research before making any investment decision.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main modal ───────────────────────────────────────────────────────────────
 
 type Tab = "forecast" | "walkforward" | "ensemble" | "regime";
@@ -477,6 +757,9 @@ export function BacktestModal({ isOpen, onClose, ticker }: BacktestModalProps) {
               <RegimeBanner regime={result.regime} />
               <DisagreementBanner agreement={result.ensembleAgreement} disagreement={result.modelDisagreement} />
 
+              {/* ── RECOMMENDATION ── */}
+              <RecommendationPanel result={result} ticker={ticker} />
+
               {/* Top metrics row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatCard label="Walk-Fwd Accuracy"
@@ -605,6 +888,9 @@ export function BacktestModal({ isOpen, onClose, ticker }: BacktestModalProps) {
               </p>
             </div>
           )}
+
+          {/* How to read guide — always visible */}
+          {!running && <HowToReadGuide />}
         </div>
       </div>
     </div>
