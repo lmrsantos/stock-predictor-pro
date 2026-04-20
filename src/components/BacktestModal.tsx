@@ -43,7 +43,6 @@ const accentBorderClass: Record<Accent, string> = {
   warning: "border-accent-warning/20",
 };
 
-// Resolved CSS color values (for inline SVG styles / recharts strokes)
 function cssVar(name: string): string {
   if (typeof window === "undefined") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -97,14 +96,7 @@ function ConfidenceRing({ score }: { score: number }) {
     <div className="flex flex-col items-center gap-2">
       <div className="relative w-24 h-24">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke={hsl("--muted")}
-            strokeWidth="8"
-          />
+          <circle cx="50" cy="50" r={radius} fill="none" stroke={hsl("--muted")} strokeWidth="8" />
           <circle
             cx="50"
             cy="50"
@@ -132,26 +124,35 @@ function ConfidenceRing({ score }: { score: number }) {
 }
 
 function BacktestChart({ result }: { result: BacktestResult }) {
-  const chartData = result.actualPath.map((pt, i) => ({
-    date: new Date(pt.timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
+  const reconMap = new Map(result.reconstructedPath.map((p) => [p.timestamp, p.actual]));
+
+  const historical = result.actualPath.map((pt) => ({
+    date: new Date(pt.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
     actual: Number(pt.actual.toFixed(2)),
-    regression: Number(result.regressionPath[i].actual.toFixed(2)),
-    calibrated: Number(result.calibratedPath[i].actual.toFixed(2)),
+    reconstructed: reconMap.has(pt.timestamp)
+      ? Number((reconMap.get(pt.timestamp) as number).toFixed(2))
+      : null,
+    forecast: null as number | null,
   }));
 
+  const forecast = result.forecastPath.map((pt) => ({
+    date: new Date(pt.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    actual: null as number | null,
+    reconstructed: null as number | null,
+    forecast: Number(pt.actual.toFixed(2)),
+  }));
+
+  const chartData = [...historical, ...forecast];
   const step = Math.max(1, Math.floor(chartData.length / 8));
 
-  const gridColor = hsl("--chart-grid");
+  const gridColor = hsl("--border");
   const tickColor = hsl("--muted-foreground");
   const tooltipBg = hsl("--popover");
   const tooltipBorder = hsl("--border");
   const tooltipFg = hsl("--popover-foreground");
   const actualColor = hsl("--accent-info");
-  const regressionColor = hsl("--muted-foreground");
-  const calibratedColor = hsl("--accent-success");
+  const reconColor = hsl("--muted-foreground");
+  const forecastColor = hsl("--accent-success");
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -169,7 +170,7 @@ function BacktestChart({ result }: { result: BacktestResult }) {
           axisLine={false}
           tickLine={false}
           width={60}
-          tickFormatter={(v) => `$${v.toLocaleString()}`}
+          tickFormatter={(v) => `$${Number(v).toLocaleString()}`}
         />
         <Tooltip
           contentStyle={{
@@ -181,34 +182,30 @@ function BacktestChart({ result }: { result: BacktestResult }) {
             fontFamily: "monospace",
           }}
           formatter={(value: number, name: string) => [
-            `$${value.toLocaleString()}`,
-            name === "actual"
-              ? "Actual"
-              : name === "regression"
-              ? "Initial Regression"
-              : "Calibrated",
+            `$${Number(value).toLocaleString()}`,
+            name === "actual" ? "Actual" : name === "reconstructed" ? "Reconstructed" : "Forecast",
           ]}
         />
-        <Legend
-          wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: tickColor }}
-        />
-        <Line type="monotone" dataKey="actual" stroke={actualColor} strokeWidth={2} dot={false} name="actual" />
+        <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: tickColor }} />
+        <Line type="monotone" dataKey="actual" stroke={actualColor} strokeWidth={2} dot={false} name="actual" connectNulls />
         <Line
           type="monotone"
-          dataKey="regression"
-          stroke={regressionColor}
+          dataKey="reconstructed"
+          stroke={reconColor}
           strokeWidth={1.5}
           strokeDasharray="4 4"
           dot={false}
-          name="regression"
+          name="reconstructed"
+          connectNulls
         />
         <Line
           type="monotone"
-          dataKey="calibrated"
-          stroke={calibratedColor}
+          dataKey="forecast"
+          stroke={forecastColor}
           strokeWidth={2}
           dot={false}
-          name="calibrated"
+          name="forecast"
+          connectNulls
         />
       </LineChart>
     </ResponsiveContainer>
@@ -270,7 +267,7 @@ export function BacktestModal({
               Backtest Engine
             </h2>
             <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              {ticker} — Regression Calibration via Gradient Descent
+              {ticker} — Unsupervised Autoencoder + Forecaster
             </p>
           </div>
           <button
@@ -324,7 +321,7 @@ export function BacktestModal({
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <div className="w-8 h-8 border-2 border-accent-success/30 border-t-accent-success rounded-full animate-spin" />
               <span className="text-xs font-mono text-muted-foreground animate-pulse">
-                Calibrating slope via gradient descent...
+                Training autoencoder via backpropagation...
               </span>
             </div>
           )}
@@ -334,7 +331,7 @@ export function BacktestModal({
             <>
               <div className="rounded-xl border border-border bg-muted/30 p-4">
                 <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
-                  Actual vs Regression Paths
+                  Actual · Reconstructed · Forecast
                 </p>
                 <BacktestChart result={result} />
               </div>
@@ -342,49 +339,61 @@ export function BacktestModal({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatCard
                   label="Accuracy (MAPE)"
-                  value={`${(100 - result.mape).toFixed(1)}%`}
+                  value={`${Math.max(0, 100 - result.mape).toFixed(1)}%`}
                   sub={`MAPE: ${result.mape.toFixed(2)}%`}
                   accent={result.mape < 3 ? "success" : result.mape < 8 ? "warning" : "danger"}
                 />
                 <StatCard
                   label="Endpoint Error"
-                  value={`${result.finalError.toFixed(2)}%`}
-                  sub={`vs current price`}
-                  accent={result.finalError < 1 ? "success" : result.finalError < 3 ? "warning" : "danger"}
+                  value={`${result.finalForecastError.toFixed(2)}%`}
+                  sub={`reconstruction vs actual`}
+                  accent={
+                    result.finalForecastError < 1
+                      ? "success"
+                      : result.finalForecastError < 3
+                      ? "warning"
+                      : "danger"
+                  }
                 />
                 <StatCard
-                  label="R² (Fit Quality)"
-                  value={result.calibrated.rSquared.toFixed(3)}
-                  sub={`${result.calibrated.iterationsRun} iterations`}
-                  accent={result.calibrated.rSquared > 0.8 ? "success" : result.calibrated.rSquared > 0.5 ? "warning" : "danger"}
+                  label="Epochs Run"
+                  value={result.epochsRun.toString()}
+                  sub={`final loss: ${(result.trainingLog.at(-1)?.reconstructionLoss ?? 0).toExponential(2)}`}
+                  accent="info"
                 />
                 <StatCard
                   label="Converged"
-                  value={result.calibrated.converged ? "YES" : "NO"}
-                  sub={`LR: ${result.calibrated.learningRate.toExponential(1)}`}
-                  accent={result.calibrated.converged ? "success" : "danger"}
+                  value={result.converged ? "YES" : "NO"}
+                  sub={`latent dim: ${result.latentVector.length}`}
+                  accent={result.converged ? "success" : "warning"}
                 />
               </div>
 
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1 rounded-xl border border-border bg-muted/30 p-4">
                   <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
-                    Calibrated Parameters
+                    Latent Representation
                   </p>
                   <div className="grid grid-cols-2 gap-y-2 gap-x-4">
                     {[
-                      { k: "Slope (Δ$/day)", v: result.calibrated.slope.toFixed(4) },
-                      { k: "Intercept", v: `$${result.calibrated.intercept.toFixed(2)}` },
-                      { k: "R²", v: result.calibrated.rSquared.toFixed(4) },
-                      { k: "Iterations", v: result.calibrated.iterationsRun.toString() },
-                      { k: "Learning Rate", v: result.calibrated.learningRate.toExponential(2) },
                       { k: "Lookback", v: `${lookback} months` },
+                      { k: "Forecast Horizon", v: `${result.forecastPath.length} days` },
+                      { k: "Price Min", v: `$${result.priceMin.toFixed(2)}` },
+                      { k: "Price Max", v: `$${result.priceMax.toFixed(2)}` },
+                      {
+                        k: "Final Recon Loss",
+                        v: (result.trainingLog.at(-1)?.reconstructionLoss ?? 0).toExponential(2),
+                      },
+                      {
+                        k: "Latent Vector",
+                        v: result.latentVector.map((v) => v.toFixed(2)).join(", "),
+                      },
                     ].map(({ k, v }) => (
-                      <div key={k} className="flex flex-col">
+                      <div key={k} className="flex flex-col min-w-0">
                         <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
                           {k}
                         </span>
-                        <span className="text-sm font-mono text-foreground">{v}</span>
+                        <span className="text-sm font-mono text-foreground truncate">{v}</span>
                       </div>
                     ))}
                   </div>
@@ -408,8 +417,8 @@ export function BacktestModal({
                 Select a lookback period and run the backtest.
               </p>
               <p className="text-[10px] font-mono text-muted-foreground/70">
-                The engine will calibrate slope parameters until the predicted<br />
-                endpoint price converges within 0.5% of the actual current price.
+                Trains an unsupervised autoencoder via backpropagation,<br />
+                then projects a 30-day forward forecast from the learned latent space.
               </p>
             </div>
           )}
