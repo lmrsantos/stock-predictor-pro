@@ -12,6 +12,7 @@ import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
 import { ChatBubble } from "@/components/ChatBubble";
+import { BacktestModal } from "@/components/BacktestModal";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
@@ -20,6 +21,7 @@ const Index = () => {
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
+  const [showBacktest, setShowBacktest] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -199,6 +201,7 @@ const Index = () => {
           }}
           website={website}
           irWebsite={irWebsite}
+          onRunBacktest={() => setShowBacktest(true)}
         />
 
         <GeopoliticalSentiment />
@@ -240,6 +243,13 @@ const Index = () => {
       </div>
 
       <ChatBubble context={chatContext} />
+
+      <BacktestModal
+        isOpen={showBacktest}
+        onClose={() => setShowBacktest(false)}
+        ticker={ticker}
+        stockData={stockData ?? []}
+      />
     </div>
   );
 };
