@@ -24,6 +24,7 @@ interface StockHeaderProps {
   onSelectTicker: (ticker: string) => void;
   website?: string | null;
   irWebsite?: string | null;
+  onRunBacktest?: () => void;
 }
 
 export function StockHeader({
