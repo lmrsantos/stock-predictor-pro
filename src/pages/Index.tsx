@@ -243,6 +243,13 @@ const Index = () => {
       </div>
 
       <ChatBubble context={chatContext} />
+
+      <BacktestModal
+        isOpen={showBacktest}
+        onClose={() => setShowBacktest(false)}
+        ticker={ticker}
+        stockData={stockData ?? []}
+      />
     </div>
   );
 };
