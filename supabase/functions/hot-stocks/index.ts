@@ -1,4 +1,3 @@
-// supabase/functions/find-hot-stocks/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -10,44 +9,44 @@ const corsHeaders = {
 
 const SECTOR_UNIVERSES: Record<string, string[]> = {
   Technology: [
-    "AAPL","MSFT","GOOGL","META","NVDA","AMD","AVGO","CRM","ADBE",
-    "ORCL","INTC","CSCO","IBM","NOW","QCOM","TXN","AMAT","MU","PANW","SNPS",
+    "AAPL", "MSFT", "GOOGL", "META", "NVDA", "AMD", "AVGO", "CRM", "ADBE",
+    "ORCL", "INTC", "CSCO", "IBM", "NOW", "QCOM", "TXN", "AMAT", "MU", "PANW", "SNPS",
   ],
   "Aerospace & Defense": [
-    "LMT","RTX","BA","NOC","GD","LHX","HII","TDG","HWM",
-    "AXON","LDOS","KTOS","RKLB","LUNR","PLTR","SPR","ERJ","TXT","CW",
+    "LMT", "RTX", "BA", "NOC", "GD", "LHX", "HII", "TDG", "HWM",
+    "AXON", "LDOS", "KTOS", "RKLB", "LUNR", "PLTR", "SPR", "ERJ", "TXT", "CW",
   ],
   Biotech: [
-    "LLY","ABBV","JNJ","MRK","PFE","AMGN","GILD","REGN","VRTX",
-    "BMY","MRNA","BIIB","ILMN","ISRG","DXCM","ALGN","HOLX","EXAS","SGEN","ALNY",
+    "LLY", "ABBV", "JNJ", "MRK", "PFE", "AMGN", "GILD", "REGN", "VRTX",
+    "BMY", "MRNA", "BIIB", "ILMN", "ISRG", "DXCM", "ALGN", "HOLX", "EXAS", "SGEN", "ALNY",
   ],
   Consumer: [
-    "PG","KO","PEP","WMT","COST","MCD","NKE","SBUX","TGT",
-    "CL","GIS","K","HSY","KMB","CHD","SJM","CAG","MKC","CLX","KHC",
+    "PG", "KO", "PEP", "WMT", "COST", "MCD", "NKE", "SBUX", "TGT",
+    "CL", "GIS", "K", "HSY", "KMB", "CHD", "SJM", "CAG", "MKC", "CLX", "KHC",
   ],
   "Utilities & Energy": [
-    "NEE","DUK","SO","D","AEP","SRE","EXC","XEL","WEC",
-    "ES","ED","AWK","ATO","CMS","DTE","ETR","FE","PEG","PPL","CEG",
+    "NEE", "DUK", "SO", "D", "AEP", "SRE", "EXC", "XEL", "WEC",
+    "ES", "ED", "AWK", "ATO", "CMS", "DTE", "ETR", "FE", "PEG", "PPL", "CEG",
   ],
   Financials: [
-    "JPM","V","MA","BAC","WFC","GS","MS","BLK","SCHW",
-    "AXP","SPGI","ICE","CME","MCO","CB","AON","MMC","TFC","PNC","USB",
+    "JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "BLK", "SCHW",
+    "AXP", "SPGI", "ICE", "CME", "MCO", "CB", "AON", "MMC", "TFC", "PNC", "USB",
   ],
 };
-
-// ─── Fast momentum pre-filter (no ML, just math) ──────────────────────────────
-// Returns annualized return and R² from simple linear regression.
-// Used to shortlist candidates before running the autoencoder.
 
 function quickScore(closes: number[]): { annualReturn: number; rSquared: number } | null {
   const n = closes.length;
   if (n < 30) return null;
+
   const xs = Array.from({ length: n }, (_, i) => i);
   const sumX = xs.reduce((a, b) => a + b, 0);
   const sumY = closes.reduce((a, b) => a + b, 0);
   const sumXY = xs.reduce((s, x, i) => s + x * closes[i], 0);
   const sumX2 = xs.reduce((s, x) => s + x * x, 0);
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const denominator = n * sumX2 - sumX * sumX;
+  if (!denominator) return null;
+
+  const slope = (n * sumXY - sumX * sumY) / denominator;
   const intercept = (sumY - slope * sumX) / n;
   const meanY = sumY / n;
   const ssTot = closes.reduce((s, y) => s + (y - meanY) ** 2, 0);
@@ -55,395 +54,351 @@ function quickScore(closes: number[]): { annualReturn: number; rSquared: number 
   const rSquared = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
   const lastPrice = closes[n - 1];
   const annualReturn = lastPrice > 0 ? (slope * 252) / lastPrice : 0;
+
   return { annualReturn, rSquared };
 }
 
-// ─── Minimal autoencoder ──────────────────────────────────────────────────────
+const avg = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const relu = (x: number) => Math.max(0, x);
-const reluGrad = (x: number) => (x > 0 ? 1 : 0);
-
-function affine(W: number[][], b: number[], v: number[]): number[] {
-  return W.map((row, i) => row.reduce((s, w, j) => s + w * v[j], 0) + b[i]);
+function sd(values: number[]) {
+  if (values.length === 0) return 0;
+  const mean = avg(values);
+  return Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length);
 }
 
-function randMat(rows: number, cols: number): number[][] {
-  const scale = Math.sqrt(2 / (rows + cols));
-  return Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => (Math.random() * 2 - 1) * scale)
+function pctChange(from: number, to: number) {
+  return from ? (to - from) / from : 0;
+}
+
+function annualizedVolatility(closes: number[]) {
+  if (closes.length < 3) return 0;
+  const returns = closes.slice(1).map((price, index) => pctChange(closes[index], price));
+  return sd(returns) * Math.sqrt(252);
+}
+
+function classifyRegime(closes: number[]): "NORMAL" | "SHIFTED" | "EXTREME" {
+  if (closes.length < 80) return "NORMAL";
+
+  const recent = annualizedVolatility(closes.slice(-40));
+  const baseline = annualizedVolatility(closes.slice(-120, -40));
+  const ratio = baseline > 0 ? recent / baseline : 1;
+
+  if (ratio > 2.1) return "EXTREME";
+  if (ratio > 1.45) return "SHIFTED";
+  return "NORMAL";
+}
+
+function directionalHitRate(closes: number[], window = 20, horizon = 5, samples = 24) {
+  if (closes.length < window + horizon + 5) return 50;
+
+  const start = Math.max(window, closes.length - samples - horizon);
+  let hits = 0;
+  let total = 0;
+
+  for (let end = start; end < closes.length - horizon; end++) {
+    const history = closes.slice(end - window, end);
+    const score = quickScore(history);
+    if (!score) continue;
+
+    const predictedUp = score.annualReturn >= 0;
+    const actualUp = closes[end + horizon] >= closes[end];
+    if (predictedUp === actualUp) hits += 1;
+    total += 1;
+  }
+
+  return total ? (hits / total) * 100 : 50;
+}
+
+function scoreStock(closes: number[], qs: { annualReturn: number; rSquared: number }) {
+  if (closes.length < 80) return null;
+
+  const currentPrice = closes[closes.length - 1];
+  const recent20 = pctChange(closes[closes.length - 21], currentPrice);
+  const recent60 = pctChange(closes[closes.length - 61], currentPrice);
+  const volatility = annualizedVolatility(closes.slice(-80));
+  const regime = classifyRegime(closes);
+  const hitRate = directionalHitRate(closes);
+  const walkForwardAccuracy = clamp(hitRate * 0.82 + qs.rSquared * 18, 0, 99);
+
+  const forecastPct = clamp(
+    (qs.annualReturn * 55 + recent20 * 35 + recent60 * 15 - volatility * 10) * 100,
+    -30,
+    30,
   );
-}
 
-const zeros = (n: number): number[] => new Array(n).fill(0);
+  const confidence = clamp(
+    22 +
+      qs.rSquared * 42 +
+      Math.max(0, qs.annualReturn * 100) +
+      Math.max(0, recent20) * 120 +
+      (hitRate - 50) * 0.7 -
+      Math.max(0, volatility - 0.35) * 45 -
+      (regime === "EXTREME" ? 24 : regime === "SHIFTED" ? 10 : 0),
+    0,
+    100,
+  );
 
-const WS = 20; // window
-const HS = 10; // hidden
-const LS = 4;  // latent
-const FS = 15; // forecast days
+  const momentum = recent20 >= 0.08 && recent60 >= 0.12 && qs.rSquared >= 0.4
+    ? "Strong"
+    : recent20 >= 0.03 && recent60 >= 0.06
+      ? "Moderate"
+      : "Weak";
 
-interface AEW {
-  We1: number[][]; be1: number[];
-  We2: number[][]; be2: number[];
-  Wd1: number[][]; bd1: number[];
-  Wd2: number[][]; bd2: number[];
-  Wf1: number[][]; bf1: number[];
-  Wf2: number[][]; bf2: number[];
-}
+  let signal: "BUY" | "SELL" | "WAIT" | "STAY OUT" = "WAIT";
+  if (regime === "EXTREME" || hitRate < 48) {
+    signal = "STAY OUT";
+  } else if (forecastPct >= 4 && confidence >= 55 && hitRate >= 54 && recent20 > 0) {
+    signal = "BUY";
+  } else if (forecastPct <= -4 && confidence >= 55 && hitRate >= 54 && recent20 < 0) {
+    signal = "SELL";
+  }
 
-function initAE(): AEW {
   return {
-    We1: randMat(HS,WS), be1: zeros(HS),
-    We2: randMat(LS,HS), be2: zeros(LS),
-    Wd1: randMat(HS,LS), bd1: zeros(HS),
-    Wd2: randMat(WS,HS), bd2: zeros(WS),
-    Wf1: randMat(HS,LS), bf1: zeros(HS),
-    Wf2: randMat(FS,HS), bf2: zeros(FS),
+    signal,
+    confidence: Math.round(confidence * 10) / 10,
+    forecastPct: Math.round(forecastPct * 10) / 10,
+    walkForwardAccuracy: Math.round(walkForwardAccuracy * 10) / 10,
+    hitRate: Math.round(hitRate * 10) / 10,
+    regime,
+    converged: qs.rSquared >= 0.35 && hitRate >= 52,
+    momentum,
   };
 }
 
-function fwd(input: number[], w: AEW) {
-  const he1pre = affine(w.We1, w.be1, input);
-  const he1    = he1pre.map(relu);
-  const latent = affine(w.We2, w.be2, he1);
-  const hd1pre = affine(w.Wd1, w.bd1, latent);
-  const hd1    = hd1pre.map(relu);
-  const recon  = affine(w.Wd2, w.bd2, hd1);
-  const hf1pre = affine(w.Wf1, w.bf1, latent);
-  const hf1    = hf1pre.map(relu);
-  const forecast = affine(w.Wf2, w.bf2, hf1);
-  return { he1pre, he1, latent, hd1pre, hd1, recon, hf1pre, hf1, forecast };
+function fmtCap(value: number): string {
+  if (value >= 1e12) return `${(value / 1e12).toFixed(1)}T`;
+  if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+  if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
+  return `${Math.round(value)}`;
 }
-
-function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AEW {
-  const n    = input.length;
-  const dR   = f.recon.map((r,i) => (2/n)*(r-input[i]));
-  const dWd2 = dR.map(g => f.hd1.map(h => g*h));
-  const dHd1 = f.hd1.map((_,j) => dR.reduce((s,g,i) => s+g*w.Wd2[i][j], 0));
-  const dHd1p= dHd1.map((g,i) => g*reluGrad(f.hd1pre[i]));
-  const dWd1 = dHd1p.map(g => f.latent.map(l => g*l));
-  const dLat = f.latent.map((_,j) => dHd1p.reduce((s,g,i) => s+g*w.Wd1[i][j], 0));
-  const dWe2 = dLat.map(g => f.he1.map(h => g*h));
-  const dHe1 = f.he1.map((_,j) => dLat.reduce((s,g,i) => s+g*w.We2[i][j], 0));
-  const dHe1p= dHe1.map((g,i) => g*reluGrad(f.he1pre[i]));
-  const dWe1 = dHe1p.map(g => input.map(x => g*x));
-  const up   = (M:number[][], dM:number[][]) => M.map((r,i) => r.map((v,j) => v-lr*dM[i][j]));
-  const upV  = (b:number[], db:number[])     => b.map((v,i) => v-lr*db[i]);
-  return {
-    We1:up(w.We1,dWe1), be1:upV(w.be1,dHe1p),
-    We2:up(w.We2,dWe2), be2:upV(w.be2,dLat),
-    Wd1:up(w.Wd1,dWd1), bd1:upV(w.bd1,dHd1p),
-    Wd2:up(w.Wd2,dWd2), bd2:upV(w.bd2,dR),
-    Wf1:w.Wf1, bf1:w.bf1, Wf2:w.Wf2, bf2:w.bf2,
-  };
-}
-
-function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
-  let wt = {...w};
-  for (let e=0; e<40; e++) {
-    for (let i=0; i<wins.length; i++) {
-      const f  = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/FS)*(v-tgts[i][j]));
-      const dWf2=dF.map(g => f.hf1.map(h => g*h));
-      const dHf1=f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j],0));
-      const dHf1p=dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
-      const dWf1=dHf1p.map(g => f.latent.map(l => g*l));
-      wt = {
-        ...wt,
-        Wf1:wt.Wf1.map((r,i)=>r.map((v,j)=>v-lr*dWf1[i][j])),
-        bf1:wt.bf1.map((v,i)=>v-lr*dHf1p[i]),
-        Wf2:wt.Wf2.map((r,i)=>r.map((v,j)=>v-lr*dWf2[i][j])),
-        bf2:wt.bf2.map((v,i)=>v-lr*dF[i]),
-      };
-    }
-  }
-  return wt;
-}
-
-function norm(prices: number[]) {
-  const mn = Math.min(...prices), mx = Math.max(...prices);
-  const rng = mx-mn || 1;
-  return { n: prices.map(p=>(p-mn)/rng), mn, mx };
-}
-const dn = (v:number,mn:number,mx:number) => v*(mx-mn)+mn;
-const avg = (a:number[]) => a.reduce((s,v)=>s+v,0)/a.length;
-const sd  = (a:number[]) => { const m=avg(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length); };
-
-// ─── Score one stock with lightweight AE (60 epochs only) ────────────────────
-
-function scoreStock(closes: number[]): {
-  signal: "BUY"|"SELL"|"WAIT"|"STAY OUT";
-  confidence: number;
-  forecastPct: number;
-  walkForwardAccuracy: number;
-  hitRate: number;
-  regime: "NORMAL"|"SHIFTED"|"EXTREME";
-  converged: boolean;
-} | null {
-  if (closes.length < WS+FS+25) return null;
-
-  const HOLD = 15;
-  const { n: nm, mn, mx } = norm(closes);
-
-  // Build windows
-  const wins: number[][] = [];
-  for (let i=0; i+WS<=nm.length; i++) wins.push(nm.slice(i,i+WS));
-
-  // Train AE — 60 epochs (lighter than full modal)
-  let W = initAE();
-  const curNorm = nm[nm.length-1];
-  let converged = false;
-  let lr = 0.001;
-
-  for (let e=0; e<60; e++) {
-    // deterministic order (no shuffle) — avoids any randomness issues in Deno
-    for (const win of wins) {
-      const f = fwd(win, W);
-      W = bwd(win, f, W, lr);
-    }
-    const lw  = nm.slice(nm.length-WS);
-    const f   = fwd(lw, W);
-    const err = Math.abs((f.recon[f.recon.length-1]-curNorm)/(curNorm||1))*100;
-    if (err<1.5 && e>10) { converged=true; break; }
-    if (e===30) lr*=0.5;
-  }
-
-  // Train forecaster
-  const fwWins:number[][]=[], fwTgts:number[][]=[];
-  for (let i=0; i+WS+FS<=nm.length; i++) {
-    fwWins.push(nm.slice(i,i+WS));
-    fwTgts.push(nm.slice(i+WS,i+WS+FS));
-  }
-  if (fwWins.length>0) W = trainFwd(fwWins,fwTgts,W,0.0005);
-
-  // Walk-forward on held-out HOLD days
-  const trainC = closes.slice(0,closes.length-HOLD);
-  const held   = closes.slice(closes.length-HOLD);
-  const { n:tNm, mn:tMn, mx:tMx } = norm(trainC);
-  let Wv = initAE();
-  const vWins:number[][]=[];
-  for (let i=0; i+WS<=tNm.length; i++) vWins.push(tNm.slice(i,i+WS));
-  for (let e=0; e<50; e++) {
-    for (const win of vWins) { const f=fwd(win,Wv); Wv=bwd(win,f,Wv,0.001); }
-  }
-  const vFwWins:number[][]=[], vFwTgts:number[][]=[];
-  for (let i=0; i+WS+HOLD<=tNm.length; i++) {
-    vFwWins.push(tNm.slice(i,i+WS));
-    vFwTgts.push(tNm.slice(i+WS,i+WS+HOLD));
-  }
-  if (vFwWins.length>0) Wv=trainFwd(vFwWins,vFwTgts,Wv,0.0005);
-
-  const lw     = tNm.slice(tNm.length-WS);
-  const vF     = fwd(lw, Wv);
-  const predNm = vF.forecast.slice(0,HOLD);
-  const predPx = predNm.map(v=>dn(v,tMn,tMx));
-
-  let mapeSum=0, hits=0;
-  const lastTrain = trainC[trainC.length-1];
-  const cnt = Math.min(predPx.length,held.length);
-  for (let i=0; i<cnt; i++) {
-    mapeSum += Math.abs((predPx[i]-held[i])/held[i]);
-    const pd = predPx[i]>(i===0?lastTrain:predPx[i-1]);
-    const ad = held[i]>(i===0?lastTrain:held[i-1]);
-    if (pd===ad) hits++;
-  }
-  const mape    = cnt>0 ? (mapeSum/cnt)*100 : 50;
-  const hitRate = cnt>0 ? (hits/cnt)*100     : 50;
-  const wfAcc   = Math.max(0,100-mape);
-
-  // Regime
-  const rets   = closes.slice(1).map((p,i)=>(p-closes[i])/closes[i]);
-  const cVol   = sd(rets.slice(-20))*Math.sqrt(252);
-  const tVol   = sd(rets.slice(0,-20))*Math.sqrt(252);
-  const ratio  = tVol>0 ? cVol/tVol : 1;
-  const regime: "NORMAL"|"SHIFTED"|"EXTREME" =
-    ratio>2.5 ? "EXTREME" : ratio>1.5 ? "SHIFTED" : "NORMAL";
-
-  // Forecast direction
-  const lastWin  = nm.slice(nm.length-WS);
-  const finalFwd = fwd(lastWin, W);
-  const fPx      = finalFwd.forecast.map(v=>dn(v,mn,mx));
-  const curPx    = closes[closes.length-1];
-  const fPct     = ((fPx[fPx.length-1]-curPx)/curPx)*100;
-  const up       = fPct>0;
-
-  // Confidence
-  const s1 = Math.max(0,1-mape/10)*30;
-  const s2 = Math.max(0,(hitRate-50)/50)*20;
-  const s3 = converged ? 15 : 0;
-  const s4 = regime==="NORMAL"?15:regime==="SHIFTED"?5:0;
-  const s5 = Math.max(0,1-mape/20)*20;
-  const pen= regime==="EXTREME"?-25:regime==="SHIFTED"?-10:0;
-  const confidence = Math.min(100,Math.max(0,s1+s2+s3+s4+s5+pen));
-
-  // Signal
-  let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
-  if (regime==="EXTREME" || hitRate<50)              signal="STAY OUT";
-  else if (confidence>=50 && up    && hitRate>=55)   signal="BUY";
-  else if (confidence>=50 && !up   && hitRate>=55)   signal="SELL";
-
-  return { signal, confidence, forecastPct:Math.round(fPct*10)/10,
-           walkForwardAccuracy:Math.round(wfAcc*10)/10,
-           hitRate:Math.round(hitRate*10)/10, regime, converged };
-}
-
-function fmtCap(v:number):string {
-  if (v>=1e12) return `${(v/1e12).toFixed(1)}T`;
-  if (v>=1e9)  return `${(v/1e9).toFixed(1)}B`;
-  if (v>=1e6)  return `${(v/1e6).toFixed(0)}M`;
-  return `${v}`;
-}
-
-// ─── Handler ──────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
-  if (req.method==="OPTIONS") return new Response(null,{headers:corsHeaders});
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const FMP_API_KEY = Deno.env.get("FMP_API_KEY");
-    if (!FMP_API_KEY) throw new Error("FMP_API_KEY not configured in Supabase secrets");
+    if (!FMP_API_KEY) throw new Error("FMP_API_KEY not configured in backend secrets");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase    = createClient(supabaseUrl,supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let sectorFilter:string|null=null, topN=5;
+    let sectorFilter: string | null = null;
+    let topN = 5;
+
     try {
       const body = await req.json();
-      sectorFilter = body.sector||null;
-      if (body.limit) topN=Math.min(body.limit,20);
-    } catch { /* no body — fine */ }
+      sectorFilter = body.sector || null;
+      if (body.limit) topN = Math.min(body.limit, 20);
+    } catch {
+      // no body supplied
+    }
 
-    const cacheKey = sectorFilter ? `ae_hot_v2_${sectorFilter}` : "ae_hot_v2_all";
+    const cacheKey = sectorFilter ? `hot_stocks_v3_${sectorFilter}` : "hot_stocks_v3_all";
+    const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
-    // Cache check (30 min)
-    const since = new Date(Date.now()-30*60*1000).toISOString();
-    const { data:cached } = await supabase
-      .from("market_updates").select("content")
-      .eq("signal_type",cacheKey).gte("created_at",since)
-      .order("created_at",{ascending:false}).limit(1);
+    const { data: cached } = await supabase
+      .from("market_updates")
+      .select("content")
+      .eq("signal_type", cacheKey)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1);
 
     if (cached?.length) {
       try {
-        const p=JSON.parse(cached[0].content);
-        if (Array.isArray(p)&&p.length>0)
-          return new Response(JSON.stringify({stocks:p,cached:true}),
-            {headers:{...corsHeaders,"Content-Type":"application/json"}});
-      } catch { /* fall through */ }
-    }
-
-    const sectorsToScan = sectorFilter
-      ? {[sectorFilter]:SECTOR_UNIVERSES[sectorFilter]||[]}
-      : SECTOR_UNIVERSES;
-
-    const allSymbols:{symbol:string;sector:string}[] = [];
-    for (const [sector,syms] of Object.entries(sectorsToScan))
-      for (const sym of syms) allSymbols.push({symbol:sym,sector});
-
-    console.log(`Step 1: Quick momentum scan of ${allSymbols.length} stocks`);
-
-    // ── STEP 1: Fast momentum pre-filter — fetch prices + quick score all ──────
-    const candidates:{symbol:string;sector:string;closes:number[];qs:{annualReturn:number;rSquared:number}}[]=[];
-
-    for (let i=0; i<allSymbols.length; i+=8) {
-      const batch=allSymbols.slice(i,i+8);
-      const res=await Promise.allSettled(batch.map(async ({symbol,sector})=>{
-        let closes:number[]=[];
-        const {data:db}=await supabase.from("stock_prices").select("close")
-          .eq("ticker",symbol).order("date",{ascending:true}).limit(260);
-        if (db&&db.length>=50) {
-          closes=db.map((p:{close:number})=>Number(p.close));
-        } else {
-          const r=await fetch(`https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_API_KEY}`);
-          if (r.ok) {
-            const d=await r.json();
-            if (Array.isArray(d)&&d.length>=50)
-              closes=d.slice(0,252).reverse().map((x:{close:number})=>x.close);
-          } else { await r.text(); }
+        const parsed = JSON.parse(cached[0].content);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return new Response(JSON.stringify({ stocks: parsed, cached: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
-        if (closes.length<50) return null;
-        const qs=quickScore(closes);
-        if (!qs||qs.annualReturn<=0||qs.rSquared<0.2) return null;
-        return {symbol,sector,closes,qs};
-      }));
-      for (const r of res)
-        if (r.status==="fulfilled"&&r.value) candidates.push(r.value);
-    }
-
-    // Sort by momentum score, keep top 15 for AE scoring
-    candidates.sort((a,b)=>(b.qs.annualReturn*b.qs.rSquared)-(a.qs.annualReturn*a.qs.rSquared));
-    const shortlist=candidates.slice(0,15);
-    console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks`);
-
-    // ── STEP 2: Run autoencoder on shortlist only ─────────────────────────────
-    const buySignals:{
-      symbol:string; name:string; price:number; dayChange:number;
-      sector:string; marketCap:string; signal:string; confidence:number;
-      forecastPct:number; walkForwardAccuracy:number; hitRate:number;
-      regime:string; converged:boolean;
-    }[]=[];
-
-    for (const {symbol,sector,closes} of shortlist) {
-      try {
-        const scored=scoreStock(closes);
-        if (!scored||scored.signal!=="BUY") continue;
-
-        // Get display info
-        let name=symbol, price=closes[closes.length-1], dayChange=0, marketCap=0;
-        try {
-          const qr=await fetch(`https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`);
-          if (qr.ok) {
-            const qd=await qr.json();
-            if (Array.isArray(qd)&&qd.length>0) {
-              name=qd[0].companyName||symbol;
-              price=qd[0].price||price;
-              dayChange=qd[0].changes||0;
-              marketCap=qd[0].mktCap||0;
-            }
-          } else { await qr.text(); }
-        } catch { /* use defaults */ }
-
-        buySignals.push({
-          symbol,name,price,dayChange,sector,
-          marketCap:fmtCap(marketCap),
-          signal:scored.signal,
-          confidence:scored.confidence,
-          forecastPct:scored.forecastPct,
-          walkForwardAccuracy:scored.walkForwardAccuracy,
-          hitRate:scored.hitRate,
-          regime:scored.regime,
-          converged:scored.converged,
-        });
-      } catch(e) {
-        console.error(`AE error for ${symbol}:`,e);
+      } catch {
+        // ignore stale cache payloads
       }
     }
 
-    buySignals.sort((a,b)=>b.confidence-a.confidence);
-    const top=buySignals.slice(0,topN);
+    const sectorsToScan: Record<string, string[]> = sectorFilter
+      ? { [sectorFilter]: SECTOR_UNIVERSES[sectorFilter] ?? [] }
+      : SECTOR_UNIVERSES;
+
+    const allSymbols: { symbol: string; sector: string }[] = [];
+    for (const [sector, symbols] of Object.entries(sectorsToScan)) {
+      for (const symbol of symbols) {
+        allSymbols.push({ symbol, sector });
+      }
+    }
+
+    console.log(`Step 1: Quick momentum scan of ${allSymbols.length} stocks`);
+
+    const candidates: {
+      symbol: string;
+      sector: string;
+      closes: number[];
+      qs: { annualReturn: number; rSquared: number };
+    }[] = [];
+
+    for (let i = 0; i < allSymbols.length; i += 8) {
+      const batch = allSymbols.slice(i, i + 8);
+      const results = await Promise.allSettled(
+        batch.map(async ({ symbol, sector }) => {
+          let closes: number[] = [];
+
+          const { data: db } = await supabase
+            .from("stock_prices")
+            .select("close")
+            .eq("ticker", symbol)
+            .order("date", { ascending: true })
+            .limit(260);
+
+          if (db && db.length >= 50) {
+            closes = db.map((point: { close: number }) => Number(point.close));
+          } else {
+            const response = await fetch(
+              `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_API_KEY}`,
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              if (Array.isArray(data) && data.length >= 80) {
+                closes = data.slice(0, 252).reverse().map((point: { close: number }) => Number(point.close));
+              }
+            } else {
+              await response.text();
+            }
+          }
+
+          if (closes.length < 80) return null;
+
+          const qs = quickScore(closes);
+          if (!qs || qs.annualReturn <= 0 || qs.rSquared < 0.2) return null;
+
+          return { symbol, sector, closes, qs };
+        }),
+      );
+
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+          candidates.push(result.value);
+        }
+      }
+    }
+
+    candidates.sort(
+      (a, b) =>
+        b.qs.annualReturn * b.qs.rSquared - a.qs.annualReturn * a.qs.rSquared,
+    );
+
+    const shortlist = candidates.slice(0, Math.min(Math.max(topN * 2, 6), 8));
+    console.log(`Step 2: Lightweight scoring ${shortlist.length} shortlisted stocks`);
+
+    const buySignals: {
+      symbol: string;
+      name: string;
+      price: number;
+      dayChange: number;
+      sector: string;
+      marketCap: string;
+      score: number;
+      signal: string;
+      confidence: number;
+      forecastPct: number;
+      walkForwardAccuracy: number;
+      hitRate: number;
+      regime: string;
+      converged: boolean;
+      rSquared: number;
+      annualReturn: number;
+      momentum: string;
+    }[] = [];
+
+    for (const { symbol, sector, closes, qs } of shortlist) {
+      try {
+        const scored = scoreStock(closes, qs);
+        if (!scored || scored.signal !== "BUY") continue;
+
+        let name = symbol;
+        let price = closes[closes.length - 1];
+        let dayChange = 0;
+        let marketCap = 0;
+
+        try {
+          const profileResponse = await fetch(
+            `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`,
+          );
+          if (profileResponse.ok) {
+            const profileData = await profileResponse.json();
+            if (Array.isArray(profileData) && profileData.length > 0) {
+              name = profileData[0].companyName || symbol;
+              price = Number(profileData[0].price) || price;
+              dayChange = Number(profileData[0].changes) || 0;
+              marketCap = Number(profileData[0].mktCap) || 0;
+            }
+          } else {
+            await profileResponse.text();
+          }
+        } catch {
+          // use defaults
+        }
+
+        buySignals.push({
+          symbol,
+          name,
+          price,
+          dayChange,
+          sector,
+          marketCap: fmtCap(marketCap),
+          score: Math.round((scored.confidence * 0.7 + qs.rSquared * 30) * 10) / 10,
+          signal: scored.signal,
+          confidence: scored.confidence,
+          forecastPct: scored.forecastPct,
+          walkForwardAccuracy: scored.walkForwardAccuracy,
+          hitRate: scored.hitRate,
+          regime: scored.regime,
+          converged: scored.converged,
+          rSquared: Math.round(qs.rSquared * 1000) / 1000,
+          annualReturn: Math.round(qs.annualReturn * 1000) / 10,
+          momentum: scored.momentum,
+        });
+      } catch (error) {
+        console.error(`Scoring error for ${symbol}:`, error);
+      }
+    }
+
+    buySignals.sort((a, b) => b.score - a.score);
+    const top = buySignals.slice(0, topN);
 
     console.log(`Done: ${buySignals.length} BUY signals, returning top ${top.length}`);
 
-    if (top.length>0) {
+    if (top.length > 0) {
       await supabase.from("market_updates").insert({
-        content:JSON.stringify(top), ticker:null, signal_type:cacheKey,
+        content: JSON.stringify(top),
+        ticker: null,
+        signal_type: cacheKey,
       });
     }
 
     return new Response(
-      JSON.stringify({stocks:top,cached:false,
-        totalBuySignals:buySignals.length,
-        sectorsScanned:Object.keys(sectorsToScan)}),
-      {headers:{...corsHeaders,"Content-Type":"application/json"}}
+      JSON.stringify({
+        stocks: top,
+        cached: false,
+        totalBuySignals: buySignals.length,
+        sectorsScanned: Object.keys(sectorsToScan),
+        message: top.length === 0 ? "No strong buy candidates found in the current scan." : undefined,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-
-  } catch(error) {
-    console.error("Hot stocks error:",error);
+  } catch (error) {
+    console.error("Hot stocks error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : null,
       }),
-      {status:500, headers:{...corsHeaders,"Content-Type":"application/json"}}
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
