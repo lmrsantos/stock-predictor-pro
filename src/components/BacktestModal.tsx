@@ -519,10 +519,17 @@ function RecommendationPanel({ result, ticker }: { result: BacktestResult; ticke
       text: `Regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× vol ratio) — elevated uncertainty` : "NORMAL — model within trained conditions"}`,
       positive: !regime.outsideDistribution,
     },
-    {
-      text: `${result.models.filter(m => m.converged).length}/${result.models.length} ensemble models converged`,
-      positive: result.models.filter(m => m.converged).length >= 3,
-    },
+    (() => {
+      const convergedCount = result.models.filter(m => m.converged).length;
+      const total = result.models.length;
+      const divergedCount = total - convergedCount;
+      return {
+        text: convergedCount >= Math.ceil(total / 2)
+          ? `${convergedCount}/${total} ensemble models converged`
+          : `${divergedCount}/${total} ensemble models did NOT converge (hit max epochs) — only ${convergedCount}/${total} converged`,
+        positive: convergedCount >= 3,
+      };
+    })(),
   ];
 
   return (
