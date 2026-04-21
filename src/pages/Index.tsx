@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
@@ -16,13 +17,25 @@ import { BacktestModal } from "@/components/BacktestModal";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
-  const [ticker, setTicker] = useState("^DJI");
-  const [searchInput, setSearchInput] = useState("^DJI");
+  const [searchParams] = useSearchParams();
+  const initialTicker = (searchParams.get("ticker") || "^DJI").toUpperCase();
+  const [ticker, setTicker] = useState(initialTicker);
+  const [searchInput, setSearchInput] = useState(initialTicker);
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  // React to ?ticker= param changes (e.g. navigation from Portfolio)
+  useEffect(() => {
+    const t = searchParams.get("ticker");
+    if (t) {
+      const up = t.toUpperCase();
+      setTicker(up);
+      setSearchInput(up);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (showTable && tableRef.current) {
