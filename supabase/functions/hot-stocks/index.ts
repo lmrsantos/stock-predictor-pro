@@ -655,9 +655,9 @@ function scoreStock(
   // Tier 2 (REITs/dividends):    medium bar — slightly relaxed vs stocks
   // Tier 3 (covered calls/commodities): same as stocks
   // Tier 4 (individual stocks):  full bar
-  const minConfidence = riskTier === 1 ? 20 : riskTier === 2 ? 28 : 40;
-  const minHitRate = riskTier === 1 ? 45 : riskTier === 2 ? 47 : 50;
-  const stayOutHitRate = riskTier === 1 ? 35 : riskTier === 2 ? 38 : 45;
+  const minConfidence = riskTier === 1 ? 15 : riskTier === 2 ? 20 : 25;
+  const minHitRate = riskTier === 1 ? 40 : riskTier === 2 ? 42 : 45;
+  const stayOutHitRate = riskTier === 1 ? 30 : riskTier === 2 ? 33 : 38;
 
   let signal: "BUY" | "SELL" | "WAIT" | "STAY OUT" = "WAIT";
   if (regime === "EXTREME" || hitRate < stayOutHitRate) signal = "STAY OUT";
