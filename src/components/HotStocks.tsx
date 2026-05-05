@@ -13,6 +13,7 @@ interface HotStock {
   signal: string;
   confidence: number;
   forecastPct: number;
+  forecastLabel?: string;
   walkForwardAccuracy: number;
   hitRate: number;
   regime: string;
@@ -184,7 +185,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                     </span>
                   )}
                   <span className={`text-xs font-mono font-semibold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
-                    {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
+                    {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}% projected over {stock.forecastLabel || "~3 weeks"}
                   </span>
                 </div>
               </div>
