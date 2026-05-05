@@ -502,7 +502,7 @@ serve(async (req) => {
     // Sort by momentum score, keep top 15 for AE scoring
     candidates.sort((a,b)=>(b.qs.annualReturn*b.qs.rSquared)-(a.qs.annualReturn*a.qs.rSquared));
     // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 35 : 30;
+    const shortlistSize = riskProfile === "conservative" ? 20 : riskProfile === "moderate" ? 15 : 12;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
