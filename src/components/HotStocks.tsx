@@ -184,8 +184,11 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                       {stock.marketCap}
                     </span>
                   )}
-                  <span className={`text-xs font-mono font-semibold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
-                    {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}% projected over {stock.forecastLabel || "~3 weeks"}
+                  <span className={`text-xs font-mono font-bold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
+                    {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono ml-1">
+                    projected over {stock.forecastLabel || "~3 weeks"}
                   </span>
                 </div>
               </div>
