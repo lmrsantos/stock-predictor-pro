@@ -644,13 +644,14 @@ function scoreStock(
   const fPct = fPx.length > 0 && curPx > 0 ? ((fPx[fPx.length - 1] - curPx) / curPx) * 100 : 0;
 
   // ── 8. Evidence-based confidence score ────────────────────────────
-  const s1 = Math.max(0, 1 - mape / 10) * 30; // walk-fwd accuracy
-  const s2 = Math.max(0, (hitRate - 50) / 50) * 20; // direction hit rate
-  const s3 = converged ? 15 : 0; // AE convergence
+  const s1 = isNaN(mape) ? 0 : Math.max(0, 1 - mape / 10) * 30;
+  const s2 = Math.max(0, (hitRate - 50) / 50) * 20;
+  const s3 = converged ? 15 : 0;
   const s4 = regime === "NORMAL" ? 15 : regime === "SHIFTED" ? 5 : 0;
-  const s5 = Math.max(0, 1 - mape / 20) * 20; // MAPE quality
+  const s5 = isNaN(mape) ? 0 : Math.max(0, 1 - mape / 20) * 20;
   const pen = regime === "EXTREME" ? -25 : regime === "SHIFTED" ? -10 : 0;
-  const confidence = Math.min(100, Math.max(0, s1 + s2 + s3 + s4 + s5 + pen));
+  const rawConf = s1 + s2 + s3 + s4 + s5 + pen;
+  const confidence = Math.min(100, Math.max(0, isNaN(rawConf) ? 0 : rawConf));
 
   // ── 9. Signal decision — thresholds scale with risk tier ────────────
   // Tier 1 (bonds/money market): slow movers, lower bar — any positive AE signal counts
