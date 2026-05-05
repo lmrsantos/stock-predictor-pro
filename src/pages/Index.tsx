@@ -60,12 +60,14 @@ const Index = () => {
   });
 
   // Step 2: Read from DB
-  const { data: stockData, isLoading: isQuerying, error: queryError } = useQuery({
+  const { data: dbStockData, isLoading: isQuerying, error: queryError } = useQuery({
     queryKey: ["stock-db", ticker, period],
     queryFn: () => getStockDataFromDB(ticker, period),
     enabled: !!meta, // Only query DB after fetch completes
     staleTime: 10 * 60 * 1000,
   });
+
+  const stockData = dbStockData?.length ? dbStockData : meta?.prices;
 
   // Step 3: Read fundamentals from DB
   const { data: dbFundamentals } = useQuery({
