@@ -418,7 +418,7 @@ function scoreStock(closes: number[], riskTier = 4): {
     fwWins.push(nm.slice(i, i + WS));
     fwTgts.push(nm.slice(i + WS, i + WS + FD));
   }
-  if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005);
+  if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005, 8);
 
   // ── 5. Walk-forward validation on held-out HOLD days ──────────────
   const trainC = closes.slice(0, closes.length - HOLD);
@@ -429,10 +429,13 @@ function scoreStock(closes: number[], riskTier = 4): {
   let Wv = initAE();
   const vWins: number[][] = [];
   for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
+  const validationWins = vWins.length > 18
+    ? vWins.filter((_, i) => i % Math.ceil(vWins.length / 18) === 0).slice(0, 18)
+    : vWins;
   let vlr = 0.001;
-  for (let e = 0; e < 50; e++) {
-    for (const win of vWins) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
-    if (e === 25) vlr *= 0.5;
+  for (let e = 0; e < 10; e++) {
+    for (const win of validationWins) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
+    if (e === 5) vlr *= 0.5;
   }
 
   // Train its forecaster head on held-out targets
@@ -441,7 +444,7 @@ function scoreStock(closes: number[], riskTier = 4): {
     vFwWins.push(tNm.slice(i, i + WS));
     vFwTgts.push(tNm.slice(i + WS, i + WS + HOLD));
   }
-  if (vFwWins.length > 0) Wv = trainFwd(vFwWins, vFwTgts, Wv, 0.0005);
+  if (vFwWins.length > 0) Wv = trainFwd(vFwWins, vFwTgts, Wv, 0.0005, 6);
 
   // Forecast held-out period and measure accuracy
   const lastTrainWin = tNm.slice(tNm.length - WS);
