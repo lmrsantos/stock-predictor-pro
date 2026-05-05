@@ -210,10 +210,14 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   let wt = {...w};
-  for (let e=0; e<40; e++) {
-    for (let i=0; i<wins.length; i++) {
-      const f  = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
+  // Subsample to max 30 windows for speed
+  const step = Math.max(1, Math.floor(wins.length / 30));
+  const idxs: number[] = [];
+  for (let i = 0; i < wins.length; i += step) idxs.push(i);
+  for (let e=0; e<15; e++) {
+    for (const idx of idxs) {
+      const f  = fwd(wins[idx], wt);
+      const dF = f.forecast.map((v,j) => (2/tgts[idx].length)*(v-tgts[idx][j]));
       const dWf2=dF.map(g => f.hf1.map(h => g*h));
       const dHf1=f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j],0));
       const dHf1p=dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
