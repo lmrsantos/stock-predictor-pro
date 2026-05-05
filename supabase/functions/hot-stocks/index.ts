@@ -502,8 +502,8 @@ function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
 }
 
 function norm(prices: number[]) {
-  const mn = Math.min(...prices),
-    mx = Math.max(...prices);
+  let mn = Infinity, mx = -Infinity;
+  for (const p of prices) { if (p < mn) mn = p; if (p > mx) mx = p; }
   const rng = mx - mn || 1;
   return { n: prices.map((p) => (p - mn) / rng), mn, mx };
 }
