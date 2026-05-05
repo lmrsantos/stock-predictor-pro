@@ -8,12 +8,17 @@ interface HotStock {
   name: string;
   price: number;
   dayChange: number;
-  score: number;
-  rSquared: number;
-  annualReturn: number;
-  momentum: string;
   sector?: string;
   marketCap?: string;
+  signal: string;
+  confidence: number;
+  forecastPct: number;
+  walkForwardAccuracy: number;
+  hitRate: number;
+  regime: string;
+  converged: boolean;
+  riskTier: number;
+  riskLabel: string;
 }
 
 const scanMessages = [
