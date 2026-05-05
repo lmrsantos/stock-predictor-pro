@@ -134,7 +134,23 @@ const zeros = (n: number): number[] => new Array(n).fill(0);
 const WS = 20; // window
 const HS = 10; // hidden
 const LS = 4;  // latent
-const FS = 15; // forecast days
+const FS = 45; // max forecast days (actual days used depends on risk tier — see forecastDaysForTier)
+
+// Forecast horizon scales with risk tier:
+// Tier 1 (bonds)         → 45 trading days (~2 months)  — bonds move slowly
+// Tier 2 (REITs/divs)    → 30 trading days (~6 weeks)   — needs time to play out
+// Tier 3 (covered calls) → 20 trading days (~1 month)   — medium horizon
+// Tier 4 (stocks)        → 15 trading days (~3 weeks)   — stocks move fast
+function forecastDaysForTier(riskTier: number): number {
+  return riskTier === 1 ? 45 : riskTier === 2 ? 30 : riskTier === 3 ? 20 : 15;
+}
+
+function forecastLabel(days: number): string {
+  if (days >= 45) return "~2 months";
+  if (days >= 30) return "~6 weeks";
+  if (days >= 20) return "~1 month";
+  return "~3 weeks";
+}
 
 interface AEW {
   We1: number[][]; be1: number[];
@@ -197,7 +213,7 @@ function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   for (let e=0; e<40; e++) {
     for (let i=0; i<wins.length; i++) {
       const f  = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/FS)*(v-tgts[i][j]));
+      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
       const dWf2=dF.map(g => f.hf1.map(h => g*h));
       const dHf1=f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j],0));
       const dHf1p=dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
@@ -227,16 +243,23 @@ const sd  = (a:number[]) => { const m=avg(a); return Math.sqrt(a.reduce((s,v)=>s
 // Uses the actual AE training loop (fwd/bwd/trainFwd defined above).
 // quickScore is only used as a pre-check — all scoring comes from the AE.
 
-function scoreStock(closes: number[]): {
+function scoreStock(closes: number[], riskTier = 4): {
   signal: "BUY"|"SELL"|"WAIT"|"STAY OUT";
   confidence: number;
   forecastPct: number;
+  forecastDays: number;
+  forecastLabel: string;
   walkForwardAccuracy: number;
   hitRate: number;
   regime: "NORMAL"|"SHIFTED"|"EXTREME";
   converged: boolean;
 } | null {
-  if (closes.length < WS + FS + 25) return null;
+  const FD = forecastDaysForTier(riskTier); // actual forecast horizon for this tier
+  const FL = forecastLabel(FD);
+
+  // Low/medium risk instruments need fewer data points (they move slowly)
+  const minData = riskTier <= 2 ? WS + FD + 15 : WS + FD + 25;
+  if (closes.length < minData) return null;
 
   const HOLD = 15;
 
@@ -268,9 +291,9 @@ function scoreStock(closes: number[]): {
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
   const fwWins: number[][] = [], fwTgts: number[][] = [];
-  for (let i = 0; i + WS + FS <= nm.length; i++) {
+  for (let i = 0; i + WS + FD <= nm.length; i++) {
     fwWins.push(nm.slice(i, i + WS));
-    fwTgts.push(nm.slice(i + WS, i + WS + FS));
+    fwTgts.push(nm.slice(i + WS, i + WS + FD));
   }
   if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005);
 
@@ -327,9 +350,10 @@ function scoreStock(closes: number[]): {
   // ── 7. Forecast direction from AE (not linear regression) ─────────
   const lastWin  = nm.slice(nm.length - WS);
   const finalF   = fwd(lastWin, W);
-  const fPx      = finalF.forecast.map(v => dn(v, mn, mx));
+  // Use only FD forecast steps (tier-appropriate horizon)
+  const fPx      = finalF.forecast.slice(0, FD).map(v => dn(v, mn, mx));
   const curPx    = closes[closes.length - 1];
-  const fPct     = ((fPx[fPx.length - 1] - curPx) / curPx) * 100;
+  const fPct     = fPx.length > 0 ? ((fPx[fPx.length - 1] - curPx) / curPx) * 100 : 0;
 
   // ── 8. Evidence-based confidence score ────────────────────────────
   const s1  = Math.max(0, 1 - mape / 10) * 30;          // walk-fwd accuracy
@@ -340,16 +364,26 @@ function scoreStock(closes: number[]): {
   const pen = regime === "EXTREME" ? -25 : regime === "SHIFTED" ? -10 : 0;
   const confidence = Math.min(100, Math.max(0, s1 + s2 + s3 + s4 + s5 + pen));
 
-  // ── 9. Signal decision ────────────────────────────────────────────
+  // ── 9. Signal decision — thresholds scale with risk tier ────────────
+  // Tier 1 (bonds/money market): slow movers, lower bar — any positive AE signal counts
+  // Tier 2 (REITs/dividends):    medium bar — slightly relaxed vs stocks
+  // Tier 3 (covered calls/commodities): same as stocks
+  // Tier 4 (individual stocks):  full bar
+  const minConfidence = riskTier === 1 ? 20 : riskTier === 2 ? 28 : 40;
+  const minHitRate    = riskTier === 1 ? 45 : riskTier === 2 ? 47 : 50;
+  const stayOutHitRate= riskTier === 1 ? 35 : riskTier === 2 ? 38 : 45;
+
   let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
-  if (regime === "EXTREME" || hitRate < 45)             signal = "STAY OUT";
-  else if (confidence >= 40 && fPct > 0 && hitRate >= 50) signal = "BUY";
-  else if (confidence >= 40 && fPct < 0 && hitRate >= 50) signal = "SELL";
+  if (regime === "EXTREME" || hitRate < stayOutHitRate)              signal = "STAY OUT";
+  else if (confidence >= minConfidence && fPct > 0 && hitRate >= minHitRate) signal = "BUY";
+  else if (confidence >= minConfidence && fPct < 0 && hitRate >= minHitRate) signal = "SELL";
 
   return {
     signal,
     confidence:          Math.round(confidence * 10) / 10,
     forecastPct:         Math.round(fPct * 10) / 10,
+    forecastDays:        FD,
+    forecastLabel:       FL,
     walkForwardAccuracy: Math.round(wfAcc * 10) / 10,
     hitRate:             Math.round(hitRate * 10) / 10,
     regime,
@@ -446,7 +480,10 @@ serve(async (req) => {
         }
         if (closes.length<50) return null;
         const qs=quickScore(closes);
-        if (!qs||qs.annualReturn<=0||qs.rSquared<0.1) return null;
+        // Tier 1 instruments have very low annual returns by nature — don't filter them out
+        const minReturn  = riskTier <= 1 ? -0.02 : 0;   // allow slightly negative for bonds
+        const minRSquared= riskTier <= 2 ?  0.05 : 0.1; // bonds trend gently, lower R² ok
+        if (!qs || qs.annualReturn < minReturn || qs.rSquared < minRSquared) return null;
         return {symbol,sector,riskTier,closes,qs};
       }));
       for (const r of res)
@@ -455,20 +492,23 @@ serve(async (req) => {
 
     // Sort by momentum score, keep top 15 for AE scoring
     candidates.sort((a,b)=>(b.qs.annualReturn*b.qs.rSquared)-(a.qs.annualReturn*a.qs.rSquared));
-    const shortlist=candidates.slice(0,30);
-    console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (top 30 by momentum)`);
+    // Conservative profiles have fewer candidates — take all of them up to 40
+    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 35 : 30;
+    const shortlist=candidates.slice(0, shortlistSize);
+    console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
     // ── STEP 2: Run autoencoder on shortlist only ─────────────────────────────
     const buySignals:{
       symbol:string; name:string; price:number; dayChange:number;
       sector:string; marketCap:string; signal:string; confidence:number;
-      forecastPct:number; walkForwardAccuracy:number; hitRate:number;
+      forecastPct:number; forecastDays:number; forecastLabel:string;
+      walkForwardAccuracy:number; hitRate:number;
       regime:string; converged:boolean; riskTier:number; riskLabel:string;
     }[]=[];
 
     for (const {symbol,sector,riskTier,closes} of shortlist) {
       try {
-        const scored=scoreStock(closes);
+        const scored=scoreStock(closes, riskTier);
         if (!scored||scored.signal!=="BUY") continue;
 
         // Get display info
@@ -492,6 +532,8 @@ serve(async (req) => {
           signal:scored.signal,
           confidence:scored.confidence,
           forecastPct:scored.forecastPct,
+          forecastDays:scored.forecastDays,
+          forecastLabel:scored.forecastLabel,
           walkForwardAccuracy:scored.walkForwardAccuracy,
           hitRate:scored.hitRate,
           regime:scored.regime,
