@@ -23,13 +23,13 @@ interface HotStock {
 
 const scanMessages = [
   "Initializing QuantPulse™ Engine…",
-  "Scanning 80+ stocks across NYSE & NASDAQ…",
+  "Scanning 160+ stocks across NYSE & NASDAQ…",
   "Fetching historical price data…",
-  "Running linear regression on each candidate…",
-  "Computing R² trend reliability…",
-  "Evaluating momentum & annual return signals…",
-  "Scoring trend consistency × momentum synergy…",
-  "Ranking top opportunities…",
+  "Running momentum pre-filter…",
+  "Training autoencoder on shortlisted candidates…",
+  "Walk-forward validation on held-out data…",
+  "Computing confidence & hit-rate scores…",
+  "Ranking top BUY signals…",
 ];
 
 interface HotStocksProps {
