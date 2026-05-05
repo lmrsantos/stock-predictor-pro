@@ -13,7 +13,8 @@ interface HotStock {
   signal: string;
   confidence: number;
   forecastPct: number;
-  forecastLabel?: string;
+  forecastDays: number;
+  forecastLabel: string;
   walkForwardAccuracy: number;
   hitRate: number;
   regime: string;
