@@ -17,6 +17,8 @@ interface HotStock {
   forecastLabel: string;
   walkForwardAccuracy: number;
   hitRate: number;
+  breakout?: boolean;
+  sectorHot?: boolean;
   regime: string;
   converged: boolean;
   riskTier: number;
