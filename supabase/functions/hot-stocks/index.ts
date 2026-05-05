@@ -609,21 +609,26 @@ function scoreStock(
   const lastTrainWin = tNm.slice(tNm.length - WS);
   const valF = fwd(lastTrainWin, Wv);
   const predNm = valF.forecast.slice(0, HOLD);
-  const predPx = predNm.map((v) => dn(v, tMn, tMx));
+  const predPx = predNm.map((v) => {
+    const val = dn(v, tMn, tMx);
+    return isNaN(val) || !isFinite(val) ? trainC[trainC.length - 1] : val;
+  });
 
   let mapeSum = 0,
-    hits = 0;
+    hits = 0,
+    validCnt = 0;
   const lastTrainPx = trainC[trainC.length - 1];
   const cnt = Math.min(predPx.length, held.length);
   for (let i = 0; i < cnt; i++) {
-    mapeSum += Math.abs((predPx[i] - held[i]) / held[i]);
+    const err = held[i] !== 0 ? Math.abs((predPx[i] - held[i]) / held[i]) : 0;
+    if (!isNaN(err) && isFinite(err)) { mapeSum += err; validCnt++; }
     const pd = predPx[i] > (i === 0 ? lastTrainPx : predPx[i - 1]);
     const ad = held[i] > (i === 0 ? lastTrainPx : held[i - 1]);
     if (pd === ad) hits++;
   }
-  const mape = cnt > 0 ? (mapeSum / cnt) * 100 : 50;
+  const mape = validCnt > 0 ? (mapeSum / validCnt) * 100 : 50;
   const hitRate = cnt > 0 ? (hits / cnt) * 100 : 50;
-  const wfAcc = Math.max(0, 100 - mape);
+  const wfAcc = Math.max(0, 100 - (isNaN(mape) ? 50 : mape));
 
   // ── 6. Regime detection ───────────────────────────────────────────
   const rets = closes.slice(1).map((p, i) => (p - closes[i]) / closes[i]);
