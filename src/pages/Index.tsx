@@ -60,12 +60,14 @@ const Index = () => {
   });
 
   // Step 2: Read from DB
-  const { data: stockData, isLoading: isQuerying, error: queryError } = useQuery({
+  const { data: dbStockData, isLoading: isQuerying, error: queryError } = useQuery({
     queryKey: ["stock-db", ticker, period],
     queryFn: () => getStockDataFromDB(ticker, period),
     enabled: !!meta, // Only query DB after fetch completes
     staleTime: 10 * 60 * 1000,
   });
+
+  const stockData = dbStockData?.length ? dbStockData : meta?.prices;
 
   // Step 3: Read fundamentals from DB
   const { data: dbFundamentals } = useQuery({
@@ -110,8 +112,8 @@ const Index = () => {
   const website = meta?.website || null;
   const irWebsite = meta?.irWebsite || null;
 
-  const isLoading = isFetching || isQuerying;
-  const error = fetchError || queryError;
+  const isLoading = isFetching || (isQuerying && !meta?.prices?.length);
+  const error = fetchError || (stockData?.length ? null : queryError);
 
   // Build risk context from VIX + geopolitical tension
   const riskContext: RiskContext | undefined = (vixData || tensionData) ? {

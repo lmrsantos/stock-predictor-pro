@@ -29,10 +29,20 @@ export interface AnalystRating {
   pb_recommendation: string | null;
 }
 
+export interface StockFetchResult {
+  name: string;
+  currency: string;
+  prices: StockDataPoint[];
+  fundamentals: StockFundamentals | null;
+  analystRating: AnalystRating | null;
+  website: string | null;
+  irWebsite: string | null;
+}
+
 export async function fetchAndStoreStockData(
   ticker: string,
   period: string = "1y"
-): Promise<{ name: string; currency: string; fundamentals: StockFundamentals | null; analystRating: AnalystRating | null; website: string | null; irWebsite: string | null }> {
+): Promise<StockFetchResult> {
   const { data, error } = await supabase.functions.invoke("fetch-stock-data", {
     body: { ticker, period },
   });
@@ -43,6 +53,15 @@ export async function fetchAndStoreStockData(
   return {
     name: data.name,
     currency: data.currency,
+    prices: (data.prices || []).map((row: StockDataPoint) => ({
+      date: row.date,
+      timestamp: row.timestamp ?? new Date(row.date).getTime() / 1000,
+      open: Number(row.open),
+      high: Number(row.high),
+      low: Number(row.low),
+      close: Number(row.close),
+      volume: Number(row.volume),
+    })),
     fundamentals: data.fundamentals || null,
     analystRating: data.analystRating || null,
     website: data.website || null,
