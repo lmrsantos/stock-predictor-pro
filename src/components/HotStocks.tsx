@@ -21,6 +21,14 @@ interface HotStock {
   riskLabel: string;
 }
 
+type RiskProfile = "conservative" | "moderate" | "aggressive";
+
+const RISK_PROFILES: { value: RiskProfile; label: string; color: string; selectedBg: string; selectedText: string }[] = [
+  { value: "conservative", label: "Conservative", color: "border-green-500/40 text-green-600 dark:text-green-400", selectedBg: "bg-green-600 dark:bg-green-500", selectedText: "text-white" },
+  { value: "moderate", label: "Moderate", color: "border-yellow-500/40 text-yellow-600 dark:text-yellow-400", selectedBg: "bg-yellow-500 dark:bg-yellow-500", selectedText: "text-white dark:text-black" },
+  { value: "aggressive", label: "Aggressive", color: "border-red-500/40 text-red-600 dark:text-red-400", selectedBg: "bg-red-600 dark:bg-red-500", selectedText: "text-white" },
+];
+
 const scanMessages = [
   "Initializing QuantPulse™ Engine…",
   "Scanning 160+ stocks across NYSE & NASDAQ…",
@@ -42,8 +50,10 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [scanMessage, setScanMessage] = useState("");
   const [hasScanned, setHasScanned] = useState(false);
   const [message, setMessage] = useState("");
+  const [riskProfile, setRiskProfile] = useState<RiskProfile>("aggressive");
 
-  const discover = async () => {
+  const discover = async (profile?: RiskProfile) => {
+    const activeProfile = profile ?? riskProfile;
     setIsScanning(true);
     setStocks([]);
     setHasScanned(false);
@@ -57,7 +67,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
     }, 2200);
 
     try {
-      const { data, error } = await supabase.functions.invoke("hot-stocks");
+      const { data, error } = await supabase.functions.invoke("hot-stocks", {
+        body: { riskProfile: activeProfile },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.message) setMessage(data.message);
@@ -74,10 +86,42 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
     }
   };
 
+  const handleProfileChange = (profile: RiskProfile) => {
+    if (profile === riskProfile && !hasScanned) {
+      setRiskProfile(profile);
+      return;
+    }
+    setRiskProfile(profile);
+    if (hasScanned || stocks.length > 0) {
+      discover(profile);
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {/* Risk Profile Toggle */}
+      <div className="flex gap-1.5">
+        {RISK_PROFILES.map((p) => {
+          const isSelected = riskProfile === p.value;
+          return (
+            <button
+              key={p.value}
+              onClick={() => handleProfileChange(p.value)}
+              disabled={isScanning}
+              className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-semibold border transition-all disabled:opacity-60 ${
+                isSelected
+                  ? `${p.selectedBg} ${p.selectedText} border-transparent shadow-sm`
+                  : `bg-card/50 ${p.color} border hover:opacity-80`
+              }`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
       <button
-        onClick={discover}
+        onClick={() => discover()}
         disabled={isScanning}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-70"
       >
@@ -148,7 +192,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 <div className="text-[10px] text-muted-foreground truncate max-w-[220px]">
                   {stock.name}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-[10px] font-mono text-muted-foreground">
                     Confidence {stock.confidence.toFixed(1)}%
                   </span>
@@ -160,9 +204,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                       {stock.sector}
                     </span>
                   )}
-                  <span className={`text-[10px] font-mono font-semibold ${
-                    stock.riskTier <= 2 ? "price-positive" : "text-destructive"
-                  }`}>
+                  <span className="text-[10px] font-mono font-semibold">
                     {stock.riskLabel}
                   </span>
                 </div>
