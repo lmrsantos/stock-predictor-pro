@@ -270,27 +270,29 @@ function scoreStock(closes: number[], riskTier = 4): {
   // ── 1. Normalize full price series ────────────────────────────────
   const { n: nm, mn, mx } = norm(closes);
 
-  // ── 2. Build sliding windows ───────────────────────────────────────
+  // ── 2. Build sliding windows (subsample to max 40 for speed) ─────
+  const allWins: number[][] = [];
+  for (let i = 0; i + WS <= nm.length; i++) allWins.push(nm.slice(i, i + WS));
+  const winStep = Math.max(1, Math.floor(allWins.length / 40));
   const wins: number[][] = [];
-  for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
+  for (let i = 0; i < allWins.length; i += winStep) wins.push(allWins[i]);
 
-  // ── 3. Train autoencoder unsupervised (60 epochs) ─────────────────
+  // ── 3. Train autoencoder unsupervised (25 epochs, early stop) ─────
   let W = initAE();
   const curNorm = nm[nm.length - 1];
   let converged = false;
   let lr = 0.001;
 
-  for (let e = 0; e < 60; e++) {
+  for (let e = 0; e < 25; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
-    // Check endpoint reconstruction error
     const lw  = nm.slice(nm.length - WS);
     const f   = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 1.5 && e > 10) { converged = true; break; }
-    if (e === 30) lr *= 0.5;
+    if (err < 2.0 && e > 5) { converged = true; break; }
+    if (e === 12) lr *= 0.5;
   }
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
