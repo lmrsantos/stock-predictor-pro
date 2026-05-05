@@ -134,8 +134,8 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                       {stock.marketCap}
                     </span>
                   )}
-                  <span className={`text-xs font-mono font-semibold ${stock.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
-                    {stock.annualReturn >= 0 ? "+" : ""}{stock.annualReturn.toFixed(1)}%/yr
+                  <span className={`text-xs font-mono font-semibold ${(stock.annualReturn ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+                    {(stock.annualReturn ?? 0) >= 0 ? "+" : ""}{(stock.annualReturn ?? 0).toFixed(1)}%/yr
                   </span>
                 </div>
               </div>
@@ -145,7 +145,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] font-mono text-muted-foreground">
-                    R² {stock.rSquared.toFixed(3)}
+                    R² {(stock.rSquared ?? 0).toFixed(3)}
                   </span>
                   {stock.sector && (
                     <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
