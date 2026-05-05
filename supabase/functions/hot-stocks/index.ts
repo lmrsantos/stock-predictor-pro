@@ -325,12 +325,15 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
   };
 }
 
-function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
+function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number, epochs = 12): AEW {
   let wt = {...w};
-  for (let e=0; e<40; e++) {
-    for (let i=0; i<wins.length; i++) {
+  const maxSamples = Math.min(wins.length, 24);
+  const step = Math.max(1, Math.floor(wins.length / maxSamples));
+  for (let e=0; e<epochs; e++) {
+    for (let i=0; i<wins.length; i += step) {
       const f  = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
+      const horizon = Math.min(tgts[i].length, f.forecast.length);
+      const dF = f.forecast.map((v,j) => j < horizon ? (2 / horizon) * (v - tgts[i][j]) : 0);
       const dWf2=dF.map(g => f.hf1.map(h => g*h));
       const dHf1=f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j],0));
       const dHf1p=dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
@@ -386,15 +389,18 @@ function scoreStock(closes: number[], riskTier = 4): {
   // ── 2. Build sliding windows ───────────────────────────────────────
   const wins: number[][] = [];
   for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
+  const trainWins = wins.length > 28
+    ? wins.filter((_, i) => i % Math.ceil(wins.length / 28) === 0).slice(0, 28)
+    : wins;
 
-  // ── 3. Train autoencoder unsupervised (60 epochs) ─────────────────
+  // ── 3. Train autoencoder unsupervised with a strict CPU budget ─────
   let W = initAE();
   const curNorm = nm[nm.length - 1];
   let converged = false;
   let lr = 0.001;
 
-  for (let e = 0; e < 60; e++) {
-    for (const win of wins) {
+  for (let e = 0; e < 18; e++) {
+    for (const win of trainWins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
@@ -402,8 +408,8 @@ function scoreStock(closes: number[], riskTier = 4): {
     const lw  = nm.slice(nm.length - WS);
     const f   = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 1.5 && e > 10) { converged = true; break; }
-    if (e === 30) lr *= 0.5;
+    if (err < 2.5 && e > 6) { converged = true; break; }
+    if (e === 9) lr *= 0.5;
   }
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
@@ -412,7 +418,7 @@ function scoreStock(closes: number[], riskTier = 4): {
     fwWins.push(nm.slice(i, i + WS));
     fwTgts.push(nm.slice(i + WS, i + WS + FD));
   }
-  if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005);
+  if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005, 8);
 
   // ── 5. Walk-forward validation on held-out HOLD days ──────────────
   const trainC = closes.slice(0, closes.length - HOLD);
@@ -423,10 +429,13 @@ function scoreStock(closes: number[], riskTier = 4): {
   let Wv = initAE();
   const vWins: number[][] = [];
   for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
+  const validationWins = vWins.length > 18
+    ? vWins.filter((_, i) => i % Math.ceil(vWins.length / 18) === 0).slice(0, 18)
+    : vWins;
   let vlr = 0.001;
-  for (let e = 0; e < 50; e++) {
-    for (const win of vWins) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
-    if (e === 25) vlr *= 0.5;
+  for (let e = 0; e < 10; e++) {
+    for (const win of validationWins) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
+    if (e === 5) vlr *= 0.5;
   }
 
   // Train its forecaster head on held-out targets
@@ -435,7 +444,7 @@ function scoreStock(closes: number[], riskTier = 4): {
     vFwWins.push(tNm.slice(i, i + WS));
     vFwTgts.push(tNm.slice(i + WS, i + WS + HOLD));
   }
-  if (vFwWins.length > 0) Wv = trainFwd(vFwWins, vFwTgts, Wv, 0.0005);
+  if (vFwWins.length > 0) Wv = trainFwd(vFwWins, vFwTgts, Wv, 0.0005, 6);
 
   // Forecast held-out period and measure accuracy
   const lastTrainWin = tNm.slice(tNm.length - WS);
@@ -650,7 +659,7 @@ serve(async (req) => {
         if (r.status==="fulfilled"&&r.value) candidates.push(r.value);
     }
 
-    // Sort by momentum score, keep top 15 for AE scoring
+    // Sort by momentum score, keep a small AE shortlist to stay within edge CPU limits
     // Sort by combinedScore × sectorBias
     // Recent 60d weighted 3× + live sector performance multiplier
     // e.g. Energy stock with combinedScore=0.8 in a +2× sector → effective score 1.6
@@ -659,8 +668,7 @@ serve(async (req) => {
       const biasB = sectorBias[b.sector] ?? 1.0;
       return (b.qs.combinedScore * biasB) - (a.qs.combinedScore * biasA);
     });
-    // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 35 : 30;
+    const shortlistSize = riskProfile === "conservative" ? 12 : riskProfile === "moderate" ? 10 : 8;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
