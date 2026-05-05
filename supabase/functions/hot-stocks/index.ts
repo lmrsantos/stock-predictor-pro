@@ -325,12 +325,15 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
   };
 }
 
-function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
+function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number, epochs = 12): AEW {
   let wt = {...w};
-  for (let e=0; e<40; e++) {
-    for (let i=0; i<wins.length; i++) {
+  const maxSamples = Math.min(wins.length, 24);
+  const step = Math.max(1, Math.floor(wins.length / maxSamples));
+  for (let e=0; e<epochs; e++) {
+    for (let i=0; i<wins.length; i += step) {
       const f  = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
+      const horizon = Math.min(tgts[i].length, f.forecast.length);
+      const dF = f.forecast.map((v,j) => j < horizon ? (2 / horizon) * (v - tgts[i][j]) : 0);
       const dWf2=dF.map(g => f.hf1.map(h => g*h));
       const dHf1=f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j],0));
       const dHf1p=dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
