@@ -234,111 +234,62 @@ function scoreStock(closes: number[]): {
   regime: "NORMAL"|"SHIFTED"|"EXTREME";
   converged: boolean;
 } | null {
-  if (closes.length < WS+FS+25) return null;
+  if (closes.length < 50) return null;
 
   const HOLD = 15;
-  const { n: nm, mn, mx } = norm(closes);
+  const trainC = closes.slice(0, -HOLD);
+  const held = closes.slice(-HOLD);
+  const longTrend = quickScore(trainC);
+  const recentTrend = quickScore(closes.slice(-60));
+  if (!longTrend || !recentTrend) return null;
 
-  // Build windows
-  const wins: number[][] = [];
-  for (let i=0; i+WS<=nm.length; i++) wins.push(nm.slice(i,i+WS));
-
-  // Train AE — 60 epochs (lighter than full modal)
-  let W = initAE();
-  const curNorm = nm[nm.length-1];
-  let converged = false;
-  let lr = 0.001;
-
-  for (let e=0; e<60; e++) {
-    // deterministic order (no shuffle) — avoids any randomness issues in Deno
-    for (const win of wins) {
-      const f = fwd(win, W);
-      W = bwd(win, f, W, lr);
-    }
-    const lw  = nm.slice(nm.length-WS);
-    const f   = fwd(lw, W);
-    const err = Math.abs((f.recon[f.recon.length-1]-curNorm)/(curNorm||1))*100;
-    if (err<1.5 && e>10) { converged=true; break; }
-    if (e===30) lr*=0.5;
-  }
-
-  // Train forecaster
-  const fwWins:number[][]=[], fwTgts:number[][]=[];
-  for (let i=0; i+WS+FS<=nm.length; i++) {
-    fwWins.push(nm.slice(i,i+WS));
-    fwTgts.push(nm.slice(i+WS,i+WS+FS));
-  }
-  if (fwWins.length>0) W = trainFwd(fwWins,fwTgts,W,0.0005);
-
-  // Walk-forward on held-out HOLD days
-  const trainC = closes.slice(0,closes.length-HOLD);
-  const held   = closes.slice(closes.length-HOLD);
-  const { n:tNm, mn:tMn, mx:tMx } = norm(trainC);
-  let Wv = initAE();
-  const vWins:number[][]=[];
-  for (let i=0; i+WS<=tNm.length; i++) vWins.push(tNm.slice(i,i+WS));
-  for (let e=0; e<50; e++) {
-    for (const win of vWins) { const f=fwd(win,Wv); Wv=bwd(win,f,Wv,0.001); }
-  }
-  const vFwWins:number[][]=[], vFwTgts:number[][]=[];
-  for (let i=0; i+WS+HOLD<=tNm.length; i++) {
-    vFwWins.push(tNm.slice(i,i+WS));
-    vFwTgts.push(tNm.slice(i+WS,i+WS+HOLD));
-  }
-  if (vFwWins.length>0) Wv=trainFwd(vFwWins,vFwTgts,Wv,0.0005);
-
-  const lw     = tNm.slice(tNm.length-WS);
-  const vF     = fwd(lw, Wv);
-  const predNm = vF.forecast.slice(0,HOLD);
-  const predPx = predNm.map(v=>dn(v,tMn,tMx));
-
-  let mapeSum=0, hits=0;
-  const lastTrain = trainC[trainC.length-1];
-  const cnt = Math.min(predPx.length,held.length);
-  for (let i=0; i<cnt; i++) {
-    mapeSum += Math.abs((predPx[i]-held[i])/held[i]);
-    const pd = predPx[i]>(i===0?lastTrain:predPx[i-1]);
-    const ad = held[i]>(i===0?lastTrain:held[i-1]);
-    if (pd===ad) hits++;
-  }
-  const mape    = cnt>0 ? (mapeSum/cnt)*100 : 50;
-  const hitRate = cnt>0 ? (hits/cnt)*100     : 50;
-  const wfAcc   = Math.max(0,100-mape);
-
-  // Regime
-  const rets   = closes.slice(1).map((p,i)=>(p-closes[i])/closes[i]);
-  const cVol   = sd(rets.slice(-20))*Math.sqrt(252);
-  const tVol   = sd(rets.slice(0,-20))*Math.sqrt(252);
-  const ratio  = tVol>0 ? cVol/tVol : 1;
+  const rets = closes.slice(1).map((p, i) => (p - closes[i]) / closes[i]);
+  const cVol = sd(rets.slice(-20)) * Math.sqrt(252);
+  const tVol = sd(rets.slice(0, -20)) * Math.sqrt(252);
+  const ratio = tVol > 0 ? cVol / tVol : 1;
   const regime: "NORMAL"|"SHIFTED"|"EXTREME" =
-    ratio>2.5 ? "EXTREME" : ratio>1.5 ? "SHIFTED" : "NORMAL";
+    ratio > 2.5 ? "EXTREME" : ratio > 1.5 ? "SHIFTED" : "NORMAL";
 
-  // Forecast direction
-  const lastWin  = nm.slice(nm.length-WS);
-  const finalFwd = fwd(lastWin, W);
-  const fPx      = finalFwd.forecast.map(v=>dn(v,mn,mx));
-  const curPx    = closes[closes.length-1];
-  const fPct     = ((fPx[fPx.length-1]-curPx)/curPx)*100;
-  const up       = fPct>0;
+  const dailySlope = (recentTrend.annualReturn * closes[closes.length - 1]) / 252;
+  const curPx = closes[closes.length - 1];
+  const forecastPx = curPx + dailySlope * FS;
+  const fPct = curPx > 0 ? ((forecastPx - curPx) / curPx) * 100 : 0;
 
-  // Confidence
-  const s1 = Math.max(0,1-mape/10)*30;
-  const s2 = Math.max(0,(hitRate-50)/50)*20;
-  const s3 = converged ? 15 : 0;
-  const s4 = regime==="NORMAL"?15:regime==="SHIFTED"?5:0;
-  const s5 = Math.max(0,1-mape/20)*20;
-  const pen= regime==="EXTREME"?-25:regime==="SHIFTED"?-10:0;
-  const confidence = Math.min(100,Math.max(0,s1+s2+s3+s4+s5+pen));
+  let hits = 0, mapeSum = 0;
+  const baseSlope = (longTrend.annualReturn * trainC[trainC.length - 1]) / 252;
+  for (let i = 0; i < held.length; i++) {
+    const pred = trainC[trainC.length - 1] + baseSlope * (i + 1);
+    mapeSum += Math.abs((pred - held[i]) / held[i]);
+    const pd = pred > (i === 0 ? trainC[trainC.length - 1] : pred - baseSlope);
+    const ad = held[i] > (i === 0 ? trainC[trainC.length - 1] : held[i - 1]);
+    if (pd === ad) hits++;
+  }
 
-  // Signal
+  const mape = held.length ? (mapeSum / held.length) * 100 : 50;
+  const hitRate = held.length ? (hits / held.length) * 100 : 50;
+  const wfAcc = Math.max(0, 100 - mape);
+  const converged = longTrend.rSquared >= 0.35 && recentTrend.rSquared >= 0.2;
+
+  const trendScore = Math.max(0, Math.min(35, recentTrend.annualReturn * 70));
+  const reliabilityScore = Math.max(0, Math.min(25, recentTrend.rSquared * 35));
+  const validationScore = Math.max(0, Math.min(25, (hitRate - 45) * 1.5));
+  const regimeScore = regime === "NORMAL" ? 15 : regime === "SHIFTED" ? 5 : -20;
+  const confidence = Math.round(Math.min(100, Math.max(0, trendScore + reliabilityScore + validationScore + regimeScore)) * 10) / 10;
+
   let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
-  if (regime==="EXTREME" || hitRate<45)              signal="STAY OUT";
-  else if (confidence>=40 && up    && hitRate>=50)   signal="BUY";
-  else if (confidence>=40 && !up   && hitRate>=50)   signal="SELL";
+  if (regime === "EXTREME" || hitRate < 45) signal = "STAY OUT";
+  else if (confidence >= 40 && fPct > 0 && hitRate >= 50) signal = "BUY";
+  else if (confidence >= 40 && fPct < 0 && hitRate >= 50) signal = "SELL";
 
-  return { signal, confidence, forecastPct:Math.round(fPct*10)/10,
-           walkForwardAccuracy:Math.round(wfAcc*10)/10,
-           hitRate:Math.round(hitRate*10)/10, regime, converged };
+  return {
+    signal,
+    confidence,
+    forecastPct: Math.round(fPct * 10) / 10,
+    walkForwardAccuracy: Math.round(wfAcc * 10) / 10,
+    hitRate: Math.round(hitRate * 10) / 10,
+    regime,
+    converged,
+  };
 }
 
 function fmtCap(v:number):string {
