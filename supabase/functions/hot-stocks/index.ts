@@ -46,6 +46,82 @@ const RISK_PROFILE_TIERS: Record<string, number[]> = {
   aggressive:    [1, 2, 3, 4],
 };
 
+// ─── Sector bias from market context ─────────────────────────────────────────
+// Maps sector names to boost multipliers based on current market conditions.
+// Fetched via FMP market-mover data at runtime — not hardcoded.
+// Hot sectors get a 2× boost in the combinedScore ranking.
+
+async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> {
+  // Default: all sectors equal weight
+  const bias: Record<string, number> = {
+    "Technology": 1.0,
+    "Aerospace & Defense": 1.0,
+    "Biotech": 1.0,
+    "Consumer": 1.0,
+    "Utilities & Energy": 1.0,
+    "Financials": 1.0,
+    "Fixed Income": 1.0,
+    "Real Assets": 1.0,
+    "Income & Dividends": 1.0,
+    "Commodities & Sectors": 1.0,
+  };
+
+  try {
+    // Fetch sector performance from FMP
+    const r = await fetch(
+      `https://financialmodelingprep.com/stable/sector-performance?apikey=${fmpKey}`
+    );
+    if (!r.ok) { await r.text(); return bias; }
+    const data = await r.json();
+    if (!Array.isArray(data)) return bias;
+
+    // Map FMP sector names to our sector names and set bias
+    const sectorMap: Record<string, string[]> = {
+      "Technology":          ["Technology", "Information Technology"],
+      "Utilities & Energy":  ["Energy", "Utilities"],
+      "Financials":          ["Financials", "Financial Services"],
+      "Consumer":            ["Consumer Defensive", "Consumer Cyclical"],
+      "Biotech":             ["Healthcare"],
+      "Real Assets":         ["Real Estate"],
+      "Commodities & Sectors": ["Materials", "Industrials"],
+      "Aerospace & Defense": ["Industrials"],
+    };
+
+    for (const item of data) {
+      const pct = parseFloat(item.changesPercentage || item.changePercentage || "0");
+      // Find which of our sectors this maps to
+      for (const [ourSector, fmpNames] of Object.entries(sectorMap)) {
+        if (fmpNames.some(n => item.sector?.includes(n))) {
+          // Boost: top performer (+2×), strong (+1.5×), average (1×), weak (0.7×)
+          if (pct > 2)       bias[ourSector] = Math.max(bias[ourSector], 2.0);
+          else if (pct > 1)  bias[ourSector] = Math.max(bias[ourSector], 1.5);
+          else if (pct < -1) bias[ourSector] = Math.min(bias[ourSector], 0.7);
+        }
+      }
+    }
+
+    // Bonds / Fixed Income: boost when rates falling (10Y yield declining)
+    const yieldRes = await fetch(
+      `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^TNX&apikey=${fmpKey}`
+    );
+    if (yieldRes.ok) {
+      const yieldData = await yieldRes.json();
+      if (Array.isArray(yieldData) && yieldData.length >= 5) {
+        const recent = yieldData.slice(0, 5).map((d: {close:number}) => d.close);
+        const yieldTrend = recent[0] - recent[4]; // negative = rates falling = bonds good
+        if (yieldTrend < -0.1) bias["Fixed Income"] = 1.8;
+        else if (yieldTrend < 0) bias["Fixed Income"] = 1.3;
+      }
+    } else { await yieldRes.text(); }
+
+    console.log("Sector bias:", JSON.stringify(bias));
+  } catch(e) {
+    console.error("Sector bias fetch failed:", e);
+  }
+
+  return bias;
+}
+
 const SECTOR_UNIVERSES: Record<string, string[]> = {
   // ── Equities ──────────────────────────────────────────────────────
   Technology: [
@@ -91,18 +167,20 @@ const SECTOR_UNIVERSES: Record<string, string[]> = {
 };
 
 // ─── Fast momentum pre-filter (no ML, just math) ──────────────────────────────
-// Returns annualized return and R² from simple linear regression.
-// Used to shortlist candidates before running the autoencoder.
+// Dual-window scorer: weights recent 60-day momentum 3× more than full year.
+// This catches sector rotations (e.g. XLE up 21% in 2026 after flat 2025).
 
-function quickScore(closes: number[]): { annualReturn: number; rSquared: number } | null {
+function linReg(closes: number[]): { slope: number; intercept: number; rSquared: number; annualReturn: number } | null {
   const n = closes.length;
-  if (n < 30) return null;
+  if (n < 10) return null;
   const xs = Array.from({ length: n }, (_, i) => i);
   const sumX = xs.reduce((a, b) => a + b, 0);
   const sumY = closes.reduce((a, b) => a + b, 0);
   const sumXY = xs.reduce((s, x, i) => s + x * closes[i], 0);
   const sumX2 = xs.reduce((s, x) => s + x * x, 0);
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return null;
+  const slope = (n * sumXY - sumX * sumY) / denom;
   const intercept = (sumY - slope * sumX) / n;
   const meanY = sumY / n;
   const ssTot = closes.reduce((s, y) => s + (y - meanY) ** 2, 0);
@@ -110,7 +188,46 @@ function quickScore(closes: number[]): { annualReturn: number; rSquared: number 
   const rSquared = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
   const lastPrice = closes[n - 1];
   const annualReturn = lastPrice > 0 ? (slope * 252) / lastPrice : 0;
-  return { annualReturn, rSquared };
+  return { slope, intercept, rSquared, annualReturn };
+}
+
+function quickScore(closes: number[]): {
+  annualReturn: number;
+  rSquared: number;
+  recentReturn: number;
+  recentRSquared: number;
+  combinedScore: number;    // weighted: recent * 3 + full year
+  breakout: boolean;        // recent momentum much stronger than full-year
+} | null {
+  if (closes.length < 30) return null;
+
+  // Full-year regression
+  const full = linReg(closes);
+  if (!full) return null;
+
+  // Recent 60-day regression (catches rotation breakouts)
+  const recent60 = closes.slice(-60);
+  const recent = linReg(recent60.length >= 20 ? recent60 : closes.slice(-30));
+  if (!recent) return null;
+
+  // Combined score: weight recent momentum 3× more than full year
+  // This means a stock that just broke out scores highly even if full year was flat
+  const fullScore   = full.annualReturn   * Math.max(0, full.rSquared);
+  const recentScore = recent.annualReturn * Math.max(0, recent.rSquared);
+  const combinedScore = recentScore * 3 + fullScore;
+
+  // Breakout flag: recent momentum > 2× full year momentum
+  const breakout = recent.annualReturn > 0 && full.annualReturn >= 0 &&
+    recent.annualReturn > full.annualReturn * 2;
+
+  return {
+    annualReturn:    full.annualReturn,
+    rSquared:        full.rSquared,
+    recentReturn:    recent.annualReturn,
+    recentRSquared:  recent.rSquared,
+    combinedScore,
+    breakout,
+  };
 }
 
 // ─── Minimal autoencoder ──────────────────────────────────────────────────────
@@ -210,14 +327,10 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   let wt = {...w};
-  // Subsample to max 30 windows for speed
-  const step = Math.max(1, Math.floor(wins.length / 30));
-  const idxs: number[] = [];
-  for (let i = 0; i < wins.length; i += step) idxs.push(i);
-  for (let e=0; e<15; e++) {
-    for (const idx of idxs) {
-      const f  = fwd(wins[idx], wt);
-      const dF = f.forecast.map((v,j) => (2/tgts[idx].length)*(v-tgts[idx][j]));
+  for (let e=0; e<40; e++) {
+    for (let i=0; i<wins.length; i++) {
+      const f  = fwd(wins[i], wt);
+      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
       const dWf2=dF.map(g => f.hf1.map(h => g*h));
       const dHf1=f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j],0));
       const dHf1p=dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
@@ -270,29 +383,27 @@ function scoreStock(closes: number[], riskTier = 4): {
   // ── 1. Normalize full price series ────────────────────────────────
   const { n: nm, mn, mx } = norm(closes);
 
-  // ── 2. Build sliding windows (subsample to max 40 for speed) ─────
-  const allWins: number[][] = [];
-  for (let i = 0; i + WS <= nm.length; i++) allWins.push(nm.slice(i, i + WS));
-  const winStep = Math.max(1, Math.floor(allWins.length / 40));
+  // ── 2. Build sliding windows ───────────────────────────────────────
   const wins: number[][] = [];
-  for (let i = 0; i < allWins.length; i += winStep) wins.push(allWins[i]);
+  for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
 
-  // ── 3. Train autoencoder unsupervised (25 epochs, early stop) ─────
+  // ── 3. Train autoencoder unsupervised (60 epochs) ─────────────────
   let W = initAE();
   const curNorm = nm[nm.length - 1];
   let converged = false;
   let lr = 0.001;
 
-  for (let e = 0; e < 25; e++) {
+  for (let e = 0; e < 60; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
+    // Check endpoint reconstruction error
     const lw  = nm.slice(nm.length - WS);
     const f   = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 2.0 && e > 5) { converged = true; break; }
-    if (e === 12) lr *= 0.5;
+    if (err < 1.5 && e > 10) { converged = true; break; }
+    if (e === 30) lr *= 0.5;
   }
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
@@ -310,15 +421,12 @@ function scoreStock(closes: number[], riskTier = 4): {
 
   // Train a separate validation AE on train-only slice
   let Wv = initAE();
-  const vAllWins: number[][] = [];
-  for (let i = 0; i + WS <= tNm.length; i++) vAllWins.push(tNm.slice(i, i + WS));
-  const vStep = Math.max(1, Math.floor(vAllWins.length / 40));
   const vWins: number[][] = [];
-  for (let i = 0; i < vAllWins.length; i += vStep) vWins.push(vAllWins[i]);
+  for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
   let vlr = 0.001;
-  for (let e = 0; e < 20; e++) {
+  for (let e = 0; e < 50; e++) {
     for (const win of vWins) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
-    if (e === 10) vlr *= 0.5;
+    if (e === 25) vlr *= 0.5;
   }
 
   // Train its forecaster head on held-out targets
@@ -468,8 +576,49 @@ serve(async (req) => {
 
     console.log(`Step 1: Quick momentum scan of ${allSymbols.length} stocks (profile: ${riskProfile}, tiers: ${allowedTiers.join(",")})`);
 
+    // ── PRE-STEP: Force-refresh any symbol not seen in DB within last 7 days ───
+    // Ensures the AE sees fresh data for ALL universe stocks, not just ones
+    // users have previously searched on the main dashboard.
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const allTickers = allSymbols.map(s => s.symbol);
+
+    const { data: recentRows } = await supabase
+      .from("stock_prices").select("ticker")
+      .in("ticker", allTickers).gte("date", sevenDaysAgo).limit(500);
+
+    const freshSet = new Set((recentRows || []).map((r: {ticker:string}) => r.ticker));
+    const staleSyms = allTickers.filter(t => !freshSet.has(t));
+    console.log(`Force-fetching ${staleSyms.length} stale symbols...`);
+
+    for (let i = 0; i < staleSyms.length; i += 5) {
+      await Promise.allSettled(staleSyms.slice(i, i + 5).map(async (sym) => {
+        try {
+          const r = await fetch(
+            `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${sym}&apikey=${FMP_API_KEY}`
+          );
+          if (!r.ok) { await r.text(); return; }
+          const d = await r.json();
+          if (!Array.isArray(d) || d.length < 30) return;
+          const rows = d.slice(0, 252).map((p: {date:string;close:number;open:number;high:number;low:number;volume:number}) => ({
+            ticker: sym, date: p.date,
+            close: p.close, open: p.open || p.close,
+            high: p.high || p.close, low: p.low || p.close,
+            volume: p.volume || 0,
+          }));
+          await supabase.from("stock_prices").upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: true });
+        } catch(e) { console.error(`Force-fetch failed for ${sym}:`, e); }
+      }));
+    }
+    console.log(`Force-fetch done. Fetching sector bias...`);
+
+    // ── MARKET CONTEXT: Fetch live sector performance from FMP ────────────────
+    // Hot sectors (e.g. Energy +21% in 2026) get a 2× boost in shortlist ranking.
+    // This is what makes the screener aware of real market rotation.
+    const sectorBias = await fetchSectorBias(FMP_API_KEY);
+    console.log(`Sector bias fetched. Starting momentum scan...`);
+
     // ── STEP 1: Fast momentum pre-filter — fetch prices + quick score all ──────
-    const candidates:{symbol:string;sector:string;riskTier:number;closes:number[];qs:{annualReturn:number;rSquared:number}}[]=[];
+    const candidates:{symbol:string;sector:string;riskTier:number;closes:number[];qs:{annualReturn:number;rSquared:number;recentReturn:number;recentRSquared:number;combinedScore:number;breakout:boolean}}[]=[];
 
     for (let i=0; i<allSymbols.length; i+=8) {
       const batch=allSymbols.slice(i,i+8);
@@ -490,9 +639,11 @@ serve(async (req) => {
         if (closes.length<50) return null;
         const qs=quickScore(closes);
         // Tier 1 instruments have very low annual returns by nature — don't filter them out
-        const minReturn  = riskTier <= 1 ? -0.02 : 0;   // allow slightly negative for bonds
-        const minRSquared= riskTier <= 2 ?  0.05 : 0.1; // bonds trend gently, lower R² ok
-        if (!qs || qs.annualReturn < minReturn || qs.rSquared < minRSquared) return null;
+        // For breakout detection: allow negative full-year if recent is strongly positive
+        const minRSquared = riskTier <= 2 ? 0.03 : 0.05;
+        const hasRecentMomentum = qs.recentReturn > 0 && qs.recentRSquared >= minRSquared;
+        const hasFullYearMomentum = qs.annualReturn > (riskTier <= 1 ? -0.02 : 0) && qs.rSquared >= minRSquared;
+        if (!hasRecentMomentum && !hasFullYearMomentum) return null;
         return {symbol,sector,riskTier,closes,qs};
       }));
       for (const r of res)
@@ -500,9 +651,16 @@ serve(async (req) => {
     }
 
     // Sort by momentum score, keep top 15 for AE scoring
-    candidates.sort((a,b)=>(b.qs.annualReturn*b.qs.rSquared)-(a.qs.annualReturn*a.qs.rSquared));
+    // Sort by combinedScore × sectorBias
+    // Recent 60d weighted 3× + live sector performance multiplier
+    // e.g. Energy stock with combinedScore=0.8 in a +2× sector → effective score 1.6
+    candidates.sort((a, b) => {
+      const biasA = sectorBias[a.sector] ?? 1.0;
+      const biasB = sectorBias[b.sector] ?? 1.0;
+      return (b.qs.combinedScore * biasB) - (a.qs.combinedScore * biasA);
+    });
     // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 20 : riskProfile === "moderate" ? 15 : 12;
+    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 35 : 30;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
@@ -513,9 +671,10 @@ serve(async (req) => {
       forecastPct:number; forecastDays:number; forecastLabel:string;
       walkForwardAccuracy:number; hitRate:number;
       regime:string; converged:boolean; riskTier:number; riskLabel:string;
+      breakout:boolean; sectorHot:boolean;
     }[]=[];
 
-    for (const {symbol,sector,riskTier,closes} of shortlist) {
+    for (const {symbol,sector,riskTier,closes,qs} of shortlist) {
       try {
         const scored=scoreStock(closes, riskTier);
         if (!scored||scored.signal!=="BUY") continue;
@@ -548,7 +707,9 @@ serve(async (req) => {
           regime:scored.regime,
           converged:scored.converged,
           riskTier,
-          riskLabel: RISK_LABELS[riskTier] ?? "🔴 High Risk",
+          riskLabel:  RISK_LABELS[riskTier] ?? "🔴 High Risk",
+          breakout:   scored.converged && (qs.breakout ?? false), // recent momentum >> full year
+          sectorHot:  (sectorBias[sector] ?? 1.0) >= 1.5,        // sector is currently outperforming
         });
       } catch(e) {
         console.error(`AE error for ${symbol}:`,e);
@@ -574,6 +735,7 @@ serve(async (req) => {
         sectorsScanned: Object.keys(sectorsToScan),
         riskProfile,
         allowedTiers,
+        sectorBias,   // expose to frontend so UI can show "🔥 Hot sector" badges
       }),
       {headers:{...corsHeaders,"Content-Type":"application/json"}}
     );
