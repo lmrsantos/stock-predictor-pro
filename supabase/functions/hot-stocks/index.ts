@@ -389,15 +389,18 @@ function scoreStock(closes: number[], riskTier = 4): {
   // ── 2. Build sliding windows ───────────────────────────────────────
   const wins: number[][] = [];
   for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
+  const trainWins = wins.length > 28
+    ? wins.filter((_, i) => i % Math.ceil(wins.length / 28) === 0).slice(0, 28)
+    : wins;
 
-  // ── 3. Train autoencoder unsupervised (60 epochs) ─────────────────
+  // ── 3. Train autoencoder unsupervised with a strict CPU budget ─────
   let W = initAE();
   const curNorm = nm[nm.length - 1];
   let converged = false;
   let lr = 0.001;
 
-  for (let e = 0; e < 60; e++) {
-    for (const win of wins) {
+  for (let e = 0; e < 18; e++) {
+    for (const win of trainWins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
@@ -405,8 +408,8 @@ function scoreStock(closes: number[], riskTier = 4): {
     const lw  = nm.slice(nm.length - WS);
     const f   = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 1.5 && e > 10) { converged = true; break; }
-    if (e === 30) lr *= 0.5;
+    if (err < 2.5 && e > 6) { converged = true; break; }
+    if (e === 9) lr *= 0.5;
   }
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
