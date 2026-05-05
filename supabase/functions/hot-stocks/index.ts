@@ -588,12 +588,12 @@ function scoreStock(
   const vWins: number[][] = [];
   for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
   let vlr = 0.001;
-  for (let e = 0; e < 50; e++) {
+  for (let e = 0; e < 25; e++) {
     for (const win of vWins) {
       const f = fwd(win, Wv);
       Wv = bwd(win, f, Wv, vlr);
     }
-    if (e === 25) vlr *= 0.5;
+    if (e === 12) vlr *= 0.5;
   }
 
   // Train its forecaster head on held-out targets
