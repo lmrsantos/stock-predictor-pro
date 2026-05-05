@@ -659,7 +659,7 @@ serve(async (req) => {
         if (r.status==="fulfilled"&&r.value) candidates.push(r.value);
     }
 
-    // Sort by momentum score, keep top 15 for AE scoring
+    // Sort by momentum score, keep a small AE shortlist to stay within edge CPU limits
     // Sort by combinedScore × sectorBias
     // Recent 60d weighted 3× + live sector performance multiplier
     // e.g. Energy stock with combinedScore=0.8 in a +2× sector → effective score 1.6
@@ -668,8 +668,7 @@ serve(async (req) => {
       const biasB = sectorBias[b.sector] ?? 1.0;
       return (b.qs.combinedScore * biasB) - (a.qs.combinedScore * biasA);
     });
-    // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 35 : 30;
+    const shortlistSize = riskProfile === "conservative" ? 12 : riskProfile === "moderate" ? 10 : 8;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
