@@ -256,25 +256,41 @@ serve(async (req) => {
 
     const rows = Array.from(rowMap.values());
 
-    // Upsert into database
+    // Upsert into database as a best-effort cache write. The chart payload is
+    // returned directly below so a slow cache write cannot fail the request.
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const upsertPromises: Promise<any>[] = [
-      supabase.from("stock_prices").upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: false }),
-    ];
+    const cachePrices = async () => {
+      const chunkSize = 120;
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+        const { error } = await supabase
+          .from("stock_prices")
+          .upsert(chunk, { onConflict: "ticker,date", ignoreDuplicates: false });
 
-    if (fundamentals.ticker) {
-      upsertPromises.push(
-        supabase.from("stock_fundamentals").upsert([fundamentals], { onConflict: "ticker", ignoreDuplicates: false })
-      );
-    }
+        if (error) {
+          throw new Error(`DB price cache failed: ${error.message}`);
+        }
+      }
+    };
 
-    const results = await Promise.all(upsertPromises);
-    if (results[0]?.error) throw new Error(`DB price upsert failed: ${results[0].error.message}`);
-    if (results[1]?.error) console.warn("Fundamentals upsert warning:", results[1].error.message);
+    const cacheFundamentals = async () => {
+      if (!fundamentals.ticker) return;
+      const { error } = await supabase
+        .from("stock_fundamentals")
+        .upsert([fundamentals], { onConflict: "ticker", ignoreDuplicates: false });
+
+      if (error) console.warn("Fundamentals cache warning:", error.message);
+    };
+
+    EdgeRuntime.waitUntil(
+      Promise.all([cachePrices(), cacheFundamentals()]).catch((cacheError) => {
+        console.warn("Stock data cache warning:", cacheError instanceof Error ? cacheError.message : cacheError);
+      })
+    );
 
     return new Response(
       JSON.stringify({
@@ -283,6 +299,7 @@ serve(async (req) => {
         name: fundamentals.company_name || meta?.longName || meta?.shortName || cleanTicker,
         currency: meta?.currency || "USD",
         rowsInserted: rows.length,
+        prices: rows,
         fundamentals: {
           pe_ratio: fundamentals.pe_ratio,
           forward_pe: fundamentals.forward_pe,
