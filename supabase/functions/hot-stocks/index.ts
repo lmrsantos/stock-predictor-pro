@@ -554,20 +554,19 @@ function scoreStock(
   let converged = false;
   let lr = 0.001;
 
-  for (let e = 0; e < 60; e++) {
+  for (let e = 0; e < 40; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
-    // Check endpoint reconstruction error
     const lw = nm.slice(nm.length - WS);
     const f = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 1.5 && e > 10) {
+    if (err < 2.5 && e > 8) {
       converged = true;
       break;
     }
-    if (e === 30) lr *= 0.5;
+    if (e === 20) lr *= 0.5;
   }
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
