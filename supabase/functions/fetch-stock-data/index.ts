@@ -269,7 +269,7 @@ serve(async (req) => {
         const chunk = rows.slice(i, i + chunkSize);
         const { error } = await supabase
           .from("stock_prices")
-          .upsert(chunk, { onConflict: "ticker,date", ignoreDuplicates: false });
+          .upsert(chunk, { onConflict: "ticker,date", ignoreDuplicates: true });
 
         if (error) {
           throw new Error(`DB price cache failed: ${error.message}`);
