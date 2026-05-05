@@ -636,11 +636,11 @@ function scoreStock(
   const lastWin = nm.slice(nm.length - WS);
   const finalF = fwd(lastWin, W);
   // Use only FD forecast steps (tier-appropriate horizon)
+  const curPx = closes[closes.length - 1];
   const fPx = finalF.forecast.slice(0, FD).map((v) => {
     const val = dn(v, mn, mx);
     return isNaN(val) || !isFinite(val) ? curPx : val;
   });
-  const curPx = closes[closes.length - 1];
   const fPct = fPx.length > 0 && curPx > 0 ? ((fPx[fPx.length - 1] - curPx) / curPx) * 100 : 0;
 
   // ── 8. Evidence-based confidence score ────────────────────────────
