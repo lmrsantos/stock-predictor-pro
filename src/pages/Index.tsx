@@ -112,8 +112,8 @@ const Index = () => {
   const website = meta?.website || null;
   const irWebsite = meta?.irWebsite || null;
 
-  const isLoading = isFetching || isQuerying;
-  const error = fetchError || queryError;
+  const isLoading = isFetching || (isQuerying && !meta?.prices?.length);
+  const error = fetchError || (stockData?.length ? null : queryError);
 
   // Build risk context from VIX + geopolitical tension
   const riskContext: RiskContext | undefined = (vixData || tensionData) ? {
