@@ -518,9 +518,9 @@ const sd = (a: number[]) => {
   return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length);
 };
 
-// ─── Score one stock with real autoencoder + backpropagation ─────────────────
-// Uses the actual AE training loop (fwd/bwd/trainFwd defined above).
-// quickScore is only used as a pre-check — all scoring comes from the AE.
+// ─── Score one stock: momentum direction + AE confidence ────────────────────
+// Direction comes from linear regression (reliable, deterministic).
+// AE provides reconstruction quality → confidence scoring.
 
 function scoreStock(
   closes: number[],
@@ -536,140 +536,91 @@ function scoreStock(
   regime: "NORMAL" | "SHIFTED" | "EXTREME";
   converged: boolean;
 } | null {
-  const FD = forecastDaysForTier(riskTier); // actual forecast horizon for this tier
+  const FD = forecastDaysForTier(riskTier);
   const FL = forecastLabel(FD);
-
-  // Low/medium risk instruments need fewer data points (they move slowly)
-  const minData = riskTier <= 2 ? WS + FD + 15 : WS + FD + 25;
+  const minData = riskTier <= 2 ? 60 : 80;
   if (closes.length < minData) return null;
 
-  const HOLD = 15;
+  // ── 1. Momentum-based forecast (deterministic, reliable) ──────────
+  const qs = quickScore(closes);
+  if (!qs) return null;
 
-  // ── 1. Normalize full price series ────────────────────────────────
-  const { n: nm, mn, mx } = norm(closes);
+  // Forecast %: use recent 60d regression slope projected over FD trading days
+  const recent60 = closes.slice(-60);
+  const recentReg = linReg(recent60.length >= 20 ? recent60 : closes.slice(-30));
+  const curPx = closes[closes.length - 1];
+  const fPct = recentReg && curPx > 0
+    ? (recentReg.slope * FD / curPx) * 100
+    : 0;
 
-  // ── 2. Build sliding windows ───────────────────────────────────────
+  // ── 2. AE reconstruction quality → confidence ─────────────────────
+  const { n: nm } = norm(closes);
   const wins: number[][] = [];
   for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
 
-  // ── 3. Train autoencoder unsupervised (60 epochs) ─────────────────
   let W = initAE();
-  const curNorm = nm[nm.length - 1];
   let converged = false;
   let lr = 0.001;
-
-  for (let e = 0; e < 40; e++) {
+  for (let e = 0; e < 30; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
     const lw = nm.slice(nm.length - WS);
     const f = fwd(lw, W);
+    const curNorm = nm[nm.length - 1];
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 2.5 && e > 8) {
-      converged = true;
-      break;
-    }
-    if (e === 20) lr *= 0.5;
+    if (err < 3 && e > 5) { converged = true; break; }
+    if (e === 15) lr *= 0.5;
   }
 
-  // ── 4. Train forecaster head (self-supervised) ────────────────────
-  const fwWins: number[][] = [],
-    fwTgts: number[][] = [];
-  for (let i = 0; i + WS + FD <= nm.length; i++) {
-    fwWins.push(nm.slice(i, i + WS));
-    fwTgts.push(nm.slice(i + WS, i + WS + FD));
-  }
-  if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005);
-
-  // ── 5. Walk-forward validation on held-out HOLD days ──────────────
+  // ── 3. Walk-forward: use regression to predict held-out period ────
+  const HOLD = 15;
   const trainC = closes.slice(0, closes.length - HOLD);
   const held = closes.slice(closes.length - HOLD);
-  const { n: tNm, mn: tMn, mx: tMx } = norm(trainC);
-
-  // Train a separate validation AE on train-only slice
-  let Wv = initAE();
-  const vWins: number[][] = [];
-  for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
-  let vlr = 0.001;
-  for (let e = 0; e < 25; e++) {
-    for (const win of vWins) {
-      const f = fwd(win, Wv);
-      Wv = bwd(win, f, Wv, vlr);
-    }
-    if (e === 12) vlr *= 0.5;
-  }
-
-  // Train its forecaster head on held-out targets
-  const vFwWins: number[][] = [],
-    vFwTgts: number[][] = [];
-  for (let i = 0; i + WS + HOLD <= tNm.length; i++) {
-    vFwWins.push(tNm.slice(i, i + WS));
-    vFwTgts.push(tNm.slice(i + WS, i + WS + HOLD));
-  }
-  if (vFwWins.length > 0) Wv = trainFwd(vFwWins, vFwTgts, Wv, 0.0005);
-
-  // Forecast held-out period and measure accuracy
-  const lastTrainWin = tNm.slice(tNm.length - WS);
-  const valF = fwd(lastTrainWin, Wv);
-  const predNm = valF.forecast.slice(0, HOLD);
-  const predPx = predNm.map((v) => {
-    const val = dn(v, tMn, tMx);
-    return isNaN(val) || !isFinite(val) ? trainC[trainC.length - 1] : val;
-  });
-
-  let mapeSum = 0,
-    hits = 0,
-    validCnt = 0;
+  const trainReg = linReg(trainC.slice(-60));
   const lastTrainPx = trainC[trainC.length - 1];
-  const cnt = Math.min(predPx.length, held.length);
-  for (let i = 0; i < cnt; i++) {
-    const err = held[i] !== 0 ? Math.abs((predPx[i] - held[i]) / held[i]) : 0;
-    if (!isNaN(err) && isFinite(err)) { mapeSum += err; validCnt++; }
-    const pd = predPx[i] > (i === 0 ? lastTrainPx : predPx[i - 1]);
-    const ad = held[i] > (i === 0 ? lastTrainPx : held[i - 1]);
+
+  let hits = 0;
+  let mapeSum = 0;
+  let validCnt = 0;
+  for (let i = 0; i < HOLD; i++) {
+    const pred = lastTrainPx + (trainReg?.slope ?? 0) * (i + 1);
+    const actual = held[i];
+    if (actual > 0) {
+      const err = Math.abs((pred - actual) / actual);
+      if (isFinite(err)) { mapeSum += err; validCnt++; }
+    }
+    const pd = pred > (i === 0 ? lastTrainPx : lastTrainPx + (trainReg?.slope ?? 0) * i);
+    const ad = actual > (i === 0 ? lastTrainPx : held[i - 1]);
     if (pd === ad) hits++;
   }
   const mape = validCnt > 0 ? (mapeSum / validCnt) * 100 : 50;
-  const hitRate = cnt > 0 ? (hits / cnt) * 100 : 50;
+  const hitRate = HOLD > 0 ? (hits / HOLD) * 100 : 50;
   const wfAcc = Math.max(0, 100 - (isNaN(mape) ? 50 : mape));
 
-  // ── 6. Regime detection ───────────────────────────────────────────
+  // ── 4. Regime detection ───────────────────────────────────────────
   const rets = closes.slice(1).map((p, i) => (p - closes[i]) / closes[i]);
   const cVol = sd(rets.slice(-20)) * Math.sqrt(252);
   const tVol = sd(rets.slice(0, -20)) * Math.sqrt(252);
   const ratio = tVol > 0 ? cVol / tVol : 1;
   const regime: "NORMAL" | "SHIFTED" | "EXTREME" = ratio > 2.5 ? "EXTREME" : ratio > 1.5 ? "SHIFTED" : "NORMAL";
 
-  // ── 7. Forecast direction from AE (not linear regression) ─────────
-  const lastWin = nm.slice(nm.length - WS);
-  const finalF = fwd(lastWin, W);
-  // Use only FD forecast steps (tier-appropriate horizon)
-  const curPx = closes[closes.length - 1];
-  const fPx = finalF.forecast.slice(0, FD).map((v) => {
-    const val = dn(v, mn, mx);
-    return isNaN(val) || !isFinite(val) ? curPx : val;
-  });
-  const fPct = fPx.length > 0 && curPx > 0 ? ((fPx[fPx.length - 1] - curPx) / curPx) * 100 : 0;
-
-  // ── 8. Evidence-based confidence score ────────────────────────────
-  const s1 = isNaN(mape) ? 0 : Math.max(0, 1 - mape / 10) * 30;
+  // ── 5. Confidence score ───────────────────────────────────────────
+  const s1 = isNaN(mape) ? 0 : Math.max(0, 1 - mape / 10) * 25;
   const s2 = Math.max(0, (hitRate - 50) / 50) * 20;
-  const s3 = converged ? 15 : 0;
+  const s3 = converged ? 15 : 5; // partial credit for AE even if not converged
   const s4 = regime === "NORMAL" ? 15 : regime === "SHIFTED" ? 5 : 0;
-  const s5 = isNaN(mape) ? 0 : Math.max(0, 1 - mape / 20) * 20;
+  const s5 = qs.rSquared > 0.3 ? 15 : qs.rSquared > 0.1 ? 10 : 5; // trend quality
+  const s6 = qs.recentRSquared > 0.3 ? 10 : qs.recentRSquared > 0.1 ? 5 : 0;
   const pen = regime === "EXTREME" ? -25 : regime === "SHIFTED" ? -10 : 0;
-  const rawConf = s1 + s2 + s3 + s4 + s5 + pen;
+  const rawConf = s1 + s2 + s3 + s4 + s5 + s6 + pen;
   const confidence = Math.min(100, Math.max(0, isNaN(rawConf) ? 0 : rawConf));
 
-  // ── 9. Signal decision — thresholds scale with risk tier ────────────
-  // Tier 1 (bonds/money market): slow movers, lower bar — any positive AE signal counts
-  // Tier 2 (REITs/dividends):    medium bar — slightly relaxed vs stocks
-  // Tier 3 (covered calls/commodities): same as stocks
-  // Tier 4 (individual stocks):  full bar
+  // ── 6. Signal decision ────────────────────────────────────────────
   const minConfidence = riskTier === 1 ? 15 : riskTier === 2 ? 20 : 25;
   const minHitRate = riskTier === 1 ? 40 : riskTier === 2 ? 42 : 45;
-  const stayOutHitRate = riskTier === 1 ? 30 : riskTier === 2 ? 33 : 38;
+  const stayOutHitRate = riskTier === 1 ? 30 : riskTier === 2 ? 33 : 35;
 
   let signal: "BUY" | "SELL" | "WAIT" | "STAY OUT" = "WAIT";
   if (regime === "EXTREME" || hitRate < stayOutHitRate) signal = "STAY OUT";
