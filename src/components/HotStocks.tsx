@@ -214,6 +214,16 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                   <span className="text-[10px] font-mono font-semibold">
                     {stock.riskLabel}
                   </span>
+                  {stock.breakout && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500 dark:text-orange-400">
+                      🔥 Breakout
+                    </span>
+                  )}
+                  {stock.sectorHot && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+                      ⚡ Hot Sector
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
