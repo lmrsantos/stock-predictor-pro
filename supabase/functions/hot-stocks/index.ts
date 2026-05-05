@@ -373,7 +373,11 @@ const relu = (x: number) => Math.max(0, x);
 const reluGrad = (x: number) => (x > 0 ? 1 : 0);
 
 function affine(W: number[][], b: number[], v: number[]): number[] {
-  return W.map((row, i) => row.reduce((s, w, j) => s + w * v[j], 0) + b[i]);
+  return W.map((row, i) => {
+    let s = b[i];
+    for (let j = 0; j < row.length; j++) s += row[j] * v[j];
+    return isNaN(s) || !isFinite(s) ? 0 : Math.max(-10, Math.min(10, s));
+  });
 }
 
 function randMat(rows: number, cols: number): number[][] {
