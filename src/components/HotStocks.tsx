@@ -134,13 +134,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {stock.marketCap && (
+                  {stock.marketCap && stock.marketCap !== "0" && (
                     <span className="text-[10px] font-mono text-muted-foreground">
                       {stock.marketCap}
                     </span>
                   )}
-                  <span className={`text-xs font-mono font-semibold ${(stock.annualReturn ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
-                    {(stock.annualReturn ?? 0) >= 0 ? "+" : ""}{(stock.annualReturn ?? 0).toFixed(1)}%/yr
+                  <span className={`text-xs font-mono font-semibold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
+                    {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -150,7 +150,10 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] font-mono text-muted-foreground">
-                    R² {(stock.rSquared ?? 0).toFixed(3)}
+                    Confidence {stock.confidence.toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    Hit {stock.hitRate}%
                   </span>
                   {stock.sector && (
                     <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
@@ -158,17 +161,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                     </span>
                   )}
                   <span className={`text-[10px] font-mono font-semibold ${
-                    stock.momentum === "Strong" ? "price-positive" : "text-primary"
+                    stock.riskTier <= 2 ? "price-positive" : "text-destructive"
                   }`}>
-                    {stock.momentum}
+                    {stock.riskLabel}
                   </span>
                 </div>
               </div>
             </button>
           ))}
           <p className="text-[9px] text-muted-foreground text-center mt-2 leading-relaxed">
-            Ranked by QuantPulse™ — trend consistency (R²) × momentum strength<br />
-            across 80+ stocks with $500M+ market cap
+            Ranked by QuantPulse™ AE — autoencoder confidence × walk-forward accuracy<br />
+            across 160+ stocks with risk-tiered screening
           </p>
         </div>
       )}
