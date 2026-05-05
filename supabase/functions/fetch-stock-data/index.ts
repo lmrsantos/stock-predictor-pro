@@ -286,11 +286,14 @@ serve(async (req) => {
       if (error) console.warn("Fundamentals cache warning:", error.message);
     };
 
-    EdgeRuntime.waitUntil(
-      Promise.all([cachePrices(), cacheFundamentals()]).catch((cacheError) => {
+    const cachePromise = Promise.all([cachePrices(), cacheFundamentals()]).catch((cacheError) => {
         console.warn("Stock data cache warning:", cacheError instanceof Error ? cacheError.message : cacheError);
-      })
-    );
+      });
+
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+    if (edgeRuntime?.waitUntil) {
+      edgeRuntime.waitUntil(cachePromise);
+    }
 
     return new Response(
       JSON.stringify({
