@@ -907,7 +907,12 @@ serve(async (req) => {
     for (const { symbol, sector, riskTier, closes, qs } of shortlist) {
       try {
         const scored = scoreStock(closes, riskTier);
-        if (!scored || scored.signal !== "BUY") continue;
+        if (!scored) {
+          console.log(`  ${symbol}: scoreStock returned null`);
+          continue;
+        }
+        console.log(`  ${symbol}: signal=${scored.signal} conf=${scored.confidence} hit=${scored.hitRate} fPct=${scored.forecastPct} regime=${scored.regime} converged=${scored.converged}`);
+        if (scored.signal !== "BUY") continue;
 
         // Get display info
         let name = symbol,
@@ -951,8 +956,8 @@ serve(async (req) => {
           converged: scored.converged,
           riskTier,
           riskLabel: RISK_LABELS[riskTier] ?? "🔴 High Risk",
-          breakout: scored.converged && (qs.breakout ?? false), // recent momentum >> full year
-          sectorHot: (sectorBias[sector] ?? 1.0) >= 1.5, // sector is currently outperforming
+          breakout: scored.converged && (qs.breakout ?? false),
+          sectorHot: (sectorBias[sector] ?? 1.0) >= 1.5,
         });
       } catch (e) {
         console.error(`AE error for ${symbol}:`, e);
