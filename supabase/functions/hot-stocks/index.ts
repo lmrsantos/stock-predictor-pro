@@ -121,12 +121,7 @@ async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> 
 
   try {
     // Fetch sector performance from FMP
-    const r = await fetch(`https://financialmodelingprep.com/stable/sector-performance?apikey=${fmpKey}`);
-    if (!r.ok) {
-      await r.text();
-      return bias;
-    }
-    const data = await r.json();
+    const data = await fetchJson(`https://financialmodelingprep.com/stable/sector-performance?apikey=${fmpKey}`, 2500);
     if (!Array.isArray(data)) return bias;
 
     // Map FMP sector names to our sector names and set bias
@@ -155,19 +150,15 @@ async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> 
     }
 
     // Bonds / Fixed Income: boost when rates falling (10Y yield declining)
-    const yieldRes = await fetch(
+    const yieldData = await fetchJson(
       `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^TNX&apikey=${fmpKey}`,
+      2500,
     );
-    if (yieldRes.ok) {
-      const yieldData = await yieldRes.json();
-      if (Array.isArray(yieldData) && yieldData.length >= 5) {
-        const recent = yieldData.slice(0, 5).map((d: { close: number }) => d.close);
-        const yieldTrend = recent[0] - recent[4]; // negative = rates falling = bonds good
-        if (yieldTrend < -0.1) bias["Fixed Income"] = 1.8;
-        else if (yieldTrend < 0) bias["Fixed Income"] = 1.3;
-      }
-    } else {
-      await yieldRes.text();
+    if (Array.isArray(yieldData) && yieldData.length >= 5) {
+      const recent = yieldData.slice(0, 5).map((d: { close: number }) => d.close);
+      const yieldTrend = recent[0] - recent[4]; // negative = rates falling = bonds good
+      if (yieldTrend < -0.1) bias["Fixed Income"] = 1.8;
+      else if (yieldTrend < 0) bias["Fixed Income"] = 1.3;
     }
 
     console.log("Sector bias:", JSON.stringify(bias));
