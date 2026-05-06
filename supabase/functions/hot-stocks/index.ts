@@ -8,6 +8,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchJson(url: string, timeoutMs = 3000): Promise<unknown | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      await response.text();
+      return null;
+    }
+    return await response.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Risk tiers ───────────────────────────────────────────────────────────────
 // 1 = Low Risk (green)   → Treasuries, Money Market, IG Bonds
 // 2 = Medium Risk (yellow) → Dividend ETFs, REITs, Preferred Stocks
@@ -104,12 +121,7 @@ async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> 
 
   try {
     // Fetch sector performance from FMP
-    const r = await fetch(`https://financialmodelingprep.com/stable/sector-performance?apikey=${fmpKey}`);
-    if (!r.ok) {
-      await r.text();
-      return bias;
-    }
-    const data = await r.json();
+    const data = await fetchJson(`https://financialmodelingprep.com/stable/sector-performance?apikey=${fmpKey}`, 2500);
     if (!Array.isArray(data)) return bias;
 
     // Map FMP sector names to our sector names and set bias
@@ -138,19 +150,15 @@ async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> 
     }
 
     // Bonds / Fixed Income: boost when rates falling (10Y yield declining)
-    const yieldRes = await fetch(
+    const yieldData = await fetchJson(
       `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^TNX&apikey=${fmpKey}`,
+      2500,
     );
-    if (yieldRes.ok) {
-      const yieldData = await yieldRes.json();
-      if (Array.isArray(yieldData) && yieldData.length >= 5) {
-        const recent = yieldData.slice(0, 5).map((d: { close: number }) => d.close);
-        const yieldTrend = recent[0] - recent[4]; // negative = rates falling = bonds good
-        if (yieldTrend < -0.1) bias["Fixed Income"] = 1.8;
-        else if (yieldTrend < 0) bias["Fixed Income"] = 1.3;
-      }
-    } else {
-      await yieldRes.text();
+    if (Array.isArray(yieldData) && yieldData.length >= 5) {
+      const recent = yieldData.slice(0, 5).map((d: { close: number }) => d.close);
+      const yieldTrend = recent[0] - recent[4]; // negative = rates falling = bonds good
+      if (yieldTrend < -0.1) bias["Fixed Income"] = 1.8;
+      else if (yieldTrend < 0) bias["Fixed Income"] = 1.3;
     }
 
     console.log("Sector bias:", JSON.stringify(bias));
@@ -485,8 +493,8 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   let wt = { ...w };
-  for (let e = 0; e < 40; e++) {
-    for (let i = 0; i < wins.length; i++) {
+  for (let e = 0; e < 8; e++) {
+    for (let i = 0; i < Math.min(wins.length, 24); i++) {
       const f = fwd(wins[i], wt);
       const dF = f.forecast.map((v, j) => (2 / tgts[i].length) * (v - tgts[i][j]));
       const dWf2 = dF.map((g) => f.hf1.map((h) => g * h));
@@ -556,12 +564,13 @@ function scoreStock(
   // ── 2. AE reconstruction quality → confidence ─────────────────────
   const { n: nm } = norm(closes);
   const wins: number[][] = [];
-  for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
+  const aeStart = Math.max(0, nm.length - 120);
+  for (let i = aeStart; i + WS <= nm.length; i += 2) wins.push(nm.slice(i, i + WS));
 
   let W = initAE();
   let converged = false;
   let lr = 0.001;
-  for (let e = 0; e < 30; e++) {
+  for (let e = 0; e < 8; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
@@ -570,8 +579,8 @@ function scoreStock(
     const f = fwd(lw, W);
     const curNorm = nm[nm.length - 1];
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 3 && e > 5) { converged = true; break; }
-    if (e === 15) lr *= 0.5;
+    if (err < 4 && e > 2) { converged = true; break; }
+    if (e === 4) lr *= 0.5;
   }
 
   // ── 3. Walk-forward: use regression to predict held-out period ────
@@ -676,25 +685,28 @@ serve(async (req) => {
     if (!["conservative", "moderate", "aggressive"].includes(riskProfile)) riskProfile = "aggressive";
     const allowedTiers = RISK_PROFILE_TIERS[riskProfile];
 
-    const cacheKey = sectorFilter ? `ae_hot_v2_${riskProfile}_${sectorFilter}` : `ae_hot_v2_${riskProfile}_all`;
+    const cacheKey = sectorFilter ? `ae_hot_v3_${riskProfile}_${sectorFilter}` : `ae_hot_v3_${riskProfile}_all`;
 
-    // Cache check (30 min)
-    const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    // Cache check (fresh for 30 min, stale fallback for 12h)
+    const freshMs = 30 * 60 * 1000;
+    const staleMs = 12 * 60 * 60 * 1000;
+    let staleStocks: unknown[] | null = null;
     const { data: cached } = await supabase
       .from("market_updates")
-      .select("content")
+      .select("content, created_at")
       .eq("signal_type", cacheKey)
-      .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1);
 
     if (cached?.length) {
       try {
         const p = JSON.parse(cached[0].content);
-        if (Array.isArray(p) && p.length > 0)
+        const ageMs = Date.now() - new Date(cached[0].created_at).getTime();
+        if (Array.isArray(p) && p.length > 0 && ageMs <= freshMs)
           return new Response(JSON.stringify({ stocks: p, cached: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        if (Array.isArray(p) && p.length > 0 && ageMs <= staleMs) staleStocks = p;
       } catch {
         /* fall through */
       }
@@ -702,7 +714,7 @@ serve(async (req) => {
 
     const sectorsToScan = sectorFilter ? { [sectorFilter]: SECTOR_UNIVERSES[sectorFilter] || [] } : SECTOR_UNIVERSES;
 
-    const allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
+    let allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
     for (const [sector, syms] of Object.entries(sectorsToScan)) {
       for (const sym of syms) {
         const riskTier = RISK_TIERS[sym] ?? 4; // default to tier 4 (stocks)
@@ -716,55 +728,28 @@ serve(async (req) => {
       `Step 1: Quick momentum scan of ${allSymbols.length} stocks (profile: ${riskProfile}, tiers: ${allowedTiers.join(",")})`,
     );
 
-    // ── PRE-STEP: Force-refresh any symbol not seen in DB within last 7 days ───
-    // Ensures the AE sees fresh data for ALL universe stocks, not just ones
-    // users have previously searched on the main dashboard.
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    // ── PRE-STEP: bound the scan to tickers with recent cached prices ─────────
+    // Edge functions have a tight CPU budget, so never force-refresh the full
+    // universe in-band. The main stock fetcher keeps this table warm over time.
+    const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const allTickers = allSymbols.map((s) => s.symbol);
 
     const { data: recentRows } = await supabase
       .from("stock_prices")
       .select("ticker")
       .in("ticker", allTickers)
-      .gte("date", sevenDaysAgo)
-      .limit(500);
+      .gte("date", recentCutoff)
+      .limit(1200);
 
     const freshSet = new Set((recentRows || []).map((r: { ticker: string }) => r.ticker));
-    const staleSyms = allTickers.filter((t) => !freshSet.has(t));
-    console.log(`Force-fetching ${staleSyms.length} stale symbols...`);
+    allSymbols = allSymbols.filter((s) => freshSet.has(s.symbol));
 
-    for (let i = 0; i < staleSyms.length; i += 5) {
-      await Promise.allSettled(
-        staleSyms.slice(i, i + 5).map(async (sym) => {
-          try {
-            const r = await fetch(
-              `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${sym}&apikey=${FMP_API_KEY}`,
-            );
-            if (!r.ok) {
-              await r.text();
-              return;
-            }
-            const d = await r.json();
-            if (!Array.isArray(d) || d.length < 30) return;
-            const rows = d
-              .slice(0, 252)
-              .map((p: { date: string; close: number; open: number; high: number; low: number; volume: number }) => ({
-                ticker: sym,
-                date: p.date,
-                close: p.close,
-                open: p.open || p.close,
-                high: p.high || p.close,
-                low: p.low || p.close,
-                volume: p.volume || 0,
-              }));
-            await supabase.from("stock_prices").upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: true });
-          } catch (e) {
-            console.error(`Force-fetch failed for ${sym}:`, e);
-          }
-        }),
-      );
+    if (allSymbols.length < 8 && staleStocks?.length) {
+      return new Response(JSON.stringify({ stocks: staleStocks, cached: true, stale: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-    console.log(`Force-fetch done. Fetching sector bias...`);
+    console.log(`Scanning ${allSymbols.length} recently cached symbols. Fetching sector bias...`);
 
     // ── MARKET CONTEXT: Fetch live sector performance from FMP ────────────────
     // Hot sectors (e.g. Energy +21% in 2026) get a 2× boost in shortlist ranking.
@@ -797,10 +782,10 @@ serve(async (req) => {
             .from("stock_prices")
             .select("close")
             .eq("ticker", symbol)
-            .order("date", { ascending: true })
+            .order("date", { ascending: false })
             .limit(260);
           if (db && db.length >= 50) {
-            closes = db.map((p: { close: number }) => Number(p.close));
+            closes = db.map((p: { close: number }) => Number(p.close)).reverse();
           } else {
             const r = await fetch(
               `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_API_KEY}`,
@@ -883,19 +868,15 @@ serve(async (req) => {
           dayChange = 0,
           marketCap = 0;
         try {
-          const qr = await fetch(
+          const qd = await fetchJson(
             `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`,
+            1800,
           );
-          if (qr.ok) {
-            const qd = await qr.json();
-            if (Array.isArray(qd) && qd.length > 0) {
-              name = qd[0].companyName || symbol;
-              price = qd[0].price || price;
-              dayChange = qd[0].changes || 0;
-              marketCap = qd[0].mktCap || 0;
-            }
-          } else {
-            await qr.text();
+          if (Array.isArray(qd) && qd.length > 0) {
+            name = qd[0].companyName || symbol;
+            price = qd[0].price || price;
+            dayChange = qd[0].changes || 0;
+            marketCap = qd[0].mktCap || 0;
           }
         } catch {
           /* use defaults */
@@ -933,11 +914,15 @@ serve(async (req) => {
     console.log(`Done: ${buySignals.length} BUY signals (profile: ${riskProfile}), returning top ${top.length}`);
 
     if (top.length > 0) {
-      await supabase.from("market_updates").insert({
+      const cachePromise = supabase.from("market_updates").insert({
         content: JSON.stringify(top),
         ticker: null,
         signal_type: cacheKey,
+      }).then(({ error }) => {
+        if (error) console.warn("Hot stocks cache warning:", error.message);
       });
+      const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+      if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(cachePromise);
     }
 
     return new Response(
