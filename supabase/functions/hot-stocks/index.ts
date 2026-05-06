@@ -782,10 +782,10 @@ serve(async (req) => {
             .from("stock_prices")
             .select("close")
             .eq("ticker", symbol)
-            .order("date", { ascending: true })
+            .order("date", { ascending: false })
             .limit(260);
           if (db && db.length >= 50) {
-            closes = db.map((p: { close: number }) => Number(p.close));
+            closes = db.map((p: { close: number }) => Number(p.close)).reverse();
           } else {
             const r = await fetch(
               `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_API_KEY}`,
