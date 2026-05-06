@@ -685,7 +685,7 @@ serve(async (req) => {
     if (!["conservative", "moderate", "aggressive"].includes(riskProfile)) riskProfile = "aggressive";
     const allowedTiers = RISK_PROFILE_TIERS[riskProfile];
 
-    const cacheKey = sectorFilter ? `ae_hot_v2_${riskProfile}_${sectorFilter}` : `ae_hot_v2_${riskProfile}_all`;
+    const cacheKey = sectorFilter ? `ae_hot_v3_${riskProfile}_${sectorFilter}` : `ae_hot_v3_${riskProfile}_all`;
 
     // Cache check (fresh for 30 min, stale fallback for 12h)
     const freshMs = 30 * 60 * 1000;
