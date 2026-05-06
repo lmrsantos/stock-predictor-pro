@@ -686,23 +686,26 @@ serve(async (req) => {
 
     const cacheKey = sectorFilter ? `ae_hot_v2_${riskProfile}_${sectorFilter}` : `ae_hot_v2_${riskProfile}_all`;
 
-    // Cache check (30 min)
-    const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    // Cache check (fresh for 30 min, stale fallback for 12h)
+    const freshMs = 30 * 60 * 1000;
+    const staleMs = 12 * 60 * 60 * 1000;
+    let staleStocks: unknown[] | null = null;
     const { data: cached } = await supabase
       .from("market_updates")
-      .select("content")
+      .select("content, created_at")
       .eq("signal_type", cacheKey)
-      .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1);
 
     if (cached?.length) {
       try {
         const p = JSON.parse(cached[0].content);
-        if (Array.isArray(p) && p.length > 0)
+        const ageMs = Date.now() - new Date(cached[0].created_at).getTime();
+        if (Array.isArray(p) && p.length > 0 && ageMs <= freshMs)
           return new Response(JSON.stringify({ stocks: p, cached: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        if (Array.isArray(p) && p.length > 0 && ageMs <= staleMs) staleStocks = p;
       } catch {
         /* fall through */
       }
@@ -710,7 +713,7 @@ serve(async (req) => {
 
     const sectorsToScan = sectorFilter ? { [sectorFilter]: SECTOR_UNIVERSES[sectorFilter] || [] } : SECTOR_UNIVERSES;
 
-    const allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
+    let allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
     for (const [sector, syms] of Object.entries(sectorsToScan)) {
       for (const sym of syms) {
         const riskTier = RISK_TIERS[sym] ?? 4; // default to tier 4 (stocks)
