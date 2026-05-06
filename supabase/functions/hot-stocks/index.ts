@@ -8,6 +8,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchJson(url: string, timeoutMs = 3000): Promise<unknown | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      await response.text();
+      return null;
+    }
+    return await response.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Risk tiers ───────────────────────────────────────────────────────────────
 // 1 = Low Risk (green)   → Treasuries, Money Market, IG Bonds
 // 2 = Medium Risk (yellow) → Dividend ETFs, REITs, Preferred Stocks
