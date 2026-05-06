@@ -868,19 +868,15 @@ serve(async (req) => {
           dayChange = 0,
           marketCap = 0;
         try {
-          const qr = await fetch(
+          const qd = await fetchJson(
             `https://financialmodelingprep.com/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`,
+            1800,
           );
-          if (qr.ok) {
-            const qd = await qr.json();
-            if (Array.isArray(qd) && qd.length > 0) {
-              name = qd[0].companyName || symbol;
-              price = qd[0].price || price;
-              dayChange = qd[0].changes || 0;
-              marketCap = qd[0].mktCap || 0;
-            }
-          } else {
-            await qr.text();
+          if (Array.isArray(qd) && qd.length > 0) {
+            name = qd[0].companyName || symbol;
+            price = qd[0].price || price;
+            dayChange = qd[0].changes || 0;
+            marketCap = qd[0].mktCap || 0;
           }
         } catch {
           /* use defaults */
@@ -918,11 +914,15 @@ serve(async (req) => {
     console.log(`Done: ${buySignals.length} BUY signals (profile: ${riskProfile}), returning top ${top.length}`);
 
     if (top.length > 0) {
-      await supabase.from("market_updates").insert({
+      const cachePromise = supabase.from("market_updates").insert({
         content: JSON.stringify(top),
         ticker: null,
         signal_type: cacheKey,
+      }).then(({ error }) => {
+        if (error) console.warn("Hot stocks cache warning:", error.message);
       });
+      const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (promise: Promise<unknown>) => void } }).EdgeRuntime;
+      if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(cachePromise);
     }
 
     return new Response(
