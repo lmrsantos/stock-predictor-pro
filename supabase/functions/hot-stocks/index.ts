@@ -739,7 +739,7 @@ serve(async (req) => {
       .select("ticker")
       .in("ticker", allTickers)
       .gte("date", recentCutoff)
-      .limit(500);
+      .limit(1200);
 
     const freshSet = new Set((recentRows || []).map((r: { ticker: string }) => r.ticker));
     allSymbols = allSymbols.filter((s) => freshSet.has(s.symbol));
