@@ -727,55 +727,28 @@ serve(async (req) => {
       `Step 1: Quick momentum scan of ${allSymbols.length} stocks (profile: ${riskProfile}, tiers: ${allowedTiers.join(",")})`,
     );
 
-    // ── PRE-STEP: Force-refresh any symbol not seen in DB within last 7 days ───
-    // Ensures the AE sees fresh data for ALL universe stocks, not just ones
-    // users have previously searched on the main dashboard.
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    // ── PRE-STEP: bound the scan to tickers with recent cached prices ─────────
+    // Edge functions have a tight CPU budget, so never force-refresh the full
+    // universe in-band. The main stock fetcher keeps this table warm over time.
+    const recentCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const allTickers = allSymbols.map((s) => s.symbol);
 
     const { data: recentRows } = await supabase
       .from("stock_prices")
       .select("ticker")
       .in("ticker", allTickers)
-      .gte("date", sevenDaysAgo)
+      .gte("date", recentCutoff)
       .limit(500);
 
     const freshSet = new Set((recentRows || []).map((r: { ticker: string }) => r.ticker));
-    const staleSyms = allTickers.filter((t) => !freshSet.has(t));
-    console.log(`Force-fetching ${staleSyms.length} stale symbols...`);
+    allSymbols = allSymbols.filter((s) => freshSet.has(s.symbol));
 
-    for (let i = 0; i < staleSyms.length; i += 5) {
-      await Promise.allSettled(
-        staleSyms.slice(i, i + 5).map(async (sym) => {
-          try {
-            const r = await fetch(
-              `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${sym}&apikey=${FMP_API_KEY}`,
-            );
-            if (!r.ok) {
-              await r.text();
-              return;
-            }
-            const d = await r.json();
-            if (!Array.isArray(d) || d.length < 30) return;
-            const rows = d
-              .slice(0, 252)
-              .map((p: { date: string; close: number; open: number; high: number; low: number; volume: number }) => ({
-                ticker: sym,
-                date: p.date,
-                close: p.close,
-                open: p.open || p.close,
-                high: p.high || p.close,
-                low: p.low || p.close,
-                volume: p.volume || 0,
-              }));
-            await supabase.from("stock_prices").upsert(rows, { onConflict: "ticker,date", ignoreDuplicates: true });
-          } catch (e) {
-            console.error(`Force-fetch failed for ${sym}:`, e);
-          }
-        }),
-      );
+    if (allSymbols.length < 8 && staleStocks?.length) {
+      return new Response(JSON.stringify({ stocks: staleStocks, cached: true, stale: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-    console.log(`Force-fetch done. Fetching sector bias...`);
+    console.log(`Scanning ${allSymbols.length} recently cached symbols. Fetching sector bias...`);
 
     // ── MARKET CONTEXT: Fetch live sector performance from FMP ────────────────
     // Hot sectors (e.g. Energy +21% in 2026) get a 2× boost in shortlist ranking.
