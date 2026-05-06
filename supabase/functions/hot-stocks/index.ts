@@ -493,8 +493,8 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   let wt = { ...w };
-  for (let e = 0; e < 40; e++) {
-    for (let i = 0; i < wins.length; i++) {
+  for (let e = 0; e < 8; e++) {
+    for (let i = 0; i < Math.min(wins.length, 24); i++) {
       const f = fwd(wins[i], wt);
       const dF = f.forecast.map((v, j) => (2 / tgts[i].length) * (v - tgts[i][j]));
       const dWf2 = dF.map((g) => f.hf1.map((h) => g * h));
@@ -564,12 +564,13 @@ function scoreStock(
   // ── 2. AE reconstruction quality → confidence ─────────────────────
   const { n: nm } = norm(closes);
   const wins: number[][] = [];
-  for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
+  const aeStart = Math.max(0, nm.length - 120);
+  for (let i = aeStart; i + WS <= nm.length; i += 2) wins.push(nm.slice(i, i + WS));
 
   let W = initAE();
   let converged = false;
   let lr = 0.001;
-  for (let e = 0; e < 30; e++) {
+  for (let e = 0; e < 8; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
@@ -578,8 +579,8 @@ function scoreStock(
     const f = fwd(lw, W);
     const curNorm = nm[nm.length - 1];
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 3 && e > 5) { converged = true; break; }
-    if (e === 15) lr *= 0.5;
+    if (err < 4 && e > 2) { converged = true; break; }
+    if (e === 4) lr *= 0.5;
   }
 
   // ── 3. Walk-forward: use regression to predict held-out period ────
