@@ -171,7 +171,7 @@ const Index = () => {
     rSquared: regression?.rSquared,
     annualReturn: regression && lastPrice ? slopeToAnnualReturn(regression.slope, lastPrice) : undefined,
     slope: regression?.slope,
-    fundamentals: fundamentals || undefined,
+    fundamentals: (fundamentals as unknown as Record<string, unknown>) || undefined,
     website: website || undefined,
   };
 
