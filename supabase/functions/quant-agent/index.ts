@@ -135,7 +135,7 @@ async function getOrCreateSession(
 
   // Create new session with memory store attached
   const session = await anthropic("/v1/sessions", "POST", {
-    agent_id: agentId,
+    agent: agentId,
     // Memory store: agent reads/writes user profile and ticker history here
     memory: {
       stores: [
@@ -174,7 +174,7 @@ async function sendMessage(
 ): Promise<string> {
   // Send message to the managed agent session
   const run = await anthropic(`/v1/sessions/${sessionId}/runs`, "POST", {
-    agent_id: agentId,
+    agent: agentId,
     input: {
       type: "text",
       text: `User question about ${(context as { ticker?: string }).ticker || "this stock"}: ${message}
