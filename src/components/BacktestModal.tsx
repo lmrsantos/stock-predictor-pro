@@ -159,14 +159,24 @@ function EnsembleTable({ models }: { models: BacktestResult["models"] }) {
 function ForecastConeChart({ result }: { result: BacktestResult }) {
   // Last 15 actual points + forecast cone
   const tailRaw = result.actualPath.slice(-15);
+
+  // Deduplicate by date string
+  const seen = new Set<string>();
+  const uniqueTail = tailRaw.filter(d => {
+    const key = d.date;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
   const forecastRaw = result.forecastPoints;
   const allTimestamps = [
-    ...tailRaw.map(d => d.timestamp),
+    ...uniqueTail.map(d => d.timestamp),
     ...forecastRaw.map(fp => fp.timestamp),
   ];
   const dateLabels = buildDateLabels(allTimestamps);
 
-  const tail = tailRaw.map((d, i) => ({
+  const tail = uniqueTail.map((d, i) => ({
     date: dateLabels[i],
     actual: d.actual,
     mean: null as number | null,
@@ -177,7 +187,7 @@ function ForecastConeChart({ result }: { result: BacktestResult }) {
   }));
 
   const forecastPts = forecastRaw.map((fp, i) => ({
-    date: dateLabels[tailRaw.length + i],
+    date: dateLabels[uniqueTail.length + i],
     actual: null as number | null,
     mean: fp.mean,
     upper1: fp.upper1, lower1: fp.lower1,
@@ -187,14 +197,13 @@ function ForecastConeChart({ result }: { result: BacktestResult }) {
   }));
 
   const data = [...tail, ...forecastPts];
-  const step = Math.max(1, Math.floor(data.length / 8));
 
   return (
     <ResponsiveContainer width="100%" height={260}>
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
         <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
-          interval={step - 1} axisLine={false} tickLine={false} />
+          interval={Math.max(1, Math.floor(data.length / 8) - 1)} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
           axisLine={false} tickLine={false} width={68}
           tickFormatter={fmtPrice} />
