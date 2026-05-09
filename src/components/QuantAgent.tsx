@@ -197,6 +197,20 @@ export function QuantAgent({ context }: QuantAgentProps) {
 
       if (error) throw new Error(error.message);
 
+      // Handle expired session — reinitialize
+      if (data?.error === "SESSION_EXPIRED") {
+        setSessionReady(false);
+        setSessionId(null);
+        setMessages([{
+          id: `expired-${Date.now()}`,
+          role: "agent",
+          content: "Session expired — starting a new one...",
+          timestamp: new Date(),
+        }]);
+        await initSession();
+        return;
+      }
+
       setMessages(prev => [
         ...prev.filter(m => !m.thinking),
         {
