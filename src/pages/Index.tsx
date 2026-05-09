@@ -277,7 +277,7 @@ const Index = () => {
         isOpen={showBacktest}
         onClose={() => setShowBacktest(false)}
         ticker={ticker}
-        
+        onResult={setBacktestResult}
       />
     </div>
   );
