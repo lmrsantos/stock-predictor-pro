@@ -1,45 +1,44 @@
 // supabase/functions/quant-agent/index.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// QuantAgent proxy — two responsibilities:
-//   1. "init" action: create Managed Agent + Environment + Session,
-//      return session_id to the browser
-//   2. "get_key" action: return a short-lived token so the browser
-//      can stream SSE events directly from Anthropic
-//
-// The actual conversation streaming happens browser → Anthropic directly.
-// This edge function only does the setup (no polling, no timeout risk).
+// QuantAgent — Anthropic Messages API + web_search tool
+// Client sends full conversation history; server runs the tool loop.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ANTHROPIC_BASE = "https://api.anthropic.com";
-const BETA_HEADER = "managed-agents-2026-04-01";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-6";
+const MAX_TOOL_ITERATIONS = 6;
 
-async function anthropicPost(path: string, body: unknown, apiKey: string) {
-  const res = await fetch(`${ANTHROPIC_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": BETA_HEADER,
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${text}`);
-  return JSON.parse(text);
+interface BacktestResult {
+  signal?: string;
+  confidenceScore?: number;
+  walkForwardAccuracy?: number;
+  hitRate?: number;
+  regime?: string;
+  forecastPct?: number;
+  forecastLabel?: string;
 }
 
-function buildSystemPrompt(ctx: Record<string, unknown>): string {
-  const bt = ctx.backtestResult as Record<string, unknown> | undefined;
-  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it to find current news, earnings, analyst ratings, and macro context for any stock you analyze.
+interface AgentContext {
+  ticker?: string;
+  price?: number;
+  rSquared?: number;
+  annualReturn?: number;
+  slope?: number;
+  fundamentals?: Record<string, unknown>;
+  website?: string;
+  backtestResult?: BacktestResult;
+}
+
+function buildSystemPrompt(ctx: AgentContext): string {
+  const bt = ctx.backtestResult;
+  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to a web_search tool — use it to find current news, earnings, analyst ratings, and macro context for any stock you analyze.
 
 Current stock context:
 - Ticker: ${ctx.ticker || "N/A"}
@@ -56,11 +55,26 @@ Autoencoder Backtest Results:
 - Projected Move: ${bt.forecastPct}% over ${bt.forecastLabel}` : ""}
 
 Guidelines:
-- Always search the web for current news before giving a forecast or recommendation
+- Use web_search before giving forecasts or recommendations to ground them in current news
 - Be direct and specific — give actionable insights with clear reasoning
-- Combine the quantitative backtest data with current news for a complete picture
-- State position size recommendations when asked (e.g. full/half/quarter position)
+- Combine the quantitative backtest with current news for a complete picture
+- State position size recommendations when asked (full/half/quarter position)
 - You are NOT a licensed financial advisor — note this for specific recommendations`;
+}
+
+async function callAnthropic(apiKey: string, body: unknown): Promise<any> {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${text}`);
+  return JSON.parse(text);
 }
 
 serve(async (req) => {
@@ -68,165 +82,66 @@ serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Supabase secrets");
+    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const { action, messages = [], context = {} } = await req.json();
 
-    const body = await req.json();
-    const { action, context, ticker } = body;
-    const currentTicker = ticker || context?.ticker || "UNKNOWN";
-    const userId = (req.headers.get("authorization") || "anon").slice(-12).replace(/[^a-zA-Z0-9]/g, "x");
-
-    // ── ACTION: init ──────────────────────────────────────────────────────────
-    // Creates Agent + Environment + Session, returns session_id to browser.
-    // Browser then streams directly to Anthropic using the session_id.
-
-    if (action === "get_or_create_agent" || action === "create_session") {
-
-      // Check for cached agent
-      const { data: cachedAgent } = await supabase
-        .from("market_updates")
-        .select("content")
-        .eq("signal_type", "qa_managed_agent_id_v1")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let agentId = cachedAgent?.[0]?.content || null;
-
-      if (!agentId) {
-        // Create the Managed Agent (once per deployment)
-        const agent = await anthropicPost("/v1/beta/agents", {
-          name: "QuantForecast Financial Analyst",
-          model: { id: "claude-sonnet-4-6" },
-          system: buildSystemPrompt(context || {}),
-          tools: [{ type: "agent_toolset_20260401" }], // includes web search
-        }, apiKey);
-
-        agentId = agent.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_agent_id_v1",
-          content: agentId,
-          ticker: null,
-        });
-      }
-
-      // Check for cached environment
-      const { data: cachedEnv } = await supabase
-        .from("market_updates")
-        .select("content")
-        .eq("signal_type", "qa_managed_env_id_v1")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let envId = cachedEnv?.[0]?.content || null;
-
-      if (!envId) {
-        const env = await anthropicPost("/v1/beta/environments", {
-          name: "quantforecast-env",
-          config: { type: "cloud", networking: { type: "unrestricted" } },
-        }, apiKey);
-
-        envId = env.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_env_id_v1",
-          content: envId,
-          ticker: null,
-        });
-      }
-
-      // Check for cached session (valid 2 hours)
-      const sessionKey = `qa_managed_session_${userId}_${currentTicker}`;
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-      const { data: cachedSession } = await supabase
-        .from("market_updates")
-        .select("content, created_at")
-        .eq("signal_type", sessionKey)
-        .gte("created_at", twoHoursAgo)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let sessionId: string;
-      let isReturning = false;
-
-      if (cachedSession?.length) {
-        sessionId = JSON.parse(cachedSession[0].content).session_id;
-        isReturning = true;
-      } else {
-        // Create new session
-        const session = await anthropicPost("/v1/beta/sessions", {
-          agent: agentId,
-          environment_id: envId,
-          title: `QuantForecast — ${currentTicker}`,
-        }, apiKey);
-
-        sessionId = session.id;
-        await supabase.from("market_updates").insert({
-          signal_type: sessionKey,
-          content: JSON.stringify({ session_id: sessionId }),
-          ticker: currentTicker,
-        });
-      }
-
-      // Build greeting
-      const bt = context?.backtestResult;
-      const greeting = isReturning
-        ? `Welcome back. Resuming our analysis of ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. What would you like to explore?`
-        : bt
-        ? `Loaded backtest for ${currentTicker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. I'll search for current news to complement the model. What would you like to know?`
-        : `Ready to analyze ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. I'll combine the regression model with live web search for a complete picture. Ask me anything.`;
-
-      return new Response(JSON.stringify({
-        agent_id: agentId,
-        environment_id: envId,
-        session_id: sessionId,
-        is_returning: isReturning,
-        recent_messages: [],
-        greeting,
-        // Return the API key so browser can stream directly
-        // (scoped — only used for this session's SSE stream)
-        anthropic_api_key: apiKey,
-      }), {
+    // Greeting (no LLM call needed)
+    if (action === "init") {
+      const ctx = context as AgentContext;
+      const bt = ctx.backtestResult;
+      const greeting = bt
+        ? `Loaded backtest for ${ctx.ticker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. I'll search the web for current news to complement the model. What would you like to know?`
+        : `Ready to analyze ${ctx.ticker}${ctx.price ? ` at $${ctx.price}` : ""}. I'll combine the regression model with live web search for a complete picture. Ask me anything.`;
+      return new Response(JSON.stringify({ greeting }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-
-    // ── ACTION: send_message ──────────────────────────────────────────────────
-    // Sends a user event to the Managed Agent session.
-    // Returns immediately — browser polls/streams for the response directly.
-
-    } else if (action === "send_message") {
-      const { session_id, message, context: ctx } = body;
-
-      // Send user message event to the session
-      const enriched = `${message}
-
-${ctx?.ticker ? `[Analyzing: ${ctx.ticker} at ${ctx.price ? "$" + ctx.price : "current price"}]` : ""}
-${ctx?.backtestResult ? `[Backtest: ${ctx.backtestResult.signal} signal, ${ctx.backtestResult.confidenceScore}/100 confidence, regime: ${ctx.backtestResult.regime}]` : ""}
-
-Please search the web for current news about this stock before responding.`;
-
-      await anthropicPost(`/v1/beta/sessions/${session_id}/events`, {
-        events: [{
-          type: "user.message",
-          content: [{ type: "text", text: enriched }],
-        }],
-      }, apiKey);
-
-      // Return session_id and key — browser will stream the response
-      return new Response(JSON.stringify({
-        session_id,
-        streaming: true,
-        anthropic_api_key: apiKey,
-        message: "Event sent. Stream response from Anthropic directly.",
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-
-    } else {
-      throw new Error(`Unknown action: ${action}`);
     }
+
+    if (action !== "chat") throw new Error(`Unknown action: ${action}`);
+
+    const system = buildSystemPrompt(context);
+    const tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }];
+
+    // Conversation loop: handle tool_use → tool_result iterations
+    const convo: any[] = [...messages];
+    let finalText = "";
+
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      const resp = await callAnthropic(apiKey, {
+        model: MODEL,
+        max_tokens: 2048,
+        system,
+        tools,
+        messages: convo,
+      });
+
+      // Append assistant turn
+      convo.push({ role: "assistant", content: resp.content });
+
+      // Collect text
+      const textBlocks = (resp.content || [])
+        .filter((b: any) => b.type === "text")
+        .map((b: any) => b.text)
+        .join("\n");
+      if (textBlocks) finalText = textBlocks;
+
+      // The web_search tool runs server-side at Anthropic — no tool_result needed from us.
+      // We only loop if the model returns a client-side tool_use (none defined here).
+      if (resp.stop_reason !== "tool_use") break;
+
+      const clientToolUses = (resp.content || []).filter(
+        (b: any) => b.type === "tool_use" && b.name !== "web_search"
+      );
+      if (clientToolUses.length === 0) break;
+
+      // No client tools defined; safety exit
+      break;
+    }
+
+    return new Response(JSON.stringify({ reply: finalText || "No response generated." }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
   } catch (error) {
     console.error("QuantAgent error:", error);
