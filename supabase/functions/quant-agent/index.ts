@@ -1,6 +1,6 @@
 // supabase/functions/quant-agent/index.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// QuantAgent — Claude Opus 4.7 financial analyst with persistent memory
+// QuantAgent — Claude Sonnet 4.6 financial analyst with persistent memory
 //
 // Uses standard /v1/messages API (reliable, no beta dependencies)
 // Persistence implemented via Supabase:
@@ -170,7 +170,7 @@ function extractProfileUpdate(userMessage: string, currentProfile: string): stri
   return currentProfile ? `${currentProfile}\nUpdated: ${newInfo}` : `Learned from conversation: ${newInfo}`;
 }
 
-// ─── Call Claude Opus 4.7 ─────────────────────────────────────────────────────
+// ─── Call Claude Sonnet 4.6 ─────────────────────────────────────────────────────
 
 async function callClaude(messages: ChatMessage[], system: string, apiKey: string): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -181,7 +181,7 @@ async function callClaude(messages: ChatMessage[], system: string, apiKey: strin
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-7", // use claude-opus-4-5 as opus-4-7 may not be on your tier yet
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system,
       messages,
