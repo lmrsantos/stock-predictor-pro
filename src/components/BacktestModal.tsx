@@ -683,6 +683,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
       try {
         const res = backtest(dataPoints, lookback);
         setResult(res);
+        onResult?.(res);
         setProgressPct(100);
         setProgress("");
       } catch (e) {
