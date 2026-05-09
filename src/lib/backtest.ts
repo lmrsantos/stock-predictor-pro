@@ -387,7 +387,6 @@ function runWalkForward(
   }
 
   // Train forecaster on returns (direction-aware)
-  const trainPrices = trainSlice.map(d => d.actual);
   const trainReturns = pricesToReturns(trainPrices);
   const { norm: normTrainReturns, scale: returnScale } = normalizeReturns(trainReturns);
 
