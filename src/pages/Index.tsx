@@ -12,7 +12,7 @@ import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
-import { ChatBubble } from "@/components/ChatBubble";
+import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
@@ -171,7 +171,7 @@ const Index = () => {
     rSquared: regression?.rSquared,
     annualReturn: regression && lastPrice ? slopeToAnnualReturn(regression.slope, lastPrice) : undefined,
     slope: regression?.slope,
-    fundamentals: fundamentals || undefined,
+    fundamentals: (fundamentals as unknown as Record<string, unknown>) || undefined,
     website: website || undefined,
   };
 
@@ -257,7 +257,7 @@ const Index = () => {
       </main>
       </div>
 
-      <ChatBubble context={chatContext} />
+      <QuantAgent context={chatContext} />
 
       <BacktestModal
         isOpen={showBacktest}
