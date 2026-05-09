@@ -170,9 +170,19 @@ function ForecastConeChart({ result }: { result: BacktestResult }) {
   });
 
   const forecastRaw = result.forecastPoints;
+
+  // Deduplicate forecast points by date string
+  const seenFc = new Set<string>();
+  const uniqueForecast = forecastRaw.filter(fp => {
+    const key = fp.date;
+    if (seenFc.has(key)) return false;
+    seenFc.add(key);
+    return true;
+  });
+
   const allTimestamps = [
     ...uniqueTail.map(d => d.timestamp),
-    ...forecastRaw.map(fp => fp.timestamp),
+    ...uniqueForecast.map(fp => fp.timestamp),
   ];
   const dateLabels = buildDateLabels(allTimestamps);
 
@@ -186,7 +196,7 @@ function ForecastConeChart({ result }: { result: BacktestResult }) {
     band2: null as [number, number] | null,
   }));
 
-  const forecastPts = forecastRaw.map((fp, i) => ({
+  const forecastPts = uniqueForecast.map((fp, i) => ({
     date: dateLabels[uniqueTail.length + i],
     actual: null as number | null,
     mean: fp.mean,
