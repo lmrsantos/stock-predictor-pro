@@ -175,6 +175,18 @@ const Index = () => {
     slope: regression?.slope,
     fundamentals: (fundamentals as unknown as Record<string, unknown>) || undefined,
     website: website || undefined,
+    backtestResult: backtestResult ? {
+      confidenceScore: backtestResult.confidenceScore,
+      signal: backtestResult.forecastPoints.at(-1)?.mean && lastPrice
+        ? (backtestResult.forecastPoints.at(-1)!.mean > lastPrice ? "bullish" : "bearish")
+        : "neutral",
+      walkForwardAccuracy: 100 - backtestResult.walkForward.mape,
+      hitRate: backtestResult.walkForward.hitRate,
+      regime: backtestResult.regime.outsideDistribution ? "regime-shift" : "stable",
+      forecastPct: backtestResult.forecastPoints.at(-1)?.mean && lastPrice
+        ? ((backtestResult.forecastPoints.at(-1)!.mean - lastPrice) / lastPrice) * 100
+        : 0,
+    } : undefined,
   };
 
   return (
