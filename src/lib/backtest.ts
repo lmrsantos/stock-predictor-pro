@@ -441,8 +441,15 @@ export function backtest(
   }
 
   // 2. Normalize full slice
+  // IMPORTANT: use the full historicalData price range for normalization,
+  // not just the lookback slice — this ensures forecast denormalizes back
+  // to the correct current price range, not a stale historical range.
   const rawPrices = slice.map((d) => d.actual);
-  const { normalized, min: priceMin, max: priceMax } = normalize(rawPrices);
+  const allRawPrices = historicalData.map((d) => d.actual);
+  const priceMin = Math.min(...allRawPrices);
+  const priceMax = Math.max(...allRawPrices);
+  const range = priceMax - priceMin || 1;
+  const normalized = rawPrices.map((p) => (p - priceMin) / range);
 
   // 3. Train all 5 ensemble models
   const modelResults: EnsembleModelResult[] = [];
