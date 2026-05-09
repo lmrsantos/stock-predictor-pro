@@ -6,7 +6,7 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
-import { Briefcase, FlaskConical } from "lucide-react";
+import { Briefcase } from "lucide-react";
 
 
 interface SidebarProps {
@@ -294,13 +294,6 @@ export function Sidebar({
         >
           <Briefcase className="w-4 h-4" />
           My Portfolio
-        </Link>
-        <Link
-          to="/backtest"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <FlaskConical className="w-4 h-4" />
-          Model Backtester
         </Link>
       </div>
 
