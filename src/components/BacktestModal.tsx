@@ -196,7 +196,7 @@ function ForecastConeChart({ result }: { result: BacktestResult }) {
     band2: null as [number, number] | null,
   }));
 
-  const forecastPts = forecastRaw.map((fp, i) => ({
+  const forecastPts = uniqueForecast.map((fp, i) => ({
     date: dateLabels[uniqueTail.length + i],
     actual: null as number | null,
     mean: fp.mean,
