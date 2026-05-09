@@ -12,6 +12,7 @@ interface BacktestModalProps {
   isOpen: boolean;
   onClose: () => void;
   ticker: string;
+  onResult?: (result: BacktestResult) => void;
   // stockData prop no longer used — modal fetches its own 1y data
 }
 
@@ -593,7 +594,7 @@ function RecommendationPanel({ result, ticker }: { result: BacktestResult; ticke
 
 type Tab = "forecast" | "walkforward" | "ensemble" | "regime";
 
-export function BacktestModal({ isOpen, onClose, ticker }: BacktestModalProps) {
+export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestModalProps) {
   const [lookback, setLookback] = useState<3 | 6>(6);
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [running, setRunning] = useState(false);
@@ -667,6 +668,7 @@ export function BacktestModal({ isOpen, onClose, ticker }: BacktestModalProps) {
       try {
         const res = backtest(dataPoints, lookback);
         setResult(res);
+        onResult?.(res);
         setProgressPct(100);
         setProgress("");
       } catch (e) {

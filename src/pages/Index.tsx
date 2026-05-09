@@ -14,6 +14,7 @@ import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
+import type { BacktestResult } from "@/lib/backtest";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
@@ -25,6 +26,7 @@ const Index = () => {
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
@@ -173,6 +175,18 @@ const Index = () => {
     slope: regression?.slope,
     fundamentals: (fundamentals as unknown as Record<string, unknown>) || undefined,
     website: website || undefined,
+    backtestResult: backtestResult ? {
+      confidenceScore: backtestResult.confidenceScore,
+      signal: backtestResult.forecastPoints.at(-1)?.mean && lastPrice
+        ? (backtestResult.forecastPoints.at(-1)!.mean > lastPrice ? "bullish" : "bearish")
+        : "neutral",
+      walkForwardAccuracy: 100 - backtestResult.walkForward.mape,
+      hitRate: backtestResult.walkForward.hitRate,
+      regime: backtestResult.regime.outsideDistribution ? "regime-shift" : "stable",
+      forecastPct: backtestResult.forecastPoints.at(-1)?.mean && lastPrice
+        ? ((backtestResult.forecastPoints.at(-1)!.mean - lastPrice) / lastPrice) * 100
+        : 0,
+    } : undefined,
   };
 
   return (
@@ -263,7 +277,7 @@ const Index = () => {
         isOpen={showBacktest}
         onClose={() => setShowBacktest(false)}
         ticker={ticker}
-        
+        onResult={setBacktestResult}
       />
     </div>
   );
