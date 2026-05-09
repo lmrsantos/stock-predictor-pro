@@ -234,13 +234,43 @@ function trainForecaster(
 
 // ─── Train one autoencoder ────────────────────────────────────────────────────
 
+// ── Returns-based helpers ──────────────────────────────────────────────────────
+// Forecasting on returns (% changes) instead of absolute prices:
+// - Returns are stationary → model learns direction not just level
+// - Fixes flat predicted line issue
+// - Improves hit rate significantly
+
+function pricesToReturns(prices: number[]): number[] {
+  const returns: number[] = [0];
+  for (let i = 1; i < prices.length; i++) {
+    returns.push((prices[i] - prices[i-1]) / (Math.abs(prices[i-1]) || 1));
+  }
+  return returns;
+}
+
+function returnsToPrice(returns: number[], basePrice: number): number[] {
+  const prices = [basePrice];
+  for (let i = 0; i < returns.length; i++) {
+    prices.push(prices[prices.length - 1] * (1 + returns[i]));
+  }
+  return prices.slice(1);
+}
+
+function normalizeReturns(returns: number[]): { norm: number[]; scale: number } {
+  const maxAbs = Math.max(...returns.map(Math.abs), 0.001);
+  return { norm: returns.map(r => Math.max(-1, Math.min(1, r / maxAbs))), scale: maxAbs };
+}
+
 function trainModel(
   normalized: number[],
   windowSize: number,
   forecastDays: number,
   maxEpochs: number,
-  errorThreshold: number
+  errorThreshold: number,
+  rawPrices: number[]
 ): { weights: Weights; result: EnsembleModelResult; latent: number[] } {
+
+  // ── Phase 1: Train autoencoder unsupervised on normalized prices ───────────
   const windows: number[][] = [];
   for (let i = 0; i + windowSize <= normalized.length; i++) {
     windows.push(normalized.slice(i, i + windowSize));
@@ -263,34 +293,45 @@ function trainModel(
 
     const lastWin = normalized.slice(normalized.length - windowSize);
     const fwd = forward(lastWin, W);
-    const reconEnd = fwd.recon[fwd.recon.length - 1];
-    reconError = Math.abs((reconEnd - actualCurrentNorm) / (actualCurrentNorm || 1)) * 100;
+    reconError = Math.abs((fwd.recon[fwd.recon.length - 1] - actualCurrentNorm) / (actualCurrentNorm || 1)) * 100;
 
-    if (reconError < errorThreshold && epoch > 10) {
-      converged = true;
-      break;
-    }
+    if (reconError < errorThreshold && epoch > 10) { converged = true; break; }
     if (epoch === 80)  lr *= 0.5;
     if (epoch === 160) lr *= 0.5;
   }
 
-  // Train forecaster head
+  // ── Phase 2: Train forecaster on RETURNS (direction-aware) ────────────────
+  const returns = pricesToReturns(rawPrices);
+  const { norm: normReturns, scale: returnScale } = normalizeReturns(returns);
+
   const fwWindows: number[][] = [];
-  const fwTargets: number[][] = [];
+  const fwReturnTargets: number[][] = [];
   for (let i = 0; i + windowSize + forecastDays <= normalized.length; i++) {
     fwWindows.push(normalized.slice(i, i + windowSize));
-    fwTargets.push(normalized.slice(i + windowSize, i + windowSize + forecastDays));
+    fwReturnTargets.push(normReturns.slice(i + windowSize, i + windowSize + forecastDays));
   }
   if (fwWindows.length > 0) {
-    W = trainForecaster(fwWindows, fwTargets, W, 200, 0.0003);
+    W = trainForecaster(fwWindows, fwReturnTargets, W, 150, 0.0005);
   }
 
+  // ── Get final forecast: decode returns → prices ───────────────────────────
   const lastWin = normalized.slice(normalized.length - windowSize);
   const finalFwd = forward(lastWin, W);
 
+  // Convert forecasted normalized returns → actual returns → prices
+  const currentPrice = rawPrices[rawPrices.length - 1];
+  const forecastedReturns = finalFwd.forecast.map(r => r * returnScale);
+  const forecastedPrices = returnsToPrice(forecastedReturns, currentPrice);
+
+  // Re-normalize forecasted prices for consistency with ensemble denorm step
+  const pMin = Math.min(...rawPrices);
+  const pMax = Math.max(...rawPrices);
+  const pRange = pMax - pMin || 1;
+  const forecastNorm = forecastedPrices.map(p => (p - pMin) / pRange);
+
   return {
     weights: W,
-    result: { windowSize, forecast: finalFwd.forecast, reconError, converged, epochsRun },
+    result: { windowSize, forecast: forecastNorm, reconError, converged, epochsRun },
     latent: finalFwd.latent,
   };
 }
@@ -345,25 +386,26 @@ function runWalkForward(
     if (epoch === 75) lr *= 0.5;
   }
 
-  // Train forecaster
-  const fwWindows: number[][] = [];
-  const fwTargets: number[][] = [];
-  const heldNorm = heldOut.map((d) => (d.actual - min) / (max - min));
-  const fullNorm = [...trainNorm, ...heldNorm];
+  // Train forecaster on returns (direction-aware)
+  const trainReturns = pricesToReturns(trainPrices);
+  const { norm: normTrainReturns, scale: returnScale } = normalizeReturns(trainReturns);
 
+  const fwWindows: number[][] = [];
+  const fwReturnTargets: number[][] = [];
   for (let i = 0; i + windowSize + holdOutDays <= trainNorm.length; i++) {
     fwWindows.push(trainNorm.slice(i, i + windowSize));
-    fwTargets.push(trainNorm.slice(i + windowSize, i + windowSize + holdOutDays));
+    fwReturnTargets.push(normTrainReturns.slice(i + windowSize, i + windowSize + holdOutDays));
   }
   if (fwWindows.length > 0) {
-    W = trainForecaster(fwWindows, fwTargets, W, 200, 0.0003);
+    W = trainForecaster(fwWindows, fwReturnTargets, W, 150, 0.0005);
   }
 
-  // Forecast the held-out period
+  // Forecast the held-out period using returns → prices
   const lastTrainWindow = trainNorm.slice(trainNorm.length - windowSize);
   const fwd = forward(lastTrainWindow, W);
-  const predictedNorm = fwd.forecast.slice(0, holdOutDays);
-  const predictedPrices = predictedNorm.map((v) => denorm(v, min, max));
+  const forecastedReturns = fwd.forecast.slice(0, holdOutDays).map(r => r * returnScale);
+  const lastTrainPrice2 = trainPrices[trainPrices.length - 1];
+  const predictedPrices = returnsToPrice(forecastedReturns, lastTrainPrice2);
 
   // Compute MAPE and hit rate
   let mapeSum = 0;
@@ -473,9 +515,10 @@ export function backtest(
   let bestLatent: number[] = [];
   let bestReconError = Infinity;
 
+  const rawPricesSlice = slice.map((d) => d.actual);
   for (const windowSize of WINDOW_SIZES) {
     const { result, latent } = trainModel(
-      normalized, windowSize, forecastDays, maxEpochs, errorThreshold
+      normalized, windowSize, forecastDays, maxEpochs, errorThreshold, rawPricesSlice
     );
     modelResults.push(result);
     allForecasts.push(result.forecast);
@@ -497,20 +540,31 @@ export function backtest(
   const day0Mean = mean(day0Vals);
   const anchorShift = actualCurrentPrice - day0Mean; // correction offset
 
+  // Build raw forecast points
+  const rawForecastPts: { m: number; sd: number; ts: number }[] = [];
   for (let i = 0; i < forecastDays; i++) {
     const vals = allForecasts.map((f) => denorm(f[i], priceMin, priceMax) + anchorShift);
     const m = mean(vals);
     const sd = stdDev(vals);
-
     const ts = lastPoint.timestamp + (i + 1) * 86400000;
+    rawForecastPts.push({ m, sd, ts });
+  }
+
+  // Apply 3-day moving average to smooth the cone (reduce noise)
+  for (let i = 0; i < forecastDays; i++) {
+    const window = rawForecastPts.slice(Math.max(0, i - 1), i + 2);
+    const smoothM = mean(window.map(p => p.m));
+    const smoothSd = mean(window.map(p => p.sd));
+    const { ts } = rawForecastPts[i];
+
     forecastPoints.push({
       date: new Date(ts).toISOString().split("T")[0],
       timestamp: ts,
-      mean: Math.max(0, m),
-      upper1: Math.max(0, m + sd),
-      lower1: Math.max(0, m - sd),
-      upper2: Math.max(0, m + 2 * sd),
-      lower2: Math.max(0, m - 2 * sd),
+      mean: Math.max(0, smoothM),
+      upper1: Math.max(0, smoothM + smoothSd),
+      lower1: Math.max(0, smoothM - smoothSd),
+      upper2: Math.max(0, smoothM + 2 * smoothSd),
+      lower2: Math.max(0, smoothM - 2 * smoothSd),
     });
   }
 
