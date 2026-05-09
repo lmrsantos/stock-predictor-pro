@@ -151,10 +151,31 @@ serve(async (req) => {
       let sessionId: string;
       let isReturning = false;
 
+      // Validate cached session is still alive before using it
+      let cachedSessionValid = false;
       if (cachedSession?.length) {
-        sessionId = JSON.parse(cachedSession[0].content).session_id;
-        isReturning = true;
-      } else {
+        const candidateId = JSON.parse(cachedSession[0].content).session_id;
+        // Quick check — try to fetch session status
+        const checkRes = await fetch(
+          `https://api.anthropic.com/v1/sessions/${candidateId}`,
+          {
+            headers: {
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+              "anthropic-beta": BETA_HEADER,
+            },
+          }
+        );
+        if (checkRes.ok) {
+          sessionId = candidateId;
+          isReturning = true;
+          cachedSessionValid = true;
+        }
+        // If 404, fall through to create new session
+        if (!checkRes.ok) await checkRes.text();
+      }
+
+      if (!cachedSessionValid) {
         // Create new session
         const session = await anthropicPost("/v1/sessions", {
           agent: agentId,
@@ -216,7 +237,7 @@ Please search the web for current news about this stock before responding.`;
       // Step 2: Poll for agent response (server-side — no CORS issue)
       let agentResponse = "";
       let attempts = 0;
-      const maxAttempts = 25; // 25 × 3s = 75s max (within edge fn limit)
+      const maxAttempts = 25; // 25 × 3s = 75s max
 
       while (attempts < maxAttempts) {
         await new Promise(r => setTimeout(r, 3000));
@@ -232,6 +253,17 @@ Please search the web for current news about this stock before responding.`;
             },
           }
         );
+
+        // If session expired (404) — tell client to reinitialize
+        if (eventsRes.status === 404) {
+          return new Response(JSON.stringify({
+            error: "SESSION_EXPIRED",
+            response: "Session expired. Please close and reopen the chat to start a new session.",
+          }), {
+            status: 410,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
         if (!eventsRes.ok) {
           const errText = await eventsRes.text();
@@ -249,7 +281,10 @@ Please search the web for current news about this stock before responding.`;
               }
             }
           }
-          if (event.type === "session.status_idle" || event.status === "idle") {
+          // Session done when idle
+          if (event.type === "session.status_idle" ||
+              event.status === "idle" ||
+              event.type === "session.stopped") {
             return new Response(JSON.stringify({
               response: agentResponse || "Analysis complete.",
             }), {
@@ -261,7 +296,7 @@ Please search the web for current news about this stock before responding.`;
 
       // Return whatever we got on timeout
       return new Response(JSON.stringify({
-        response: agentResponse || "The agent is taking longer than expected. Please try again.",
+        response: agentResponse || "The agent is still working. Please try asking again in a moment.",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
