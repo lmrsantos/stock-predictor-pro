@@ -282,7 +282,7 @@ function trainModel(
     fwTargets.push(normalized.slice(i + windowSize, i + windowSize + forecastDays));
   }
   if (fwWindows.length > 0) {
-    W = trainForecaster(fwWindows, fwTargets, W, 80, 0.0005);
+    W = trainForecaster(fwWindows, fwTargets, W, 200, 0.0003);
   }
 
   const lastWin = normalized.slice(normalized.length - windowSize);
@@ -303,7 +303,15 @@ function runWalkForward(
   windowSize: number,
   forecastDays: number
 ): WalkForwardResult {
-  if (slice.length < windowSize + holdOutDays + 10) {
+  // Deduplicate slice by date
+  const seen = new Set<string>();
+  const dedupSlice = slice.filter((d) => {
+    if (seen.has(d.date)) return false;
+    seen.add(d.date);
+    return true;
+  });
+
+  if (dedupSlice.length < windowSize + holdOutDays + 10) {
     return {
       actualPath: [],
       predictedPath: [],
@@ -313,8 +321,8 @@ function runWalkForward(
   }
 
   // Train on everything except the last holdOutDays
-  const trainSlice = slice.slice(0, slice.length - holdOutDays);
-  const heldOut = slice.slice(slice.length - holdOutDays);
+  const trainSlice = dedupSlice.slice(0, dedupSlice.length - holdOutDays);
+  const heldOut = dedupSlice.slice(dedupSlice.length - holdOutDays);
 
   const trainPrices = trainSlice.map((d) => d.actual);
   const { normalized: trainNorm, min, max } = normalize(trainPrices);
@@ -348,7 +356,7 @@ function runWalkForward(
     fwTargets.push(trainNorm.slice(i + windowSize, i + windowSize + holdOutDays));
   }
   if (fwWindows.length > 0) {
-    W = trainForecaster(fwWindows, fwTargets, W, 80, 0.0005);
+    W = trainForecaster(fwWindows, fwTargets, W, 200, 0.0003);
   }
 
   // Forecast the held-out period
@@ -432,10 +440,18 @@ export function backtest(
     throw new Error(`Need at least ${maxWindow + forecastDays + WALK_FORWARD_DAYS} data points.`);
   }
 
-  // 1. Slice lookback
+  // 1. Deduplicate historical data by date (DB may have duplicate entries)
+  const seenDates = new Set<string>();
+  const dedupedData = historicalData.filter((d) => {
+    if (seenDates.has(d.date)) return false;
+    seenDates.add(d.date);
+    return true;
+  }).sort((a, b) => a.timestamp - b.timestamp);
+
+  // Slice lookback window
   const cutoffMs = lookbackMonths * 30 * 24 * 60 * 60 * 1000;
-  const latestTs = historicalData[historicalData.length - 1].timestamp;
-  const slice = historicalData.filter((d) => d.timestamp >= latestTs - cutoffMs);
+  const latestTs = dedupedData[dedupedData.length - 1].timestamp;
+  const slice = dedupedData.filter((d) => d.timestamp >= latestTs - cutoffMs);
   if (slice.length < maxWindow + forecastDays + WALK_FORWARD_DAYS) {
     throw new Error("Not enough data in lookback window. Try 6 months or ensure sufficient history.");
   }
@@ -445,7 +461,7 @@ export function backtest(
   // not just the lookback slice — this ensures forecast denormalizes back
   // to the correct current price range, not a stale historical range.
   const rawPrices = slice.map((d) => d.actual);
-  const allRawPrices = historicalData.map((d) => d.actual);
+  const allRawPrices = dedupedData.map((d) => d.actual);
   const priceMin = Math.min(...allRawPrices);
   const priceMax = Math.max(...allRawPrices);
   const range = priceMax - priceMin || 1;
@@ -470,11 +486,19 @@ export function backtest(
   }
 
   // 4. Compute ensemble forecast statistics (mean + std at each step)
+  // Apply trend anchoring: shift forecast so day-0 aligns with actual current price.
+  // This corrects for the AE predicting the right SHAPE but wrong LEVEL.
   const forecastPoints: ForecastPoint[] = [];
   const lastPoint = slice[slice.length - 1];
+  const actualCurrentPrice = lastPoint.actual;
+
+  // Compute what the AE predicts for day 0 (current price)
+  const day0Vals = allForecasts.map((f) => denorm(f[0], priceMin, priceMax));
+  const day0Mean = mean(day0Vals);
+  const anchorShift = actualCurrentPrice - day0Mean; // correction offset
 
   for (let i = 0; i < forecastDays; i++) {
-    const vals = allForecasts.map((f) => denorm(f[i], priceMin, priceMax));
+    const vals = allForecasts.map((f) => denorm(f[i], priceMin, priceMax) + anchorShift);
     const m = mean(vals);
     const sd = stdDev(vals);
 
@@ -482,11 +506,11 @@ export function backtest(
     forecastPoints.push({
       date: new Date(ts).toISOString().split("T")[0],
       timestamp: ts,
-      mean: m,
-      upper1: m + sd,
-      lower1: m - sd,
-      upper2: m + 2 * sd,
-      lower2: m - 2 * sd,
+      mean: Math.max(0, m),
+      upper1: Math.max(0, m + sd),
+      lower1: Math.max(0, m - sd),
+      upper2: Math.max(0, m + 2 * sd),
+      lower2: Math.max(0, m - 2 * sd),
     });
   }
 
