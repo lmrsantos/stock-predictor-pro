@@ -258,10 +258,18 @@ function WalkForwardChart({ result }: { result: BacktestResult }) {
     return <p className="text-xs font-mono text-zinc-500 text-center py-8">Not enough data for walk-forward validation.</p>;
   }
 
-  const data = walkForward.actualPath.map((d, i) => ({
-    date: fmtDate(d.timestamp),
+  const seen = new Set<string>();
+  const uniqueActual = walkForward.actualPath.filter(d => {
+    if (seen.has(d.date)) return false;
+    seen.add(d.date);
+    return true;
+  });
+  const timestamps = uniqueActual.map(d => d.timestamp);
+  const dateLabels = buildDateLabels(timestamps);
+  const data = uniqueActual.map((d, i) => ({
+    date: dateLabels[i],
     actual: d.actual,
-    predicted: walkForward.predictedPath[i]?.actual ?? null,
+    predicted: walkForward.predictedPath.find(p => p.date === d.date)?.actual ?? null,
   }));
 
   return (
