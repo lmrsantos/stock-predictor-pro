@@ -12,7 +12,7 @@ interface BacktestModalProps {
   isOpen: boolean;
   onClose: () => void;
   ticker: string;
-  // stockData prop no longer used — modal fetches its own 1y data
+  onResult?: (result: BacktestResult) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
