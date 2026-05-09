@@ -186,6 +186,7 @@ const Index = () => {
       forecastPct: backtestResult.forecastPoints.at(-1)?.mean && lastPrice
         ? ((backtestResult.forecastPoints.at(-1)!.mean - lastPrice) / lastPrice) * 100
         : 0,
+      forecastLabel: `${forecastDays} days`,
     } : undefined,
   };
 
