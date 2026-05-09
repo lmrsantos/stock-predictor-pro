@@ -1,23 +1,178 @@
 // supabase/functions/quant-agent/index.ts
-// QuantAgent — uses standard Anthropic Messages API.
-// Keeps the same client action contract: get_or_create_agent / create_session / send_message.
-// "Sessions" are simulated by persisting message history in market_updates.
+// ─────────────────────────────────────────────────────────────────────────────
+// QuantAgent — Claude Opus 4.7 financial analyst with persistent memory
+//
+// Uses standard /v1/messages API (reliable, no beta dependencies)
+// Persistence implemented via Supabase:
+//   - Conversation history per user+ticker (last 10 messages)
+//   - User risk profile learned over time
+//   - Past signals and recommendations stored
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "claude-3-5-sonnet-20241022";
-const MAX_TOKENS = 1024;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type ChatMsg = { role: "user" | "assistant"; content: string };
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
-async function callAnthropic(system: string, messages: ChatMsg[], apiKey: string): Promise<string> {
+interface StockContext {
+  ticker?: string;
+  price?: number;
+  annualReturn?: number;
+  rSquared?: number;
+  slope?: number;
+  fundamentals?: Record<string, unknown>;
+  backtestResult?: {
+    signal: string;
+    confidenceScore: number;
+    walkForwardAccuracy: number;
+    hitRate: number;
+    regime: string;
+    forecastPct: number;
+    forecastLabel: string;
+  };
+}
+
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
+
+async function getHistory(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  ticker: string,
+): Promise<ChatMessage[]> {
+  const { data } = await supabase
+    .from("market_updates")
+    .select("content")
+    .eq("signal_type", `qa_history_${userId}_${ticker}`)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (!data?.length) return [];
+  try {
+    return JSON.parse(data[0].content) as ChatMessage[];
+  } catch {
+    return [];
+  }
+}
+
+async function saveHistory(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  ticker: string,
+  messages: ChatMessage[],
+) {
+  // Keep last 10 messages (5 exchanges)
+  const trimmed = messages.slice(-10);
+  await supabase.from("market_updates").insert({
+    signal_type: `qa_history_${userId}_${ticker}`,
+    content: JSON.stringify(trimmed),
+    ticker,
+  });
+}
+
+async function getUserProfile(supabase: ReturnType<typeof createClient>, userId: string): Promise<string> {
+  const { data } = await supabase
+    .from("market_updates")
+    .select("content")
+    .eq("signal_type", `qa_profile_${userId}`)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  return data?.[0]?.content || "";
+}
+
+async function updateUserProfile(supabase: ReturnType<typeof createClient>, userId: string, profile: string) {
+  await supabase.from("market_updates").insert({
+    signal_type: `qa_profile_${userId}`,
+    content: profile,
+    ticker: null,
+  });
+}
+
+// ─── System prompt ────────────────────────────────────────────────────────────
+
+function buildSystemPrompt(ctx: StockContext, userProfile: string): string {
+  const bt = ctx.backtestResult;
+  return `You are QuantAgent, a professional quantitative financial analyst embedded in the QuantForecast platform. You are powered by Claude Opus 4.7.
+
+## Current Stock Context
+- Ticker: ${ctx.ticker || "N/A"}
+- Current Price: ${ctx.price ? `$${ctx.price.toLocaleString()}` : "N/A"}
+${ctx.annualReturn ? `- Regression Annual Return: ${(ctx.annualReturn * 100).toFixed(1)}%` : ""}
+${ctx.rSquared ? `- R² (trend reliability): ${Number(ctx.rSquared).toFixed(3)}` : ""}
+${
+  bt
+    ? `
+## Autoencoder Backtest Results
+- Signal: ${bt.signal}
+- Confidence Score: ${bt.confidenceScore}/100
+- Walk-Forward Accuracy: ${bt.walkForwardAccuracy}%
+- Direction Hit Rate: ${bt.hitRate}%
+- Market Regime: ${bt.regime}
+- Projected Move: ${bt.forecastPct > 0 ? "+" : ""}${bt.forecastPct}% over ${bt.forecastLabel}`
+    : ""
+}
+
+## User Profile (learned from past conversations)
+${userProfile || "New user — no profile yet. Learn their risk tolerance and goals from this conversation."}
+
+## Your Behavior
+- Be direct and specific — give actionable insights
+- Reference the backtest data when relevant
+- Keep responses concise: 2-4 sentences for simple questions
+- For recommendations always state: signal, position size, key risk
+- Update your mental model of the user's risk profile as you learn more
+- You are NOT a licensed financial advisor — note this for specific recommendations
+- Format numbers clearly: prices in $, percentages with %`;
+}
+
+// ─── Extract profile update from conversation ─────────────────────────────────
+
+function extractProfileUpdate(userMessage: string, currentProfile: string): string | null {
+  const lower = userMessage.toLowerCase();
+
+  // Look for risk profile signals in the user message
+  const signals: string[] = [];
+
+  if (lower.includes("conservative") || lower.includes("safe") || lower.includes("low risk")) {
+    signals.push("Risk tolerance: Conservative");
+  } else if (lower.includes("aggressive") || lower.includes("high risk") || lower.includes("speculative")) {
+    signals.push("Risk tolerance: Aggressive");
+  } else if (lower.includes("moderate") || lower.includes("balanced")) {
+    signals.push("Risk tolerance: Moderate");
+  }
+
+  if (lower.includes("long term") || lower.includes("hold") || lower.includes("years")) {
+    signals.push("Horizon: Long-term investor");
+  } else if (lower.includes("short term") || lower.includes("trade") || lower.includes("weeks")) {
+    signals.push("Horizon: Short-term trader");
+  }
+
+  if (lower.includes("income") || lower.includes("dividend")) {
+    signals.push("Goal: Income/dividends");
+  } else if (lower.includes("growth") || lower.includes("appreciate")) {
+    signals.push("Goal: Capital appreciation");
+  }
+
+  if (signals.length === 0) return null;
+
+  // Merge with existing profile
+  const newInfo = signals.join(", ");
+  return currentProfile ? `${currentProfile}\nUpdated: ${newInfo}` : `Learned from conversation: ${newInfo}`;
+}
+
+// ─── Call Claude Opus 4.7 ─────────────────────────────────────────────────────
+
+async function callClaude(messages: ChatMessage[], system: string, apiKey: string): Promise<string> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -26,138 +181,127 @@ async function callAnthropic(system: string, messages: ChatMsg[], apiKey: string
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+      model: "claude-opus-4-7", // use claude-opus-4-5 as opus-4-7 may not be on your tier yet
+      max_tokens: 1024,
       system,
       messages,
     }),
   });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${text}`);
-  const data = JSON.parse(text);
-  const block = (data.content || []).find((b: { type: string }) => b.type === "text");
-  return block?.text || "No response.";
+
+  if (!res.ok) {
+    const err = await res.text();
+    // Fallback to sonnet if opus not available
+    if (res.status === 404 || res.status === 403) {
+      const fallback = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1024,
+          system,
+          messages,
+        }),
+      });
+      if (!fallback.ok) throw new Error(`Claude API error: ${await fallback.text()}`);
+      const data = await fallback.json();
+      return data.content?.[0]?.text || "No response";
+    }
+    throw new Error(`Claude API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.content?.[0]?.text || "No response";
 }
 
-function buildSystem(ctx: Record<string, unknown>): string {
-  const br = ctx.backtestResult as Record<string, unknown> | undefined;
-  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform.
-
-Current analysis context:
-- Ticker: ${ctx.ticker || "N/A"}
-- Price: ${ctx.price ? `$${ctx.price}` : "N/A"}
-${ctx.annualReturn ? `- Projected Annual Return: ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
-${ctx.rSquared ? `- R²: ${ctx.rSquared}` : ""}
-${br ? `- Backtest Signal: ${br.signal}
-- Confidence: ${br.confidenceScore}/100
-- Walk-Forward Accuracy: ${br.walkForwardAccuracy}%
-- Hit Rate: ${br.hitRate}%
-- Regime: ${br.regime}
-- Forecast Move: ${br.forecastPct}%` : ""}
-
-Be direct, specific, and concise (2-4 sentences for simple questions). Reference backtest data when relevant.
-You are NOT a licensed financial advisor — note this when giving specific recommendations.`;
-}
-
-async function getStored(supabase: ReturnType<typeof createClient>, key: string) {
-  const { data } = await supabase
-    .from("market_updates")
-    .select("content")
-    .eq("signal_type", key)
-    .order("created_at", { ascending: false })
-    .limit(1);
-  return data?.[0]?.content || null;
-}
-
-async function setStored(
-  supabase: ReturnType<typeof createClient>,
-  key: string,
-  value: string,
-  ticker: string | null = null,
-) {
-  await supabase.from("market_updates").insert({ signal_type: key, content: value, ticker });
-}
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Supabase secrets");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const body = await req.json();
-    const { action } = body;
+    const { action, message, context, ticker } = body as {
+      action: string;
+      message?: string;
+      context?: StockContext;
+      ticker?: string;
+    };
+
+    // Extract user ID from auth header
+    const authHeader = req.headers.get("authorization") || "";
+    const userId = authHeader.length > 10 ? authHeader.slice(-12).replace(/[^a-zA-Z0-9]/g, "x") : "anonymous";
+
+    const currentTicker = ticker || context?.ticker || "UNKNOWN";
     let result: unknown;
 
-    if (action === "get_or_create_agent") {
-      // No real agent in Messages API — return stable synthetic IDs.
-      result = { agent_id: "quantagent-v1", environment_id: "default" };
+    // ── init_session ───────────────────────────────────────────────────────────
+    if (action === "get_or_create_agent" || action === "create_session") {
+      const history = await getHistory(supabase, userId, currentTicker);
+      const userProfile = await getUserProfile(supabase, userId);
+      const isReturning = history.length > 0;
 
-    } else if (action === "create_session") {
-      const { ticker: t } = body;
-      const userId = (req.headers.get("authorization") || "anon").slice(-8);
-      const sessionKey = `qa_session_${userId}_${t}`;
-      const since = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
-      const { data: cached } = await supabase
-        .from("market_updates")
-        .select("content, created_at")
-        .eq("signal_type", sessionKey)
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(1);
+      // Build greeting
+      const bt = context?.backtestResult;
+      let greeting: string;
 
-      if (cached?.length) {
-        const stored = JSON.parse(cached[0].content);
-        result = {
-          session_id: stored.session_id,
-          is_returning: true,
-          recent_messages: stored.messages || [],
-        };
+      if (isReturning) {
+        greeting = `Welcome back. I remember our previous analysis of ${currentTicker}${context?.price ? ` — currently at $${context.price.toLocaleString()}` : ""}. What would you like to explore today?`;
+      } else if (bt) {
+        const direction = bt.forecastPct > 0 ? "bullish" : "bearish";
+        greeting = `I've loaded the backtest results for ${currentTicker}. The autoencoder model is ${direction} with a **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, and ${bt.hitRate}% directional accuracy over ${bt.forecastLabel}. What would you like to know?`;
       } else {
-        const sessionId = `sess_${crypto.randomUUID()}`;
-        await setStored(supabase, sessionKey,
-          JSON.stringify({ session_id: sessionId, messages: [] }), t);
-        result = { session_id: sessionId, is_returning: false, recent_messages: [] };
+        greeting = `Ready to analyze ${currentTicker}${context?.price ? ` at $${context.price.toLocaleString()}` : ""}. Run a backtest first for deeper insights, or ask me anything about this stock.`;
       }
 
+      result = {
+        agent_id: "standard-claude",
+        environment_id: "supabase-memory",
+        session_id: `${userId}_${currentTicker}`,
+        is_returning: isReturning,
+        recent_messages: history.slice(-4).map((m) => ({
+          role: m.role === "assistant" ? "agent" : m.role,
+          content: m.content,
+        })),
+        greeting,
+      };
+
+      // ── send_message ───────────────────────────────────────────────────────────
     } else if (action === "send_message") {
-      const { session_id, message, context: ctx } = body;
-      const userId = (req.headers.get("authorization") || "anon").slice(-8);
-      const sessionKey = `qa_session_${userId}_${ctx?.ticker}`;
+      if (!message) throw new Error("message is required");
 
-      // Load history
-      const stored = await getStored(supabase, sessionKey);
-      const parsed = stored ? JSON.parse(stored) : { session_id, messages: [] };
-      const history: { role: string; content: string }[] = parsed.messages || [];
+      // Load history and profile
+      const history = await getHistory(supabase, userId, currentTicker);
+      const userProfile = await getUserProfile(supabase, userId);
 
-      const chatMessages: ChatMsg[] = history.slice(-10).map((m) => ({
-        role: m.role === "agent" ? "assistant" : "user",
-        content: m.content,
-      }));
-      chatMessages.push({ role: "user", content: message });
+      // Build system prompt with full context
+      const system = buildSystemPrompt(context || {}, userProfile);
 
-      const response = await callAnthropic(buildSystem(ctx || {}), chatMessages, apiKey);
+      // Add new user message to history
+      const updatedHistory: ChatMessage[] = [...history, { role: "user", content: message }];
 
-      const updatedMessages = [
-        ...history,
-        { role: "user", content: message },
-        { role: "agent", content: response },
-      ].slice(-20);
+      // Call Claude
+      const response = await callClaude(updatedHistory, system, apiKey);
 
-      await setStored(
-        supabase,
-        sessionKey,
-        JSON.stringify({ session_id, messages: updatedMessages }),
-        ctx?.ticker,
-      );
+      // Save updated history with assistant response
+      const finalHistory: ChatMessage[] = [...updatedHistory, { role: "assistant", content: response }];
+      await saveHistory(supabase, userId, currentTicker, finalHistory);
+
+      // Update user profile if we learned something
+      const profileUpdate = extractProfileUpdate(message, userProfile);
+      if (profileUpdate) {
+        await updateUserProfile(supabase, userId, profileUpdate);
+      }
 
       result = { response };
-
     } else {
       throw new Error(`Unknown action: ${action}`);
     }
@@ -165,12 +309,12 @@ serve(async (req) => {
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-
   } catch (error) {
     console.error("QuantAgent error:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : null,
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
