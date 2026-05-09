@@ -12,7 +12,6 @@ interface BacktestModalProps {
   isOpen: boolean;
   onClose: () => void;
   ticker: string;
-  onResult?: (result: BacktestResult) => void;
   // stockData prop no longer used — modal fetches its own 1y data
 }
 
@@ -20,6 +19,21 @@ interface BacktestModalProps {
 
 const fmtPrice = (v: number) => `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = (ts: number) => new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+// Smarter label formatter — only shows month when it changes
+function buildDateLabels(timestamps: number[]): string[] {
+  return timestamps.map((ts, i) => {
+    const d = new Date(ts);
+    const prev = i > 0 ? new Date(timestamps[i - 1]) : null;
+    const dayStr = d.getDate().toString();
+    const monthStr = d.toLocaleDateString("en-US", { month: "short" });
+    // Show month only when it changes or on first item
+    if (!prev || prev.getMonth() !== d.getMonth()) {
+      return `${monthStr} ${dayStr}`;
+    }
+    return dayStr; // just the day number within the same month
+  });
+}
 
 function accentColor(val: number, lo: number, hi: number) {
   return val <= lo ? "#34d399" : val <= hi ? "#fbbf24" : "#f87171";
@@ -144,8 +158,16 @@ function EnsembleTable({ models }: { models: BacktestResult["models"] }) {
 
 function ForecastConeChart({ result }: { result: BacktestResult }) {
   // Last 15 actual points + forecast cone
-  const tail = result.actualPath.slice(-15).map((d) => ({
-    date: fmtDate(d.timestamp),
+  const tailRaw = result.actualPath.slice(-15);
+  const forecastRaw = result.forecastPoints;
+  const allTimestamps = [
+    ...tailRaw.map(d => d.timestamp),
+    ...forecastRaw.map(fp => fp.timestamp),
+  ];
+  const dateLabels = buildDateLabels(allTimestamps);
+
+  const tail = tailRaw.map((d, i) => ({
+    date: dateLabels[i],
     actual: d.actual,
     mean: null as number | null,
     upper1: null as number | null, lower1: null as number | null,
@@ -154,8 +176,8 @@ function ForecastConeChart({ result }: { result: BacktestResult }) {
     band2: null as [number, number] | null,
   }));
 
-  const forecastPts = result.forecastPoints.map((fp) => ({
-    date: fmtDate(fp.timestamp),
+  const forecastPts = forecastRaw.map((fp, i) => ({
+    date: dateLabels[tailRaw.length + i],
     actual: null as number | null,
     mean: fp.mean,
     upper1: fp.upper1, lower1: fp.lower1,
@@ -520,17 +542,10 @@ function RecommendationPanel({ result, ticker }: { result: BacktestResult; ticke
       text: `Regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× vol ratio) — elevated uncertainty` : "NORMAL — model within trained conditions"}`,
       positive: !regime.outsideDistribution,
     },
-    (() => {
-      const convergedCount = result.models.filter(m => m.converged).length;
-      const total = result.models.length;
-      const divergedCount = total - convergedCount;
-      return {
-        text: convergedCount >= Math.ceil(total / 2)
-          ? `${convergedCount}/${total} ensemble models converged`
-          : `${divergedCount}/${total} ensemble models did NOT converge (hit max epochs) — only ${convergedCount}/${total} converged`,
-        positive: convergedCount >= 3,
-      };
-    })(),
+    {
+      text: `${result.models.filter(m => m.converged).length}/${result.models.length} ensemble models converged`,
+      positive: result.models.filter(m => m.converged).length >= 3,
+    },
   ];
 
   return (
@@ -594,7 +609,7 @@ function RecommendationPanel({ result, ticker }: { result: BacktestResult; ticke
 
 type Tab = "forecast" | "walkforward" | "ensemble" | "regime";
 
-export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestModalProps) {
+export function BacktestModal({ isOpen, onClose, ticker }: BacktestModalProps) {
   const [lookback, setLookback] = useState<3 | 6>(6);
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [running, setRunning] = useState(false);
@@ -668,7 +683,6 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
       try {
         const res = backtest(dataPoints, lookback);
         setResult(res);
-        onResult?.(res);
         setProgressPct(100);
         setProgress("");
       } catch (e) {
