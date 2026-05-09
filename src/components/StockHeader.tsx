@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Table2, Globe, FileText } from "lucide-react";
+import { Table2, Globe, FileText, FlaskConical } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
