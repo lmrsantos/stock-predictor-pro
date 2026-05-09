@@ -14,6 +14,7 @@ import { DataTable } from "@/components/DataTable";
 import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
+import type { BacktestResult } from "@/lib/backtest";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
