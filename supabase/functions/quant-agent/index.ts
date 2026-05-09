@@ -193,13 +193,11 @@ serve(async (req) => {
       });
 
     // ── ACTION: send_message ──────────────────────────────────────────────────
-    // Sends a user event to the Managed Agent session.
-    // Returns immediately — browser polls/streams for the response directly.
+    // Sends user event + polls for agent response (all server-side, no CORS).
 
     } else if (action === "send_message") {
       const { session_id, message, context: ctx } = body;
 
-      // Send user message event to the session
       const enriched = `${message}
 
 ${ctx?.ticker ? `[Analyzing: ${ctx.ticker} at ${ctx.price ? "$" + ctx.price : "current price"}]` : ""}
@@ -207,6 +205,7 @@ ${ctx?.backtestResult ? `[Backtest: ${ctx.backtestResult.signal} signal, ${ctx.b
 
 Please search the web for current news about this stock before responding.`;
 
+      // Step 1: Send user message event
       await anthropicPost(`/v1/sessions/${session_id}/events`, {
         events: [{
           type: "user.message",
@@ -214,12 +213,55 @@ Please search the web for current news about this stock before responding.`;
         }],
       }, apiKey);
 
-      // Return session_id and key — browser will stream the response
+      // Step 2: Poll for agent response (server-side — no CORS issue)
+      let agentResponse = "";
+      let attempts = 0;
+      const maxAttempts = 25; // 25 × 3s = 75s max (within edge fn limit)
+
+      while (attempts < maxAttempts) {
+        await new Promise(r => setTimeout(r, 3000));
+        attempts++;
+
+        const eventsRes = await fetch(
+          `https://api.anthropic.com/v1/sessions/${session_id}/events?limit=50&order=desc`,
+          {
+            headers: {
+              "x-api-key": apiKey,
+              "anthropic-version": "2023-06-01",
+              "anthropic-beta": BETA_HEADER,
+            },
+          }
+        );
+
+        if (!eventsRes.ok) {
+          const errText = await eventsRes.text();
+          throw new Error(`Events fetch failed ${eventsRes.status}: ${errText}`);
+        }
+
+        const eventsData = await eventsRes.json();
+        const events = (eventsData.data || []).reverse();
+
+        for (const event of events) {
+          if (event.type === "agent.message" && event.content) {
+            for (const block of event.content) {
+              if (block.type === "text" && block.text) {
+                agentResponse = block.text;
+              }
+            }
+          }
+          if (event.type === "session.status_idle" || event.status === "idle") {
+            return new Response(JSON.stringify({
+              response: agentResponse || "Analysis complete.",
+            }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      }
+
+      // Return whatever we got on timeout
       return new Response(JSON.stringify({
-        session_id,
-        streaming: true,
-        anthropic_api_key: apiKey,
-        message: "Event sent. Stream response from Anthropic directly.",
+        response: agentResponse || "The agent is taking longer than expected. Please try again.",
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
