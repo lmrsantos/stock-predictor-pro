@@ -12,7 +12,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-3-5-sonnet-20241022";
 const MAX_TOKENS = 1024;
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
