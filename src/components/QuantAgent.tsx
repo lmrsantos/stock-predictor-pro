@@ -183,7 +183,8 @@ export function QuantAgent({ context }: QuantAgentProps) {
     setLoading(true);
 
     try {
-      // Step 1: Send message event via Supabase edge fn
+      // All communication goes through Supabase edge function (avoids CORS)
+      // The edge function sends the message AND polls for the response
       const { data, error } = await supabase.functions.invoke("quant-agent", {
         body: {
           action: "send_message",
@@ -196,82 +197,20 @@ export function QuantAgent({ context }: QuantAgentProps) {
 
       if (error) throw new Error(error.message);
 
-      const key = data.anthropic_api_key || anthropicKey;
-      if (!key) throw new Error("No API key available for streaming");
-
-      // Step 2: Stream response directly from Anthropic SSE
-      const agentMsgId = `agent-${Date.now()}`;
       setMessages(prev => [
         ...prev.filter(m => !m.thinking),
-        { id: agentMsgId, role: "agent", content: "", timestamp: new Date(), streaming: true },
+        {
+          id: `agent-${Date.now()}`,
+          role: "agent",
+          content: data.response || "Analysis complete.",
+          timestamp: new Date(),
+          streaming: false,
+        },
       ]);
 
-      abortRef.current = new AbortController();
-      let fullResponse = "";
-      let attempts = 0;
-      const maxAttempts = 20;
-
-      // Poll for events since SSE may not work in all environments
-      const pollForResponse = async () => {
-        while (attempts < maxAttempts) {
-          await new Promise(r => setTimeout(r, 2000));
-          attempts++;
-
-          const eventsRes = await fetch(
-            `https://api.anthropic.com/v1/sessions/${sessionId}/events?limit=20&order=desc`,
-            {
-              headers: {
-                "x-api-key": key,
-                "anthropic-version": "2023-06-01",
-                "anthropic-beta": "managed-agents-2026-04-01",
-              },
-              signal: abortRef.current?.signal,
-            }
-          );
-
-          if (!eventsRes.ok) throw new Error(`Events fetch failed: ${eventsRes.status}`);
-          const eventsData = await eventsRes.json();
-          const events = (eventsData.data || []).reverse();
-
-          for (const event of events) {
-            if (event.type === "agent.message" && event.content) {
-              for (const block of event.content) {
-                if (block.type === "text" && block.text) {
-                  fullResponse = block.text;
-                  // Update message with latest content
-                  setMessages(prev => prev.map(m =>
-                    m.id === agentMsgId
-                      ? { ...m, content: fullResponse, streaming: true }
-                      : m
-                  ));
-                }
-              }
-            }
-            if (event.type === "session.status_idle" || event.status === "idle") {
-              // Done — finalize message
-              setMessages(prev => prev.map(m =>
-                m.id === agentMsgId
-                  ? { ...m, content: fullResponse || "Analysis complete.", streaming: false }
-                  : m
-              ));
-              return;
-            }
-          }
-        }
-        // Timeout — show whatever we got
-        setMessages(prev => prev.map(m =>
-          m.id === agentMsgId
-            ? { ...m, content: fullResponse || "Response timed out. Please try again.", streaming: false }
-            : m
-        ));
-      };
-
-      await pollForResponse();
-
     } catch (e) {
-      if ((e as Error).name === "AbortError") return;
       setMessages(prev => [
-        ...prev.filter(m => !m.thinking && !m.streaming),
+        ...prev.filter(m => !m.thinking),
         {
           id: `error-${Date.now()}`,
           role: "agent",
@@ -282,7 +221,7 @@ export function QuantAgent({ context }: QuantAgentProps) {
     } finally {
       setLoading(false);
     }
-  }, [sessionId, anthropicKey, context, loading]);
+  }, [sessionId, context, loading]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
