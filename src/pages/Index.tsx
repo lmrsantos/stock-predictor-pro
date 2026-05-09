@@ -26,6 +26,7 @@ const Index = () => {
   const [forecastDays, setForecastDays] = useState(30);
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
