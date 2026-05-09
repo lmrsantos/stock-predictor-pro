@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.geopolitical-sentiment]
 verify_jwt = false
+
+[functions.quant-agent]
+verify_jwt = false
