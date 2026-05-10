@@ -58,7 +58,7 @@ const Index = () => {
     queryKey: ["fetch-stock", ticker, period],
     queryFn: () => fetchAndStoreStockData(ticker, period),
     retry: 1,
-    staleTime: 10 * 60 * 1000, // 10 min cache
+    staleTime: 0, // always fetch fresh data
   });
 
   // Step 2: Read from DB
