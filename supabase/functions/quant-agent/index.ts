@@ -154,7 +154,7 @@ serve(async (req) => {
     if (action === "get_or_create_agent") {
       const { data: cachedAgentOnly } = await supabase
         .from("market_updates").select("content")
-        .eq("signal_type", "qa_managed_agent_id_v1")
+        .eq("signal_type", "qa_managed_agent_id_v3")
         .order("created_at", { ascending: false }).limit(1);
 
       let agentId = cachedAgentOnly?.[0]?.content || null;
@@ -167,13 +167,13 @@ serve(async (req) => {
         }, apiKey);
         agentId = agent.id;
         await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_agent_id_v1", content: agentId, ticker: null,
+          signal_type: "qa_managed_agent_id_v3", content: agentId, ticker: null,
         });
       }
 
       const { data: cachedEnvOnly } = await supabase
         .from("market_updates").select("content")
-        .eq("signal_type", "qa_managed_env_id_v1")
+        .eq("signal_type", "qa_managed_env_id_v3")
         .order("created_at", { ascending: false }).limit(1);
 
       let envId = cachedEnvOnly?.[0]?.content || null;
@@ -184,7 +184,7 @@ serve(async (req) => {
         }, apiKey);
         envId = env.id;
         await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_env_id_v1", content: envId, ticker: null,
+          signal_type: "qa_managed_env_id_v3", content: envId, ticker: null,
         });
       }
 
@@ -268,7 +268,7 @@ serve(async (req) => {
       const { data: cachedAgent } = await supabase
         .from("market_updates")
         .select("content")
-        .eq("signal_type", "qa_managed_agent_id_v1")
+        .eq("signal_type", "qa_managed_agent_id_v3")
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -285,7 +285,7 @@ serve(async (req) => {
 
         agentId = agent.id;
         await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_agent_id_v1",
+          signal_type: "qa_managed_agent_id_v3",
           content: agentId,
           ticker: null,
         });
@@ -295,7 +295,7 @@ serve(async (req) => {
       const { data: cachedEnv } = await supabase
         .from("market_updates")
         .select("content")
-        .eq("signal_type", "qa_managed_env_id_v1")
+        .eq("signal_type", "qa_managed_env_id_v3")
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -309,7 +309,7 @@ serve(async (req) => {
 
         envId = env.id;
         await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_env_id_v1",
+          signal_type: "qa_managed_env_id_v3",
           content: envId,
           ticker: null,
         });
@@ -412,7 +412,15 @@ ${ctx?.backtestResult ? `- Model Signal: ${ctx.backtestResult.signal} (${ctx.bac
 1. Search "${ctx?.ticker} stock news May 2026" for latest developments
 2. Search "${ctx?.ticker} sector industry" to understand the business
 3. Search "${ctx?.ticker} earnings 2026" for upcoming catalysts
-Then apply the thematic classification framework from your system prompt.`;
+Then structure your response EXACTLY using these 5 sections:
+**What This Company Does:** (1 sentence)
+**Thematic Position:** (which macro theme? direct/secondary/indirect?)
+**Key Catalyst:** (most important near-term driver with specific date/amount)
+**Quant Signal Context:** (does the model forecast align with fundamentals?)
+**Key Risk:** (specific risk with numbers)
+**Bottom Line:** (2 sentences max, actionable, includes position sizing)
+
+Do NOT give a one-line answer. Cover all 5 sections every time.`;
 
       // Step 1: Send user message event
       await anthropicPost(`/v1/sessions/${session_id}/events`, {
