@@ -46,6 +46,11 @@ export interface ModelCalibration {
   errorPct: number;           // abs % error vs actual current price
   annualizedReturn: number;   // projected annual return from slope
   winner: boolean;            // true for the best-fitting model
+  // Compat fields for BacktestModal
+  forecast?: number[];
+  reconError?: number;
+  converged?: boolean;
+  epochsRun?: number;
 }
 
 export interface ForecastResult {
@@ -76,6 +81,20 @@ export interface ForecastResult {
   currentPrice: number;
   priceMin: number;
   priceMax: number;
+
+  // Compat fields for BacktestModal / Index
+  walkForward?: {
+    actualPath: BacktestDataPoint[];
+    predictedPath: BacktestDataPoint[];
+    mape: number;
+    hitRate: number;
+  };
+  mape?: number;
+  finalForecastError?: number;
+  converged?: boolean;
+  epochsRun?: number;
+  latentVector?: number[];
+  reconstructedPath?: BacktestDataPoint[];
 }
 
 export interface RegimeResult {
@@ -300,7 +319,6 @@ export function backtest(
     forecastPct:       Math.round(forecastPct * 10) / 10,
     forecastDirection,
     winningModel:      winner,
-    models,
     ensembleAgreement,
     modelDisagreement,
     regime,
@@ -331,9 +349,9 @@ export function backtest(
       date: d.date, timestamp: d.timestamp,
       actual: winner.slope * (data.indexOf(d)) + winner.intercept,
     })),
-    // Ensemble models compatibility
+    // Ensemble models with compat fields
     models: models.map(m => ({
-      windowSize: m.windowSize,
+      ...m,
       forecast:   forecastPoints.map(fp => fp.mean),
       reconError: m.errorPct,
       converged:  m.errorPct < 2,
