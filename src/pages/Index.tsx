@@ -10,7 +10,7 @@ import { MarketTicker } from "@/components/MarketTicker";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
-import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
+
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
 import type { BacktestResult } from "@/lib/backtest";
