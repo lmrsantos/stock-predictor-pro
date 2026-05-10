@@ -75,7 +75,14 @@ async function saveHistory(
 
 // ─── System prompt — Level 3 Dynamic Thematic Intelligence ───────────────────
 
-function buildSystemPrompt(ctx: StockContext): string {
+interface GeoContext {
+  tension_score: number;
+  severity: string;
+  summary: string;
+  key_events?: { region: string; event: string; impact: string }[];
+}
+
+function buildSystemPrompt(ctx: StockContext, geo?: GeoContext | null): string {
   const bt = ctx.backtestResult;
   const ticker = ctx.ticker || "N/A";
   const price = ctx.price ? "$" + ctx.price : "N/A";
@@ -96,6 +103,25 @@ function buildSystemPrompt(ctx: StockContext): string {
     "- Projected Move: " + bt.forecastPct + "% over " + bt.forecastLabel,
   ].join("\n") : "";
 
+  const geoSection = geo ? [
+    "",
+    "## Live Geopolitical Context",
+    "- Global Tension Score: " + geo.tension_score + "/100 (" + geo.severity.toUpperCase() + ")",
+    "- Situation: " + geo.summary,
+    geo.key_events?.length ? "- Key flashpoints: " + geo.key_events
+      .filter(e => e.impact === "high")
+      .map(e => e.region + " (" + e.event.slice(0, 60) + "...)")
+      .join("; ") : "",
+    "",
+    "Use this to:",
+    geo.tension_score >= 60
+      ? "- Flag ELEVATED geopolitical risk in any recommendation"
+      : "- Note that geopolitical backdrop is currently manageable",
+    geo.tension_score >= 60
+      ? "- Boost conviction for energy (oil), defense, gold stocks"
+      : "- Growth themes (AI, Space, Biotech) face lower geopolitical headwinds",
+  ].join("\n") : "";
+
   return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it before every substantive response.
 
 ## Current Stock Context
@@ -104,6 +130,7 @@ function buildSystemPrompt(ctx: StockContext): string {
 ${annualReturnLine}
 ${rSquaredLine}
 ${backtestSection}
+${geoSection}
 
 ## Your Analysis Framework
 
@@ -266,6 +293,14 @@ serve(async (req) => {
       const isReturning = history.length > 0;
       const bt = context?.backtestResult;
 
+      // Fetch geopolitical context for greeting
+      const { data: geoInit } = await supabase
+        .from("geopolitical_sentiment")
+        .select("tension_score, severity, summary")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const geoSummary = geoInit?.[0] || null;
+
       let greeting: string;
       if (isReturning) {
         greeting = `Welcome back. I remember our previous analysis of ${currentTicker}${context?.price ? " at $" + context.price : ""}. What would you like to explore?`;
@@ -294,7 +329,16 @@ serve(async (req) => {
       if (!message) throw new Error("message is required");
 
       const history = await getHistory(supabase, userId, currentTicker, purpose);
-      const system = buildSystemPrompt(context || {});
+
+      // Fetch latest geopolitical sentiment from Supabase
+      const { data: geoData } = await supabase
+        .from("geopolitical_sentiment")
+        .select("tension_score, severity, summary, key_events")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const geo = geoData?.[0] || null;
+
+      const system = buildSystemPrompt(context || {}, geo);
 
       // Enrich user message with context
       const bt = context?.backtestResult;
