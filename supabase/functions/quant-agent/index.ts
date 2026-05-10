@@ -80,11 +80,122 @@ serve(async (req) => {
     const currentTicker = ticker || context?.ticker || "UNKNOWN";
     const userId = (req.headers.get("authorization") || "anon").slice(-12).replace(/[^a-zA-Z0-9]/g, "x");
 
-    // ── ACTION: init ──────────────────────────────────────────────────────────
-    // Creates Agent + Environment + Session, returns session_id to browser.
-    // Browser then streams directly to Anthropic using the session_id.
+    // ── ACTION: get_or_create_agent ───────────────────────────────────────────
+    // Returns agent_id + environment_id (cached after first call).
+    // Cheap — just reads from Supabase if already created.
 
-    if (action === "get_or_create_agent" || action === "create_session") {
+    if (action === "get_or_create_agent") {
+      const { data: cachedAgentOnly } = await supabase
+        .from("market_updates").select("content")
+        .eq("signal_type", "qa_managed_agent_id_v1")
+        .order("created_at", { ascending: false }).limit(1);
+
+      let agentId = cachedAgentOnly?.[0]?.content || null;
+      if (!agentId) {
+        const agent = await anthropicPost("/v1/agents", {
+          name: "QuantForecast Financial Analyst",
+          model: { id: "claude-sonnet-4-6" },
+          system: buildSystemPrompt(context || {}),
+          tools: [{ type: "agent_toolset_20260401" }],
+        }, apiKey);
+        agentId = agent.id;
+        await supabase.from("market_updates").insert({
+          signal_type: "qa_managed_agent_id_v1", content: agentId, ticker: null,
+        });
+      }
+
+      const { data: cachedEnvOnly } = await supabase
+        .from("market_updates").select("content")
+        .eq("signal_type", "qa_managed_env_id_v1")
+        .order("created_at", { ascending: false }).limit(1);
+
+      let envId = cachedEnvOnly?.[0]?.content || null;
+      if (!envId) {
+        const env = await anthropicPost("/v1/environments", {
+          name: "quantforecast-env",
+          config: { type: "cloud", networking: { type: "unrestricted" } },
+        }, apiKey);
+        envId = env.id;
+        await supabase.from("market_updates").insert({
+          signal_type: "qa_managed_env_id_v1", content: envId, ticker: null,
+        });
+      }
+
+      return new Response(JSON.stringify({ agent_id: agentId, environment_id: envId }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    // ── ACTION: create_session ────────────────────────────────────────────────
+    // Creates a new session for a specific ticker + purpose.
+    // Each caller (chat, backtest, hotspot) gets its own session.
+    // Sessions are cached per userId + ticker + purpose for 2 hours.
+
+    } else if (action === "create_session") {
+      const { agent_id, environment_id, ticker: t, purpose = "chat" } = body;
+
+      const sessionKey = `qa_session_${userId}_${t}_${purpose}`;
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const { data: cachedSession } = await supabase
+        .from("market_updates")
+        .select("content, created_at")
+        .eq("signal_type", sessionKey)
+        .gte("created_at", twoHoursAgo)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      let sessionId: string;
+      let isReturning = false;
+      let cachedSessionValid = false;
+
+      if (cachedSession?.length) {
+        const candidateId = JSON.parse(cachedSession[0].content).session_id;
+        const checkRes = await fetch(`https://api.anthropic.com/v1/sessions/${candidateId}`, {
+          headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-beta": BETA_HEADER },
+        });
+        if (checkRes.ok) {
+          sessionId = candidateId;
+          isReturning = true;
+          cachedSessionValid = true;
+        }
+        if (!checkRes.ok) await checkRes.text();
+      }
+
+      if (!cachedSessionValid) {
+        const session = await anthropicPost("/v1/sessions", {
+          agent: agent_id,
+          environment_id,
+          title: `QuantForecast — ${t} (${purpose})`,
+        }, apiKey);
+        sessionId = session.id;
+        await supabase.from("market_updates").insert({
+          signal_type: sessionKey,
+          content: JSON.stringify({ session_id: sessionId }),
+          ticker: t,
+        });
+      }
+
+      // Build greeting for chat sessions
+      const bt = context?.backtestResult;
+      const greeting = isReturning
+        ? `Welcome back. Resuming our analysis of ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. What would you like to explore?`
+        : bt
+        ? `Loaded backtest for ${currentTicker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. I'll search for current news to complement the model. What would you like to know?`
+        : `Ready to analyze ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. I'll combine the regression model with live web search for a complete picture. Ask me anything.`;
+
+      return new Response(JSON.stringify({
+        session_id: sessionId,
+        is_returning: isReturning,
+        recent_messages: [],
+        greeting,
+        anthropic_api_key: apiKey,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
+    // ── LEGACY: get_or_create_agent + create_session combined ────────────────
+    // Kept for backward compatibility with QuantAgent.tsx chat bubble.
+
+    } else if (action === "get_or_create_agent_and_session") {
 
       // Check for cached agent
       const { data: cachedAgent } = await supabase
