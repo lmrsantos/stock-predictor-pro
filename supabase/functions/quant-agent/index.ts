@@ -106,41 +106,32 @@ function getThematicContext(ticker: string): string {
     }
   }
 
-  if (matches.length === 0) return "No active macro themes directly apply to this ticker.";
-
-  const orderLabel = (o: number) => o === 1 ? "DIRECT beneficiary" : o === 2 ? "SECONDARY beneficiary" : "INDIRECT beneficiary";
-  return matches.map(m =>
-    `📊 Theme: ${m.themeName} [${m.conviction} conviction]
-` +
-    `   Position: ${orderLabel(m.order)} (order ${m.order} of 3)
-` +
-    `   Active catalysts:
-${m.catalysts.map(c => `     - ${c}`).join("
-")}`
-  ).join("
-
-");
-}
 
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const bt = ctx.backtestResult as Record<string, unknown> | undefined;
   const ticker = (ctx.ticker as string) || "N/A";
+
+  const annualReturnLine = ctx.annualReturn ? "- Regression Annual Return: " + (Number(ctx.annualReturn) * 100).toFixed(1) + "%" : "";
+  const rSquaredLine = ctx.rSquared ? "- R\u00B2 (trend reliability): " + ctx.rSquared : "";
+  const backtestLines = bt ? [
+    "",
+    "## Quantitative Model Results",
+    "- Signal: " + bt.signal,
+    "- Confidence: " + bt.confidenceScore + "/100",
+    "- Walk-Forward Accuracy: " + bt.walkForwardAccuracy + "%",
+    "- Direction Hit Rate: " + bt.hitRate + "%",
+    "- Market Regime: " + bt.regime,
+    "- Projected Move: " + bt.forecastPct + "% over " + bt.forecastLabel,
+  ].join("\n") : "";
 
   return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search and you MUST use it before every response.
 
 ## Current Stock Context
 - Ticker: ${ticker}
 - Price: ${ctx.price ? "$" + ctx.price : "N/A"}
-${ctx.annualReturn ? `- Regression Annual Return: ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
-${ctx.rSquared ? `- R² (trend reliability): ${ctx.rSquared}` : ""}
-${bt ? `
-## Quantitative Model Results
-- Signal: ${bt.signal}
-- Confidence: ${bt.confidenceScore}/100
-- Walk-Forward Accuracy: ${bt.walkForwardAccuracy}%
-- Direction Hit Rate: ${bt.hitRate}%
-- Market Regime: ${bt.regime}
-- Projected Move: ${bt.forecastPct}% over ${bt.forecastLabel}` : ""}
+${annualReturnLine}
+${rSquaredLine}
+${backtestLines}
 
 ## Your Analysis Framework — Follow This Exactly
 
