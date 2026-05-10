@@ -76,6 +76,20 @@ export interface ForecastResult {
   currentPrice: number;
   priceMin: number;
   priceMax: number;
+
+  // Compatibility fields
+  walkForward?: {
+    actualPath: BacktestDataPoint[];
+    predictedPath: BacktestDataPoint[];
+    mape: number;
+    hitRate: number;
+  };
+  mape?: number;
+  finalForecastError?: number;
+  converged?: boolean;
+  epochsRun?: number;
+  latentVector?: number[];
+  reconstructedPath?: BacktestDataPoint[];
 }
 
 export interface RegimeResult {
@@ -347,14 +361,6 @@ export function backtest(
     reconstructedPath: data.slice(-60).map(d => ({
       date: d.date, timestamp: d.timestamp,
       actual: winner.slope * (data.indexOf(d)) + winner.intercept,
-    })),
-    // Ensemble models compatibility
-    models: models.map(m => ({
-      windowSize: m.windowSize,
-      forecast:   forecastPoints.map(fp => fp.mean),
-      reconError: m.errorPct,
-      converged:  m.errorPct < 2,
-      epochsRun:  1,
     })),
   };
 }
