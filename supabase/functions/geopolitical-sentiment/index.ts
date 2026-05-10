@@ -1,3 +1,5 @@
+// supabase/functions/geopolitical-sentiment/index.ts
+// Uses Claude instead of Gemini — same ANTHROPIC_API_KEY already configured
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -8,16 +10,15 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // Rate limit: only generate once per 30 minutes
+    // Cache: return existing if fresher than 30 minutes
     const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
     const { data: recent } = await supabase
       .from("geopolitical_sentiment")
@@ -25,118 +26,101 @@ serve(async (req) => {
       .gte("created_at", thirtyMinsAgo)
       .limit(1);
 
-    if (recent && recent.length > 0) {
-      // Return the latest cached entry
+    if (recent?.length) {
       const { data: latest } = await supabase
         .from("geopolitical_sentiment")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
-
       return new Response(JSON.stringify({ success: true, cached: true, sentiment: latest }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
 
     const FMP_API_KEY = Deno.env.get("FMP_API_KEY");
 
-    // Fetch global news for geopolitical context
+    // Fetch latest news headlines from FMP
     let newsHeadlines = "";
     if (FMP_API_KEY) {
       try {
-        const newsUrl = `https://financialmodelingprep.com/stable/news/general-latest?page=0&limit=15&apikey=${FMP_API_KEY}`;
-        const newsRes = await fetch(newsUrl);
+        const newsRes = await fetch(
+          `https://financialmodelingprep.com/stable/news/general-latest?page=0&limit=15&apikey=${FMP_API_KEY}`
+        );
         if (newsRes.ok) {
           const news = await newsRes.json();
-          newsHeadlines = news
-            .map((n: any) => `- ${n.title || n.text || ""}`)
-            .filter((h: string) => h.length > 5)
+          newsHeadlines = (news as {title?: string; text?: string}[])
+            .map(n => "- " + (n.title || n.text || ""))
+            .filter(h => h.length > 5)
             .join("\n");
         }
       } catch (e) {
-        console.error("Failed to fetch news for sentiment:", e);
+        console.error("News fetch failed:", e);
       }
     }
 
-    const systemPrompt = `You are a geopolitical risk analyst. Analyze current global events and produce a geopolitical tension assessment.
+    const userPrompt = newsHeadlines
+      ? `Based on these current news headlines, assess the global geopolitical tension level:\n\n${newsHeadlines}\n\nRespond with ONLY a JSON object, no markdown.`
+      : `Assess the current global geopolitical tension level. Respond with ONLY a JSON object, no markdown.`;
 
-You MUST respond with ONLY valid JSON in this exact format (no markdown, no code blocks):
+    // Call Claude
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 800,
+        system: `You are a geopolitical risk analyst. Respond with ONLY valid JSON in this exact format:
 {
   "tension_score": <number 0-100>,
   "severity": "<low|moderate|elevated|high|severe>",
-  "summary": "<1-2 sentence plain text overview of current global tension>",
+  "summary": "<1-2 sentence plain text overview>",
   "key_events": [
-    {"region": "<region name>", "event": "<brief description>", "impact": "<low|medium|high>"},
-    {"region": "<region name>", "event": "<brief description>", "impact": "<low|medium|high>"}
+    {"region": "<region>", "event": "<brief description>", "impact": "<low|medium|high>"}
   ]
 }
 
-Scoring guide:
-- 0-20: Low - Normal diplomatic activity, minimal conflicts
-- 21-40: Moderate - Some regional tensions, trade disputes
-- 41-60: Elevated - Active regional conflicts, sanctions, military buildups
-- 61-80: High - Multiple active conflicts, major power tensions, significant economic disruption
-- 81-100: Severe - Major military escalations, direct superpower confrontation risks
-
-Include 3-5 key events. Focus on conflicts, military activity, sanctions, nuclear threats, trade wars, and major geopolitical shifts.
-Output ONLY the JSON object.`;
-
-    const userPrompt = newsHeadlines
-      ? `Based on these current news headlines, assess the global geopolitical tension level:\n\n${newsHeadlines}`
-      : `Assess the current global geopolitical tension level based on your knowledge of recent world events.`;
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+Scoring: 0-20=low, 21-40=moderate, 41-60=elevated, 61-80=high, 81-100=severe.
+Include 3-5 key events. Focus on conflicts, sanctions, nuclear threats, trade wars.
+Output ONLY the JSON object. No markdown, no explanation.`,
+        messages: [{ role: "user", content: userPrompt }],
       }),
     });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      throw new Error(`AI gateway error: ${aiResponse.status}`);
-    }
+    if (!res.ok) throw new Error(`Claude error ${res.status}: ${await res.text()}`);
 
-    const aiData = await aiResponse.json();
-    let content = aiData.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No content from AI");
-
-    // Clean up potential markdown code blocks
+    const aiData = await res.json();
+    let content = aiData.content?.[0]?.text || "";
     content = content.trim().replace(/^```json?\s*/i, "").replace(/```\s*$/, "").trim();
 
     const parsed = JSON.parse(content);
 
-    const { data: sentiment, error: insertError } = await supabase
+    const { data: sentiment, error } = await supabase
       .from("geopolitical_sentiment")
       .insert({
         tension_score: Math.min(100, Math.max(0, parsed.tension_score)),
         severity: parsed.severity || "moderate",
         key_events: parsed.key_events || [],
-        summary: parsed.summary || "No summary available",
+        summary: parsed.summary || "",
       })
       .select()
       .single();
 
-    if (insertError) throw insertError;
+    if (error) throw error;
 
     return new Response(JSON.stringify({ success: true, sentiment }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error) {
-    console.error("Error generating geopolitical sentiment:", error);
+    console.error("Geopolitical sentiment error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
