@@ -18,6 +18,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── FOMC Meeting Schedule (published by Fed — updated once per year) ──────────
+// Source: federalreserve.gov — 2026 schedule
+const FOMC_DATES_2026 = [
+  "2026-01-28", "2026-01-29",
+  "2026-03-17", "2026-03-18",
+  "2026-04-28", "2026-04-29",
+  "2026-06-09", "2026-06-10",
+  "2026-07-28", "2026-07-29",
+  "2026-09-15", "2026-09-16",
+  "2026-10-27", "2026-10-28",
+  "2026-12-15", "2026-12-16",
+];
+
+function getNextFOMC(): string | null {
+  const today = new Date().toISOString().split("T")[0];
+  const next = FOMC_DATES_2026.find(d => d >= today);
+  if (!next) return null;
+  const daysAway = Math.round((new Date(next).getTime() - Date.now()) / 86400000);
+  return `Next Fed FOMC meeting: ${next} (${daysAway} days away) — rate decision + market impact`;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
@@ -82,7 +103,7 @@ interface GeoContext {
   key_events?: { region: string; event: string; impact: string }[];
 }
 
-function buildSystemPrompt(ctx: StockContext, geo?: GeoContext | null): string {
+function buildSystemPrompt(ctx: StockContext, geo?: GeoContext | null, earningsContext?: string): string {
   const bt = ctx.backtestResult;
   const ticker = ctx.ticker || "N/A";
   const price = ctx.price ? "$" + ctx.price : "N/A";
@@ -102,6 +123,17 @@ function buildSystemPrompt(ctx: StockContext, geo?: GeoContext | null): string {
     "- Market Regime: " + bt.regime,
     "- Projected Move: " + bt.forecastPct + "% over " + bt.forecastLabel,
   ].join("\n") : "";
+
+  const fomcLine = getNextFOMC();
+  const earningsSection = (earningsContext || fomcLine) ? [
+    "",
+    "## Upcoming Catalyst Calendar",
+    earningsContext ? "📅 " + earningsContext : "",
+    earningsContext ? "⚠️ Treat earnings as a BINARY EVENT — price can move 10-40% in one day." : "",
+    earningsContext ? "Check if this company has a pattern of beating or missing estimates." : "",
+    fomcLine ? "🏦 " + fomcLine : "",
+    fomcLine ? "Fed decisions affect all stocks — rate-sensitive sectors (utilities, REITs, bonds) most." : "",
+  ].filter(Boolean).join("\n") : "";
 
   const geoSection = geo ? [
     "",
@@ -130,6 +162,7 @@ function buildSystemPrompt(ctx: StockContext, geo?: GeoContext | null): string {
 ${annualReturnLine}
 ${rSquaredLine}
 ${backtestSection}
+${earningsSection}
 ${geoSection}
 
 ## Your Analysis Framework
@@ -338,7 +371,48 @@ serve(async (req) => {
         .limit(1);
       const geo = geoData?.[0] || null;
 
-      const system = buildSystemPrompt(context || {}, geo);
+      // Fetch upcoming earnings from FMP
+      const fmpKey = Deno.env.get("FMP_API_KEY");
+      let earningsContext = "";
+      if (fmpKey && currentTicker !== "UNKNOWN") {
+        try {
+          const today = new Date().toISOString().split("T")[0];
+          const threeMonths = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+          const earningsRes = await fetch(
+            `https://financialmodelingprep.com/stable/earning-calendar?from=${today}&to=${threeMonths}&apikey=${fmpKey}`,
+            { signal: AbortSignal.timeout(3000) }
+          );
+          if (earningsRes.ok) {
+            const earningsData = await earningsRes.json();
+            const tickerEarnings = (earningsData as {
+              symbol: string;
+              date: string;
+              epsEstimated: number | null;
+              revenueEstimated: number | null;
+              fiscalDateEnding: string;
+            }[]).filter(e => e.symbol === currentTicker);
+
+            if (tickerEarnings.length > 0) {
+              const next = tickerEarnings[0];
+              const epsStr = next.epsEstimated != null ? `EPS consensus: $${next.epsEstimated.toFixed(2)}` : "";
+              const revStr = next.revenueEstimated != null
+                ? `Revenue consensus: $${(next.revenueEstimated / 1e6).toFixed(0)}M`
+                : "";
+              earningsContext = [
+                `Next earnings: ${next.date} (${next.fiscalDateEnding} quarter)`,
+                epsStr,
+                revStr,
+              ].filter(Boolean).join(" · ");
+            } else {
+              earningsContext = "No earnings scheduled in next 90 days";
+            }
+          }
+        } catch (e) {
+          console.warn("Earnings calendar fetch failed:", e);
+        }
+      }
+
+      const system = buildSystemPrompt(context || {}, geo, earningsContext);
 
       // Enrich user message with context
       const bt = context?.backtestResult;
