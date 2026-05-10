@@ -240,19 +240,29 @@ Please search for current news, earnings calendar, analyst ratings, and macro fa
   useEffect(() => {
     const ask = async () => {
       try {
-        // Step 1: Get a real session ID from the agent
-        const { data: initData, error: initErr } = await supabase.functions.invoke("quant-agent", {
+        // Step 1: Get agent_id + environment_id (cached after first call)
+        const { data: agentData, error: agentErr } = await supabase.functions.invoke("quant-agent", {
+          body: { action: "get_or_create_agent", context: stockContext, ticker },
+        });
+        if (agentErr) throw new Error(agentErr.message);
+        const { agent_id, environment_id } = agentData;
+
+        // Step 2: Create a session for this backtest context
+        const { data: sessionData, error: sessionErr } = await supabase.functions.invoke("quant-agent", {
           body: {
-            action: "get_or_create_agent",
-            context: stockContext,
+            action: "create_session",
+            agent_id,
+            environment_id,
             ticker,
+            purpose: "backtest", // isolated from chat sessions
+            context: stockContext,
           },
         });
-        if (initErr) throw new Error(initErr.message);
-        const sessionId = initData?.session_id;
-        if (!sessionId) throw new Error("No session ID returned from agent init");
+        if (sessionErr) throw new Error(sessionErr.message);
+        const sessionId = sessionData?.session_id;
+        if (!sessionId) throw new Error("No session ID returned");
 
-        // Step 2: Send the message with the real session ID
+        // Step 3: Send the market context message
         const { data, error: msgErr } = await supabase.functions.invoke("quant-agent", {
           body: {
             action: "send_message",
