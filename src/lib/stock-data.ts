@@ -92,7 +92,7 @@ export async function getStockDataFromDB(
 
   return (data || []).map((row) => ({
     date: row.date,
-    timestamp: new Date(row.date).getTime() / 1000,
+    timestamp: new Date(row.date).getTime(),
     open: Number(row.open),
     high: Number(row.high),
     low: Number(row.low),
