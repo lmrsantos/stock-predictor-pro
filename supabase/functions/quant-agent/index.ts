@@ -37,17 +37,105 @@ async function anthropicPost(path: string, body: unknown, apiKey: string) {
   return JSON.parse(text);
 }
 
+// ─── Active macro themes (updated periodically) ──────────────────────────────
+// These encode the "ripple effect" thematic intelligence:
+// Government/narrative signal → sector momentum → individual stock price
+
+const MACRO_THEMES = [
+  {
+    name: "AI Infrastructure Build-Out",
+    conviction: "HIGH",
+    catalysts: ["AI token usage up 250% since Jan 2026", "Compute demand exceeds supply", "Hyperscaler capex at record levels"],
+    ripple1: ["NVDA", "AMD", "AVGO", "AMAT", "MU"],
+    ripple2: ["NEE", "CEG", "VST", "EQIX", "DLR", "AMT"],
+    ripple3: ["CPER", "XLI", "CAT", "PWR"],
+  },
+  {
+    name: "Space Economy & Defense",
+    conviction: "HIGH",
+    catalysts: ["Golden Dome missile defense program", "SpaceX IPO anticipation", "NATO 5% GDP defense target", "RKLB backlog doubled to $2.2B"],
+    ripple1: ["RKLB", "LUNR", "ASTS", "RDW"],
+    ripple2: ["LMT", "RTX", "NOC", "KTOS", "AXON", "PLTR"],
+    ripple3: ["HWM", "TDG", "CW", "HII", "GD"],
+  },
+  {
+    name: "Semiconductor Reshoring (CHIPS Act)",
+    conviction: "HIGH",
+    catalysts: ["CHIPS Act funding deployment", "Government investing in INTC", "AI chip demand structural shortage"],
+    ripple1: ["INTC", "AMAT", "KLAC", "LRCX", "SNPS"],
+    ripple2: ["ON", "WOLF", "SWKS", "MPWR", "MCHP"],
+    ripple3: ["XLI", "CAT", "EMR"],
+  },
+  {
+    name: "Energy & Power Infrastructure",
+    conviction: "HIGH",
+    catalysts: ["AI data center power demand up 15-yr high", "Nuclear renaissance", "Oil elevated on Iran conflict ($95+ Brent)"],
+    ripple1: ["NEE", "CEG", "VST", "NRG"],
+    ripple2: ["XEL", "ETR", "EXC", "PPL"],
+    ripple3: ["PWR", "HUBB", "ETN"],
+  },
+  {
+    name: "Biotech M&A Wave",
+    conviction: "MEDIUM",
+    catalysts: ["Pharma patent cliff $200B+ at risk", "Biotech M&A 2025 surpassed all of 2024", "Trump deregulation speeding FDA approvals"],
+    ripple1: ["MRNA", "BIIB", "SGEN", "ALNY", "VRTX"],
+    ripple2: ["LLY", "ABBV", "JNJ", "MRK", "PFE"],
+    ripple3: ["ISRG", "DXCM", "ILMN"],
+  },
+  {
+    name: "Multipolar World & Geopolitics",
+    conviction: "MEDIUM",
+    catalysts: ["Iran Strait of Hormuz disruption", "US-China tech decoupling", "European defense spending revival"],
+    ripple1: ["XLE", "USO", "CVX", "XOM"],
+    ripple2: ["GLD", "IAU", "SLV"],
+    ripple3: ["LMT", "RTX", "NOC"],
+  },
+];
+
+function getThematicContext(ticker: string): string {
+  const upper = ticker.toUpperCase();
+  const matches: { themeName: string; order: number; conviction: string; catalysts: string[] }[] = [];
+
+  for (const theme of MACRO_THEMES) {
+    if (theme.ripple1.includes(upper)) {
+      matches.push({ themeName: theme.name, order: 1, conviction: theme.conviction, catalysts: theme.catalysts });
+    } else if (theme.ripple2.includes(upper)) {
+      matches.push({ themeName: theme.name, order: 2, conviction: theme.conviction, catalysts: theme.catalysts });
+    } else if (theme.ripple3.includes(upper)) {
+      matches.push({ themeName: theme.name, order: 3, conviction: theme.conviction, catalysts: theme.catalysts });
+    }
+  }
+
+  if (matches.length === 0) return "No active macro themes directly apply to this ticker.";
+
+  const orderLabel = (o: number) => o === 1 ? "DIRECT beneficiary" : o === 2 ? "SECONDARY beneficiary" : "INDIRECT beneficiary";
+  return matches.map(m =>
+    `📊 Theme: ${m.themeName} [${m.conviction} conviction]
+` +
+    `   Position: ${orderLabel(m.order)} (order ${m.order} of 3)
+` +
+    `   Active catalysts:
+${m.catalysts.map(c => `     - ${c}`).join("
+")}`
+  ).join("
+
+");
+}
+
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const bt = ctx.backtestResult as Record<string, unknown> | undefined;
-  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it to find current news, earnings, analyst ratings, and macro context for any stock you analyze.
+  const ticker = (ctx.ticker as string) || "N/A";
+  const thematicContext = getThematicContext(ticker);
 
-Current stock context:
-- Ticker: ${ctx.ticker || "N/A"}
+  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it to find current news, earnings dates, analyst ratings, and macro context.
+
+## Current Stock Context
+- Ticker: ${ticker}
 - Price: ${ctx.price ? "$" + ctx.price : "N/A"}
 ${ctx.annualReturn ? `- Regression Annual Return: ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
 ${ctx.rSquared ? `- R² (trend reliability): ${ctx.rSquared}` : ""}
 ${bt ? `
-Autoencoder Backtest Results:
+## Quantitative Backtest Results
 - Signal: ${bt.signal}
 - Confidence: ${bt.confidenceScore}/100
 - Walk-Forward Accuracy: ${bt.walkForwardAccuracy}%
@@ -55,11 +143,29 @@ Autoencoder Backtest Results:
 - Market Regime: ${bt.regime}
 - Projected Move: ${bt.forecastPct}% over ${bt.forecastLabel}` : ""}
 
-Guidelines:
-- Always search the web for current news before giving a forecast or recommendation
-- Be direct and specific — give actionable insights with clear reasoning
-- Combine the quantitative backtest data with current news for a complete picture
-- State position size recommendations when asked (e.g. full/half/quarter position)
+## Active Macro Themes (Thematic Intelligence)
+${thematicContext}
+
+## How to Think About This Stock
+1. First check if the thematic context above applies — is this stock in the path of a major catalyst ripple?
+2. Search for current news — earnings date, recent contracts, analyst upgrades/downgrades
+3. Check if there's a pattern of earnings beats (conservative guidance = positive surprise setup)
+4. Look for upcoming binary events (earnings, FDA decisions, government contract announcements)
+5. Combine quant signal + thematic position + current news for a complete picture
+
+## Your Response Format
+Always structure your response as:
+- **Thematic Position:** (is this stock in a hot theme? which order?)
+- **Key Catalyst:** (what's the most important near-term driver?)
+- **Quant Signal Context:** (does the price model align with the theme?)
+- **Key Risk:** (what could go wrong?)
+- **Bottom Line:** (1-2 sentence actionable conclusion)
+
+## Guidelines
+- Always search the web before responding
+- Be direct — no hedging on every sentence
+- Reference specific data points (exact %, dates, dollar amounts)
+- Note upcoming earnings dates if known — these are binary events
 - You are NOT a licensed financial advisor — note this for specific recommendations`;
 }
 
