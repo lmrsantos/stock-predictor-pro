@@ -130,6 +130,8 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
 // ─── Forecast + cone chart ────────────────────────────────────────────────────
 
 function ForecastChart({ result }: { result: ForecastResult }) {
+  const [showData, setShowData] = useState(false);
+
   // Deduplicate actual path
   const seen    = new Set<string>();
   const actual  = result.actualPath.filter(d => {
@@ -159,33 +161,75 @@ function ForecastChart({ result }: { result: ForecastResult }) {
   const todayLabel = labels[actual.length - 1];
 
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-        <XAxis
-          dataKey="date"
-          tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
-          interval={Math.max(1, Math.floor(data.length / 6) - 1)}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
-          axisLine={false} tickLine={false} width={72} tickFormatter={fmtPrice} />
-        <Tooltip
-          contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 11, fontFamily: "monospace" }}
-          formatter={(v: unknown, name: string) => {
-            if (Array.isArray(v)) return [`${fmtPrice(v[0])} – ${fmtPrice(v[1])}`, name];
-            return [fmtPrice(v as number), name];
-          }} />
-        <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: "#a1a1aa" }} />
-        <Area type="monotone" dataKey="band2" fill="#60a5fa" fillOpacity={0.06} stroke="none" name="±2σ" connectNulls={false} />
-        <Area type="monotone" dataKey="band1" fill="#60a5fa" fillOpacity={0.14} stroke="none" name="±1σ" connectNulls={false} />
-        <Line type="monotone" dataKey="actual" stroke="#60a5fa" strokeWidth={2} dot={false} name="Actual price" connectNulls={false} />
-        <Line type="monotone" dataKey="mean"   stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Forecast (winner)" connectNulls={false} />
-        <ReferenceLine x={todayLabel} stroke="#52525b" strokeDasharray="4 4"
-          label={{ value: "Today", fill: "#71717a", fontSize: 10, fontFamily: "monospace" }} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <div>
+      <ResponsiveContainer width="100%" height={280}>
+        <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
+            interval={Math.max(1, Math.floor(data.length / 6) - 1)}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
+            axisLine={false} tickLine={false} width={72} tickFormatter={fmtPrice} />
+          <Tooltip
+            contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 11, fontFamily: "monospace" }}
+            formatter={(v: unknown, name: string) => {
+              if (Array.isArray(v)) return [`${fmtPrice(v[0])} – ${fmtPrice(v[1])}`, name];
+              return [fmtPrice(v as number), name];
+            }} />
+          <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: "#a1a1aa" }} />
+          <Area type="monotone" dataKey="band2" fill="#60a5fa" fillOpacity={0.06} stroke="none" name="±2σ" connectNulls={false} />
+          <Area type="monotone" dataKey="band1" fill="#60a5fa" fillOpacity={0.14} stroke="none" name="±1σ" connectNulls={false} />
+          <Line type="monotone" dataKey="actual" stroke="#60a5fa" strokeWidth={2} dot={false} name="Actual price" connectNulls={false} />
+          <Line type="monotone" dataKey="mean"   stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Forecast (winner)" connectNulls={false} />
+          <ReferenceLine x={todayLabel} stroke="#52525b" strokeDasharray="4 4"
+            label={{ value: "Today", fill: "#71717a", fontSize: 10, fontFamily: "monospace" }} />
+        </ComposedChart>
+      </ResponsiveContainer>
+
+      <div className="flex justify-end mt-2">
+        <button
+          onClick={() => setShowData(!showData)}
+          className="text-[10px] font-mono px-3 py-1 rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 transition-all"
+        >
+          {showData ? "Hide Data" : "Show Data"}
+        </button>
+      </div>
+
+      {showData && (
+        <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-zinc-800">
+          <table className="w-full text-[10px] font-mono">
+            <thead className="sticky top-0 bg-zinc-900">
+              <tr className="border-b border-zinc-800">
+                <th className="text-left px-3 py-1.5 text-zinc-500">#</th>
+                <th className="text-left px-3 py-1.5 text-zinc-500">Date</th>
+                <th className="text-left px-3 py-1.5 text-zinc-500">Timestamp</th>
+                <th className="text-left px-3 py-1.5 text-zinc-500">Type</th>
+                <th className="text-right px-3 py-1.5 text-zinc-500">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row, i) => (
+                <tr key={i} className="border-b border-zinc-800/50">
+                  <td className="px-3 py-1 text-zinc-600">{i + 1}</td>
+                  <td className="px-3 py-1 text-zinc-300">{row.date}</td>
+                  <td className="px-3 py-1 text-zinc-600">{row.actual !== null ? new Date(allTs[i]).toISOString().split("T")[0] : "—"}</td>
+                  <td className="px-3 py-1" style={{ color: row.actual !== null ? "#60a5fa" : "#f59e0b" }}>
+                    {row.actual !== null ? "actual" : "forecast"}
+                  </td>
+                  <td className="px-3 py-1 text-right text-zinc-300">
+                    {row.actual !== null ? fmtPrice(row.actual) : fmtPrice(row.mean ?? 0)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
