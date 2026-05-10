@@ -126,15 +126,24 @@ export function QuantAgent({ context }: QuantAgentProps) {
   const initSession = async () => {
     setInitializing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("quant-agent", {
+      // Step 1: Get agent + environment (cached)
+      const { data: agentData, error: agentErr } = await supabase.functions.invoke("quant-agent", {
+        body: { action: "get_or_create_agent", context, ticker: context.ticker },
+      });
+      if (agentErr) throw new Error(agentErr.message);
+
+      // Step 2: Create chat session for this ticker
+      const { data, error: sessionErr } = await supabase.functions.invoke("quant-agent", {
         body: {
-          action: "get_or_create_agent",
-          context,
+          action: "create_session",
+          agent_id: agentData.agent_id,
+          environment_id: agentData.environment_id,
           ticker: context.ticker,
+          purpose: "chat",
+          context,
         },
       });
-
-      if (error) throw new Error(error.message);
+      if (sessionErr) throw new Error(sessionErr.message);
 
       setSessionId(data.session_id);
       setAnthropicKey(data.anthropic_api_key);
