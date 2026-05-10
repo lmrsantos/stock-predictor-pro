@@ -1,13 +1,13 @@
 // supabase/functions/quant-agent/index.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// QuantAgent proxy — two responsibilities:
-//   1. "init" action: create Managed Agent + Environment + Session,
-//      return session_id to the browser
-//   2. "get_key" action: return a short-lived token so the browser
-//      can stream SSE events directly from Anthropic
+// QuantAgent — Standard /v1/messages API with Supabase conversation memory
 //
-// The actual conversation streaming happens browser → Anthropic directly.
-// This edge function only does the setup (no polling, no timeout risk).
+// Architecture (proven reliable):
+//   - Standard Claude API — no Managed Agents, no sessions, no polling
+//   - Conversation history stored in Supabase per user+ticker+purpose
+//   - Level 3 thematic intelligence — Claude searches and classifies dynamically
+//   - Web search tool enabled for live market data
+//   - Fast, reliable, no timeout risk
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -18,37 +18,74 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ANTHROPIC_BASE = "https://api.anthropic.com";
-const BETA_HEADER = "managed-agents-2026-04-01";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-async function anthropicPost(path: string, body: unknown, apiKey: string) {
-  const res = await fetch(`${ANTHROPIC_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": BETA_HEADER,
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${text}`);
-  return JSON.parse(text);
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
-// ─── Active macro themes (updated periodically) ──────────────────────────────
-// These encode the "ripple effect" thematic intelligence:
-// Government/narrative signal → sector momentum → individual stock price
+interface StockContext {
+  ticker?: string;
+  price?: number;
+  annualReturn?: number;
+  rSquared?: number;
+  backtestResult?: {
+    signal: string;
+    confidenceScore: number;
+    walkForwardAccuracy: number;
+    hitRate: number;
+    regime: string;
+    forecastPct: number;
+    forecastLabel: string;
+  };
+}
 
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
 
-function buildSystemPrompt(ctx: Record<string, unknown>): string {
-  const bt = ctx.backtestResult as Record<string, unknown> | undefined;
-  const ticker = (ctx.ticker as string) || "N/A";
+async function getHistory(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  ticker: string,
+  purpose: string
+): Promise<ChatMessage[]> {
+  const { data } = await supabase
+    .from("market_updates")
+    .select("content")
+    .eq("signal_type", `qa_history_${userId}_${ticker}_${purpose}`)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (!data?.length) return [];
+  try { return JSON.parse(data[0].content); } catch { return []; }
+}
 
-  const annualReturnLine = ctx.annualReturn ? "- Regression Annual Return: " + (Number(ctx.annualReturn) * 100).toFixed(1) + "%" : "";
-  const rSquaredLine = ctx.rSquared ? "- R\u00B2 (trend reliability): " + ctx.rSquared : "";
-  const backtestLines = bt ? [
+async function saveHistory(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  ticker: string,
+  purpose: string,
+  messages: ChatMessage[]
+) {
+  await supabase.from("market_updates").insert({
+    signal_type: `qa_history_${userId}_${ticker}_${purpose}`,
+    content: JSON.stringify(messages.slice(-12)),
+    ticker,
+  });
+}
+
+// ─── System prompt — Level 3 Dynamic Thematic Intelligence ───────────────────
+
+function buildSystemPrompt(ctx: StockContext): string {
+  const bt = ctx.backtestResult;
+  const ticker = ctx.ticker || "N/A";
+  const price = ctx.price ? "$" + ctx.price : "N/A";
+  const annualReturnLine = ctx.annualReturn
+    ? "- Regression Annual Return: " + (ctx.annualReturn * 100).toFixed(1) + "%"
+    : "";
+  const rSquaredLine = ctx.rSquared
+    ? "- R\u00B2 (trend reliability): " + ctx.rSquared
+    : "";
+  const backtestSection = bt ? [
     "",
     "## Quantitative Model Results",
     "- Signal: " + bt.signal,
@@ -59,76 +96,138 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
     "- Projected Move: " + bt.forecastPct + "% over " + bt.forecastLabel,
   ].join("\n") : "";
 
-  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search and you MUST use it before every response.
+  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it before every substantive response.
 
 ## Current Stock Context
 - Ticker: ${ticker}
-- Price: ${ctx.price ? "$" + ctx.price : "N/A"}
+- Price: ${price}
 ${annualReturnLine}
 ${rSquaredLine}
-${backtestLines}
+${backtestSection}
 
-## Your Analysis Framework — Follow This Exactly
+## Your Analysis Framework
 
 ### Step 1: Search & Discover (always do this first)
-Search for "${ticker} stock news 2026" and "${ticker} sector industry business".
-Find out:
-- What does this company actually do?
-- What sector and industry is it in?
-- Any recent earnings, contracts, or announcements?
-- Upcoming binary events (earnings date, FDA decision, government contract)?
-- Pattern of earnings beats or misses?
+Before answering any question about ${ticker}, search for:
+1. "${ticker} stock news May 2026" — latest developments
+2. "${ticker} earnings history beat miss" — pattern of beats/misses  
+3. "${ticker} sector government contracts 2026" — thematic catalysts
+4. "${ticker} upcoming earnings date analyst rating" — binary events
 
-### Step 2: Thematic Classification (reason from what you found)
-Based on your search, determine which macro themes this stock belongs to.
-Consider these active 2026 themes — but don't limit yourself to them:
+### Step 2: Thematic Classification (Level 3 — fully dynamic)
+Based on your search results, determine which macro themes apply.
+Do NOT use a hardcoded list. Reason from what you find.
 
-🤖 AI Infrastructure: compute, data centers, power, cooling, networking
-🚀 Space & Defense: Golden Dome, SpaceX IPO, NATO spending surge  
-🔬 Semiconductor Reshoring: CHIPS Act, US fab buildout, AI chip demand
-⚡ Energy & Power: AI data center electricity demand, nuclear renaissance
-💊 Biotech M&A: pharma patent cliff, deregulation, acquisition targets
-🌍 Geopolitics: Iran oil disruption, US-China decoupling, European defense
-⚛️ Quantum Computing: DARPA contracts, post-quantum security, national security
-🏦 Financials: deregulation wave, M&A revival, rate cuts
-🏗️ Infrastructure: reshoring, data center construction, grid buildout
-📡 Any other emerging theme you discover in the news
+Active 2026 themes to consider (not exhaustive):
+- 🤖 AI Infrastructure: compute, data centers, power, cooling
+- 🚀 Space & Defense: Golden Dome, SpaceX IPO, NATO spending
+- 🔬 Semiconductor Reshoring: CHIPS Act, US fab buildout
+- ⚡ Energy & Power: AI electricity demand, nuclear renaissance
+- 💊 Biotech M&A: pharma patent cliff, deregulation
+- 🌍 Geopolitics: Iran oil, US-China decoupling, European defense
+- ⚛️ Quantum Computing: DARPA contracts, post-quantum security
+- Any other theme you discover
 
-For each theme that applies, determine:
-- Is this stock a DIRECT beneficiary (order 1) — core to the theme?
-- Or SECONDARY (order 2) — downstream from the theme?
-- Or INDIRECT (order 3) — tangentially connected?
+For each theme: is this stock a DIRECT (order 1), SECONDARY (order 2), or INDIRECT (order 3) beneficiary?
 
 ### Step 3: Ripple Effect Assessment
-Think like the user described: "Government announces → sector gets hot → stock follows"
-- What was the first stone that hit the water for this theme?
-- Has the ripple already reached this stock or is it still incoming?
-- What's the next catalyst that could amplify the move?
+Think: Government/narrative signal → sector momentum → stock price
+- Has the ripple already reached this stock or is it incoming?
+- Pattern of earnings beats = conservative guidance = positive surprise setup?
+- What's the next binary event (earnings date, contract announcement, FDA decision)?
 
-### Step 4: Synthesize & Respond
-Structure your response as:
+### Step 4: Response Structure
+Always respond with ALL of these sections:
 
 **📍 What This Company Does**
-(1-2 sentences — what business is this?)
+(1-2 sentences)
 
 **🌊 Thematic Position**
-(Which themes apply? Direct/Secondary/Indirect? Has the ripple arrived?)
+(Theme name, conviction level, direct/secondary/indirect, has ripple arrived?)
 
 **📅 Key Catalyst**
-(Most important near-term driver — be specific with dates and amounts)
+(Most important near-term driver — specific date and dollar amount)
 
 **📊 Quant Signal Context**
-(Does the price model align with the theme? Any contradictions?)
+(Does the ${price} and model forecast align with the fundamental story? Any contradictions?)
 
 **⚠️ Key Risk**
-(What could kill the thesis? Be specific)
+(Specific risk with numbers — valuation multiple, execution risk, etc.)
 
 **🎯 Bottom Line**
-(1-2 sentences. Actionable. Reference specific numbers.)
+(2-3 sentences. Actionable. Include position sizing suggestion.)
 
 ---
-*Not financial advice. Quantitative model + thematic analysis only.*`;
+Not financial advice. Quantitative + thematic analysis only.`;
 }
+
+// ─── Call Claude with web search tool ────────────────────────────────────────
+
+async function callClaude(
+  messages: ChatMessage[],
+  system: string,
+  apiKey: string
+): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1500,
+      system,
+      messages,
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search",
+        }
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    // Fallback without web search if tool not supported
+    if (res.status === 400 && err.includes("tool")) {
+      const fallback = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
+          system,
+          messages,
+        }),
+      });
+      if (!fallback.ok) throw new Error(`Claude error: ${await fallback.text()}`);
+      const data = await fallback.json();
+      return extractText(data);
+    }
+    throw new Error(`Claude API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return extractText(data);
+}
+
+function extractText(data: { content: { type: string; text?: string }[]; stop_reason?: string }): string {
+  // Handle tool use responses — concatenate all text blocks
+  const texts = (data.content || [])
+    .filter((block) => block.type === "text" && block.text)
+    .map((block) => block.text!)
+    .join("\n");
+  return texts || "No response generated.";
+}
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -143,363 +242,88 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { action, context, ticker } = body;
+    const { action, message, context, ticker } = body as {
+      action: string;
+      message?: string;
+      context?: StockContext;
+      ticker?: string;
+    };
+
     const currentTicker = ticker || context?.ticker || "UNKNOWN";
-    const userId = (req.headers.get("authorization") || "anon").slice(-12).replace(/[^a-zA-Z0-9]/g, "x");
+    const purpose = body.purpose || "chat";
 
-    // ── ACTION: get_or_create_agent ───────────────────────────────────────────
-    // Returns agent_id + environment_id (cached after first call).
-    // Cheap — just reads from Supabase if already created.
+    // User ID from auth header
+    const authHeader = req.headers.get("authorization") || "";
+    const userId = authHeader.length > 10
+      ? authHeader.slice(-12).replace(/[^a-zA-Z0-9]/g, "x")
+      : "anonymous";
 
-    if (action === "get_or_create_agent") {
-      const { data: cachedAgentOnly } = await supabase
-        .from("market_updates").select("content")
-        .eq("signal_type", "qa_managed_agent_id_v3")
-        .order("created_at", { ascending: false }).limit(1);
+    let result: unknown;
 
-      let agentId = cachedAgentOnly?.[0]?.content || null;
-      if (!agentId) {
-        const agent = await anthropicPost("/v1/agents", {
-          name: "QuantForecast Financial Analyst",
-          model: { id: "claude-sonnet-4-6" },
-          system: buildSystemPrompt(context || {}),
-          tools: [{ type: "agent_toolset_20260401" }],
-        }, apiKey);
-        agentId = agent.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_agent_id_v3", content: agentId, ticker: null,
-        });
-      }
-
-      const { data: cachedEnvOnly } = await supabase
-        .from("market_updates").select("content")
-        .eq("signal_type", "qa_managed_env_id_v3")
-        .order("created_at", { ascending: false }).limit(1);
-
-      let envId = cachedEnvOnly?.[0]?.content || null;
-      if (!envId) {
-        const env = await anthropicPost("/v1/environments", {
-          name: "quantforecast-env",
-          config: { type: "cloud", networking: { type: "unrestricted" } },
-        }, apiKey);
-        envId = env.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_env_id_v3", content: envId, ticker: null,
-        });
-      }
-
-      return new Response(JSON.stringify({ agent_id: agentId, environment_id: envId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-
-    // ── ACTION: create_session ────────────────────────────────────────────────
-    // Creates a new session for a specific ticker + purpose.
-    // Each caller (chat, backtest, hotspot) gets its own session.
-    // Sessions are cached per userId + ticker + purpose for 2 hours.
-
-    } else if (action === "create_session") {
-      const { agent_id, environment_id, ticker: t, purpose = "chat" } = body;
-
-      const sessionKey = `qa_session_${userId}_${t}_${purpose}`;
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-      const { data: cachedSession } = await supabase
-        .from("market_updates")
-        .select("content, created_at")
-        .eq("signal_type", sessionKey)
-        .gte("created_at", twoHoursAgo)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let sessionId: string;
-      let isReturning = false;
-      let cachedSessionValid = false;
-
-      if (cachedSession?.length) {
-        const candidateId = JSON.parse(cachedSession[0].content).session_id;
-        const checkRes = await fetch(`https://api.anthropic.com/v1/sessions/${candidateId}`, {
-          headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-beta": BETA_HEADER },
-        });
-        if (checkRes.ok) {
-          sessionId = candidateId;
-          isReturning = true;
-          cachedSessionValid = true;
-        }
-        if (!checkRes.ok) await checkRes.text();
-      }
-
-      if (!cachedSessionValid) {
-        const session = await anthropicPost("/v1/sessions", {
-          agent: agent_id,
-          environment_id,
-          title: `QuantForecast — ${t} (${purpose})`,
-        }, apiKey);
-        sessionId = session.id;
-        await supabase.from("market_updates").insert({
-          signal_type: sessionKey,
-          content: JSON.stringify({ session_id: sessionId }),
-          ticker: t,
-        });
-      }
-
-      // Build greeting for chat sessions
+    // ── init (get_or_create_agent or create_session) ───────────────────────────
+    if (action === "get_or_create_agent" || action === "create_session") {
+      const history = await getHistory(supabase, userId, currentTicker, purpose);
+      const isReturning = history.length > 0;
       const bt = context?.backtestResult;
-      const greeting = isReturning
-        ? `Welcome back. Resuming our analysis of ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. What would you like to explore?`
-        : bt
-        ? `Loaded backtest for ${currentTicker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. I'll search for current news to complement the model. What would you like to know?`
-        : `Ready to analyze ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. I'll combine the regression model with live web search for a complete picture. Ask me anything.`;
 
-      return new Response(JSON.stringify({
-        session_id: sessionId,
+      let greeting: string;
+      if (isReturning) {
+        greeting = `Welcome back. I remember our previous analysis of ${currentTicker}${context?.price ? " at $" + context.price : ""}. What would you like to explore?`;
+      } else if (bt) {
+        const direction = bt.forecastPct > 0 ? "bullish" : "bearish";
+        greeting = `I've loaded the backtest results for ${currentTicker}. The model is ${direction} — **${bt.signal}** signal with ${bt.confidenceScore}/100 confidence and ${bt.hitRate}% directional hit rate. I'll search for current news to complement the model. What would you like to know?`;
+      } else {
+        greeting = `Ready to analyze ${currentTicker}${context?.price ? " at $" + context.price : ""}. I'll combine the quant model with live web search and thematic analysis. Ask me anything.`;
+      }
+
+      result = {
+        agent_id: "claude-sonnet-4-6",
+        environment_id: "supabase-memory",
+        session_id: `${userId}_${currentTicker}_${purpose}`,
         is_returning: isReturning,
-        recent_messages: [],
+        recent_messages: history.slice(-4).map(m => ({
+          role: m.role === "assistant" ? "agent" : m.role,
+          content: m.content,
+        })),
         greeting,
-        anthropic_api_key: apiKey,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        anthropic_api_key: null,
+      };
 
-    // ── LEGACY: get_or_create_agent + create_session combined ────────────────
-    // Kept for backward compatibility with QuantAgent.tsx chat bubble.
-
-    } else if (action === "get_or_create_agent_and_session") {
-
-      // Check for cached agent
-      const { data: cachedAgent } = await supabase
-        .from("market_updates")
-        .select("content")
-        .eq("signal_type", "qa_managed_agent_id_v3")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let agentId = cachedAgent?.[0]?.content || null;
-
-      if (!agentId) {
-        // Create the Managed Agent (once per deployment)
-        const agent = await anthropicPost("/v1/agents", {
-          name: "QuantForecast Financial Analyst",
-          model: { id: "claude-sonnet-4-6" },
-          system: buildSystemPrompt(context || {}),
-          tools: [{ type: "agent_toolset_20260401" }], // includes web search
-        }, apiKey);
-
-        agentId = agent.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_agent_id_v3",
-          content: agentId,
-          ticker: null,
-        });
-      }
-
-      // Check for cached environment
-      const { data: cachedEnv } = await supabase
-        .from("market_updates")
-        .select("content")
-        .eq("signal_type", "qa_managed_env_id_v3")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let envId = cachedEnv?.[0]?.content || null;
-
-      if (!envId) {
-        const env = await anthropicPost("/v1/environments", {
-          name: "quantforecast-env",
-          config: { type: "cloud", networking: { type: "unrestricted" } },
-        }, apiKey);
-
-        envId = env.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_env_id_v3",
-          content: envId,
-          ticker: null,
-        });
-      }
-
-      // Check for cached session (valid 2 hours)
-      const sessionKey = `qa_managed_session_${userId}_${currentTicker}`;
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-      const { data: cachedSession } = await supabase
-        .from("market_updates")
-        .select("content, created_at")
-        .eq("signal_type", sessionKey)
-        .gte("created_at", twoHoursAgo)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let sessionId: string;
-      let isReturning = false;
-
-      // Validate cached session is still alive before using it
-      let cachedSessionValid = false;
-      if (cachedSession?.length) {
-        const candidateId = JSON.parse(cachedSession[0].content).session_id;
-        // Quick check — try to fetch session status
-        const checkRes = await fetch(
-          `https://api.anthropic.com/v1/sessions/${candidateId}`,
-          {
-            headers: {
-              "x-api-key": apiKey,
-              "anthropic-version": "2023-06-01",
-              "anthropic-beta": BETA_HEADER,
-            },
-          }
-        );
-        if (checkRes.ok) {
-          sessionId = candidateId;
-          isReturning = true;
-          cachedSessionValid = true;
-        }
-        // If 404, fall through to create new session
-        if (!checkRes.ok) await checkRes.text();
-      }
-
-      if (!cachedSessionValid) {
-        // Create new session
-        const session = await anthropicPost("/v1/sessions", {
-          agent: agentId,
-          environment_id: envId,
-          title: `QuantForecast — ${currentTicker}`,
-        }, apiKey);
-
-        sessionId = session.id;
-        await supabase.from("market_updates").insert({
-          signal_type: sessionKey,
-          content: JSON.stringify({ session_id: sessionId }),
-          ticker: currentTicker,
-        });
-      }
-
-      // Build greeting
-      const bt = context?.backtestResult;
-      const greeting = isReturning
-        ? `Welcome back. Resuming our analysis of ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. What would you like to explore?`
-        : bt
-        ? `Loaded backtest for ${currentTicker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. I'll search for current news to complement the model. What would you like to know?`
-        : `Ready to analyze ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. I'll combine the regression model with live web search for a complete picture. Ask me anything.`;
-
-      return new Response(JSON.stringify({
-        agent_id: agentId,
-        environment_id: envId,
-        session_id: sessionId,
-        is_returning: isReturning,
-        recent_messages: [],
-        greeting,
-        // Return the API key so browser can stream directly
-        // (scoped — only used for this session's SSE stream)
-        anthropic_api_key: apiKey,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-
-    // ── ACTION: send_message ──────────────────────────────────────────────────
-    // Sends user event + polls for agent response (all server-side, no CORS).
-
+    // ── send_message ───────────────────────────────────────────────────────────
     } else if (action === "send_message") {
-      const { session_id, message, context: ctx } = body;
+      if (!message) throw new Error("message is required");
 
-      const enriched = `${message}
+      const history = await getHistory(supabase, userId, currentTicker, purpose);
+      const system = buildSystemPrompt(context || {});
 
-## Stock Context
-- Ticker: ${ctx?.ticker || "unknown"}
-- Current Price: ${ctx?.price ? "$" + ctx.price : "N/A"}
-${ctx?.annualReturn ? `- Annual Return (regression): ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
-${ctx?.backtestResult ? `- Model Signal: ${ctx.backtestResult.signal} (${ctx.backtestResult.confidenceScore}/100 confidence)
-- Projected Move: ${ctx.backtestResult.forecastPct}% over ${ctx.backtestResult.forecastLabel}
-- Regime: ${ctx.backtestResult.regime}
-- Hit Rate: ${ctx.backtestResult.hitRate}%` : ""}
+      // Enrich user message with context
+      const bt = context?.backtestResult;
+      const enriched = message + (bt || context?.price ? `
 
-## Required: Search Before Responding
-1. Search "${ctx?.ticker} stock news May 2026" for latest developments
-2. Search "${ctx?.ticker} sector industry" to understand the business
-3. Search "${ctx?.ticker} earnings 2026" for upcoming catalysts
-Then structure your response EXACTLY using these 5 sections:
-**What This Company Does:** (1 sentence)
-**Thematic Position:** (which macro theme? direct/secondary/indirect?)
-**Key Catalyst:** (most important near-term driver with specific date/amount)
-**Quant Signal Context:** (does the model forecast align with fundamentals?)
-**Key Risk:** (specific risk with numbers)
-**Bottom Line:** (2 sentences max, actionable, includes position sizing)
+[Context: ${currentTicker} at ${context?.price ? "$" + context.price : "current price"}${bt ? `, model signal: ${bt.signal} ${bt.confidenceScore}/100, forecast: ${bt.forecastPct > 0 ? "+" : ""}${bt.forecastPct}% over ${bt.forecastLabel}, regime: ${bt.regime}` : ""}]` : "");
 
-Do NOT give a one-line answer. Cover all 5 sections every time.`;
+      const updatedHistory: ChatMessage[] = [
+        ...history,
+        { role: "user", content: enriched },
+      ];
 
-      // Step 1: Send user message event
-      await anthropicPost(`/v1/sessions/${session_id}/events`, {
-        events: [{
-          type: "user.message",
-          content: [{ type: "text", text: enriched }],
-        }],
-      }, apiKey);
+      const response = await callClaude(updatedHistory, system, apiKey);
 
-      // Step 2: Poll for agent response (server-side — no CORS issue)
-      let agentResponse = "";
-      let attempts = 0;
-      const maxAttempts = 25; // 25 × 3s = 75s max
+      // Save history
+      await saveHistory(supabase, userId, currentTicker, purpose, [
+        ...updatedHistory,
+        { role: "assistant", content: response },
+      ]);
 
-      while (attempts < maxAttempts) {
-        await new Promise(r => setTimeout(r, 3000));
-        attempts++;
-
-        const eventsRes = await fetch(
-          `https://api.anthropic.com/v1/sessions/${session_id}/events?limit=50&order=desc`,
-          {
-            headers: {
-              "x-api-key": apiKey,
-              "anthropic-version": "2023-06-01",
-              "anthropic-beta": BETA_HEADER,
-            },
-          }
-        );
-
-        // If session expired (404) — tell client to reinitialize
-        if (eventsRes.status === 404) {
-          return new Response(JSON.stringify({
-            error: "SESSION_EXPIRED",
-            response: "Session expired. Please close and reopen the chat to start a new session.",
-          }), {
-            status: 410,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
-        if (!eventsRes.ok) {
-          const errText = await eventsRes.text();
-          throw new Error(`Events fetch failed ${eventsRes.status}: ${errText}`);
-        }
-
-        const eventsData = await eventsRes.json();
-        const events = (eventsData.data || []).reverse();
-
-        for (const event of events) {
-          if (event.type === "agent.message" && event.content) {
-            for (const block of event.content) {
-              if (block.type === "text" && block.text) {
-                agentResponse = block.text;
-              }
-            }
-          }
-          // Session done when idle
-          if (event.type === "session.status_idle" ||
-              event.status === "idle" ||
-              event.type === "session.stopped") {
-            return new Response(JSON.stringify({
-              response: agentResponse || "Analysis complete.",
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-        }
-      }
-
-      // Return whatever we got on timeout
-      return new Response(JSON.stringify({
-        response: agentResponse || "The agent is still working. Please try asking again in a moment.",
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      result = { response };
 
     } else {
       throw new Error(`Unknown action: ${action}`);
     }
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
   } catch (error) {
     console.error("QuantAgent error:", error);
