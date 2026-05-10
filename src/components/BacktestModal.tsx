@@ -254,7 +254,7 @@ Please search for current news, earnings calendar, analyst ratings, and macro fa
             agent_id,
             environment_id,
             ticker,
-            purpose: "backtest", // isolated from chat sessions
+            purpose: `backtest_${Date.now()}`, // fresh session every run — no stale context
             context: stockContext,
           },
         });
@@ -590,8 +590,12 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                 </div>
               </div>
 
-              {/* QuantAgent market context — auto-triggered */}
-              <MarketContextPanel ticker={ticker} result={result} />
+              {/* QuantAgent market context — auto-triggered, fresh session per run */}
+              <MarketContextPanel
+                key={`${ticker}-${result.confidenceScore}-${result.forecastPct}-${result.winningModel.windowSize}`}
+                ticker={ticker}
+                result={result}
+              />
 
               {/* Tabs */}
               <div className="flex border-b border-zinc-800">
