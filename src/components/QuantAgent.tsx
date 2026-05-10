@@ -59,6 +59,123 @@ const QUICK_ACTIONS = [
   "Give me a 3-month price forecast",
 ];
 
+
+// ─── Markdown renderer for agent responses ────────────────────────────────────
+// Handles: **bold**, tables (| col |), bullet lists, headers, line breaks
+// Converts markdown tables to clean card-style display instead of pipe characters
+
+function AgentMarkdown({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // ── Markdown table ──────────────────────────────────────────────────────
+    // Detect table: line starts with | and has multiple |
+    if (line.trim().startsWith("|") && line.includes("|", 1)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+
+      // Parse table rows — skip separator lines (---|---|)
+      const rows = tableLines
+        .filter(l => !l.replace(/[|\s-]/g, "").trim().match(/^-+$/))
+        .map(l => l.split("|").map(c => c.trim()).filter(c => c !== ""));
+
+      if (rows.length > 0) {
+        const headers = rows[0];
+        const dataRows = rows.slice(1);
+
+        elements.push(
+          <div key={i} className="mt-2 mb-2 flex flex-col gap-1.5">
+            {dataRows.map((row, ri) => (
+              <div key={ri} className="rounded-lg bg-zinc-700/40 border border-zinc-600/30 px-3 py-2 flex flex-col gap-0.5">
+                {headers.map((header, hi) => row[hi] ? (
+                  <div key={hi} className="flex gap-2 items-start">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest shrink-0 w-16 pt-0.5">
+                      {header.replace(/\*\*/g, "")}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-200 flex-1">
+                      <InlineMarkdown text={row[hi]} />
+                    </span>
+                  </div>
+                ) : null)}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      continue;
+    }
+
+    // ── Headers (## or ###) ─────────────────────────────────────────────────
+    if (line.startsWith("## ") || line.startsWith("### ")) {
+      const text = line.replace(/^#+\s/, "");
+      elements.push(
+        <p key={i} className="text-[10px] font-mono font-semibold text-zinc-300 uppercase tracking-widest mt-2 mb-0.5">
+          {text}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // ── Bullet points ───────────────────────────────────────────────────────
+    if (line.trimStart().startsWith("- ") || line.trimStart().startsWith("• ")) {
+      const text = line.replace(/^\s*[-•]\s/, "");
+      elements.push(
+        <div key={i} className="flex gap-1.5 items-start">
+          <span className="text-emerald-400 mt-0.5 shrink-0 text-[10px]">·</span>
+          <span className="text-[10px] font-mono text-zinc-300 leading-relaxed">
+            <InlineMarkdown text={text} />
+          </span>
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── Empty line ──────────────────────────────────────────────────────────
+    if (line.trim() === "") {
+      elements.push(<div key={i} className="h-1.5" />);
+      i++;
+      continue;
+    }
+
+    // ── Regular paragraph ───────────────────────────────────────────────────
+    elements.push(
+      <p key={i} className="text-[10px] font-mono text-zinc-200 leading-relaxed">
+        <InlineMarkdown text={line} />
+      </p>
+    );
+    i++;
+  }
+
+  return <div className="flex flex-col gap-0.5">{elements}</div>;
+}
+
+// Handles inline **bold** and *italic* within a line
+function InlineMarkdown({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={i} className="text-zinc-100 font-semibold">{part.slice(2, -2)}</strong>;
+        }
+        if (part.startsWith("*") && part.endsWith("*")) {
+          return <em key={i} className="text-zinc-300">{part.slice(1, -1)}</em>;
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   const isAgent = msg.role === "agent";
   return (
@@ -84,10 +201,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             <span className="text-[10px]">Searching web + analyzing...</span>
           </div>
         ) : (
-          <span style={{ whiteSpace: "pre-wrap" }}>
-            {msg.content}
-            {msg.streaming && <span className="animate-pulse">▊</span>}
-          </span>
+          <AgentMarkdown content={msg.content} />
         )}
       </div>
     </div>
