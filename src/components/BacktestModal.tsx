@@ -23,12 +23,9 @@ const fmtPrice = (v: number) =>
   `$${Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function buildDateLabels(timestamps: number[]): string[] {
-  return timestamps.map((ts, i) => {
-    const d    = new Date(ts);
-    const prev = i > 0 ? new Date(timestamps[i - 1]) : null;
-    const day  = d.getDate().toString();
-    const mon  = d.toLocaleDateString("en-US", { month: "short" });
-    return !prev || prev.getMonth() !== d.getMonth() ? `${mon} ${day}` : day;
+  return timestamps.map((ts) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   });
 }
 
@@ -165,8 +162,13 @@ function ForecastChart({ result }: { result: ForecastResult }) {
     <ResponsiveContainer width="100%" height={280}>
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-        <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
-          interval={step} axisLine={false} tickLine={false} />
+        <XAxis
+          dataKey="date"
+          tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
+          interval={Math.max(1, Math.floor(data.length / 6) - 1)}
+          axisLine={false}
+          tickLine={false}
+        />
         <YAxis tick={{ fontSize: 10, fill: "#71717a", fontFamily: "monospace" }}
           axisLine={false} tickLine={false} width={72} tickFormatter={fmtPrice} />
         <Tooltip
