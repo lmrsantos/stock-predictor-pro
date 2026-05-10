@@ -189,13 +189,19 @@ export function backtest(
     .filter(d => { if (seen.has(d.date)) return false; seen.add(d.date); return true; })
     .sort((a, b) => a.timestamp - b.timestamp);
 
-  if (data.length < 60) {
+  // Normalize timestamps — Supabase may return seconds instead of milliseconds
+  const normalizedData = data.map(d => ({
+    ...d,
+    timestamp: d.timestamp < 1e10 ? d.timestamp * 1000 : d.timestamp,
+  }));
+
+  if (normalizedData.length < 60) {
     throw new Error("Need at least 60 data points for calibration.");
   }
 
-  const currentPrice    = data[data.length - 1].actual;
-  const currentTs       = data[data.length - 1].timestamp;
-  const prices          = data.map(d => d.actual);
+  const currentPrice    = normalizedData[normalizedData.length - 1].actual;
+  const currentTs       = normalizedData[normalizedData.length - 1].timestamp;
+  const prices          = normalizedData.map(d => d.actual);
   const priceMin        = Math.min(...prices);
   const priceMax        = Math.max(...prices);
 
@@ -205,8 +211,8 @@ export function backtest(
 
   // Use full available history for lookback (up to 2 years = 504 trading days)
   // More data = better trend capture, especially for strongly trending stocks
-  const lookbackCount = Math.min(lookbackMonths * 21 * 2, data.length - 20);
-  const startIndex    = Math.max(0, data.length - lookbackCount - 1);
+  const lookbackCount = Math.min(lookbackMonths * 21 * 2, normalizedData.length - 20);
+  const startIndex    = Math.max(0, normalizedData.length - lookbackCount - 1);
 
   // For each model:
   // - Use the FULL lookback window as training data (not just first N days)
@@ -217,7 +223,7 @@ export function backtest(
 
   const models: ModelCalibration[] = WINDOW_SIZES.map(({ days, label }) => {
     // Full lookback slice — all data from lookback start to today
-    const fullSlice = data.slice(startIndex).map(d => d.actual);
+    const fullSlice = normalizedData.slice(startIndex).map(d => d.actual);
 
     if (fullSlice.length < days + 5) {
       return {
@@ -336,7 +342,7 @@ export function backtest(
     modelDisagreement,
     regime,
     confidenceScore:   Math.round(confidenceScore),
-    actualPath:        data.slice(-60), // last 60 days for chart
+    actualPath:        normalizedData.slice(-60), // last 60 days for chart
     lookbackMonths,
     currentPrice,
     priceMin,
@@ -344,8 +350,8 @@ export function backtest(
 
     // Compatibility fields for BacktestModal
     walkForward: {
-      actualPath:    data.slice(-30),
-      predictedPath: data.slice(-30).map((d, i) => ({
+      actualPath:    normalizedData.slice(-30),
+      predictedPath: normalizedData.slice(-30).map((d, i) => ({
         date:      d.date,
         timestamp: d.timestamp,
         actual:    currentPrice + winner.slope * (i - 29),
@@ -358,9 +364,9 @@ export function backtest(
     converged:         winner.errorPct < 2,
     epochsRun:         WINDOW_SIZES.length,
     latentVector:      [winner.slope, winner.rSquared, winner.errorPct, forecastPct],
-    reconstructedPath: data.slice(-60).map(d => ({
+    reconstructedPath: normalizedData.slice(-60).map(d => ({
       date: d.date, timestamp: d.timestamp,
-      actual: winner.slope * (data.indexOf(d)) + winner.intercept,
+      actual: winner.slope * (normalizedData.indexOf(d)) + winner.intercept,
     })),
   };
 }
