@@ -414,10 +414,19 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
 
     const load = async () => {
       try {
-        await fetchAndStoreStockData(ticker, "1y");
-        const rows = await getStockDataFromDB(ticker, "1y");
+        // Fetch 2 years for better trend capture on strongly trending stocks
+        await fetchAndStoreStockData(ticker, "2y");
+        const rows = await getStockDataFromDB(ticker, "2y");
         if (!rows || rows.length < 60) {
-          throw new Error(`Only ${rows?.length ?? 0} data points. Need at least 60.`);
+          // Fall back to 1 year if 2y not available
+          await fetchAndStoreStockData(ticker, "1y");
+          const rows1y = await getStockDataFromDB(ticker, "1y");
+          if (!rows1y || rows1y.length < 60) {
+            throw new Error(`Only ${rows1y?.length ?? 0} data points. Need at least 60.`);
+          }
+          setDataPoints(rows1y.map((d: StockPoint) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })));
+          setDataReady(true);
+          return;
         }
         setDataPoints(rows.map((d: StockPoint) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })));
         setDataReady(true);
