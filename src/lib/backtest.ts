@@ -387,8 +387,12 @@ function runWalkForward(
   }
 
   // Train forecaster on returns (direction-aware)
-  const trainReturns = pricesToReturns(trainPrices);
-  const { norm: normTrainReturns, scale: returnScale } = normalizeReturns(trainReturns);
+  const trainReturns: number[] = [0];
+  for (let i = 1; i < trainPrices.length; i++) {
+    trainReturns.push((trainPrices[i] - trainPrices[i-1]) / (Math.abs(trainPrices[i-1]) || 1));
+  }
+  const maxAbs = Math.max(...trainReturns.map(Math.abs), 0.001);
+  const normTrainReturns = trainReturns.map(r => Math.max(-1, Math.min(1, r / maxAbs)));
 
   const fwWindows: number[][] = [];
   const fwReturnTargets: number[][] = [];
@@ -400,12 +404,16 @@ function runWalkForward(
     W = trainForecaster(fwWindows, fwReturnTargets, W, 150, 0.0005);
   }
 
-  // Forecast the held-out period using returns → prices
+  // Forecast held-out period using returns → prices
   const lastTrainWindow = trainNorm.slice(trainNorm.length - windowSize);
   const fwd = forward(lastTrainWindow, W);
-  const forecastedReturns = fwd.forecast.slice(0, holdOutDays).map(r => r * returnScale);
+  const forecastedReturns = fwd.forecast.slice(0, holdOutDays).map(r => r * maxAbs);
   const lastTrainPrice2 = trainPrices[trainPrices.length - 1];
-  const predictedPrices = returnsToPrice(forecastedReturns, lastTrainPrice2);
+  const predictedPricesSeed: number[] = [lastTrainPrice2];
+  for (let i = 0; i < forecastedReturns.length; i++) {
+    predictedPricesSeed.push(predictedPricesSeed[predictedPricesSeed.length - 1] * (1 + forecastedReturns[i]));
+  }
+  const predictedPrices = predictedPricesSeed.slice(1);
 
   // Compute MAPE and hit rate
   let mapeSum = 0;
