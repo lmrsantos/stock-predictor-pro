@@ -233,8 +233,6 @@ const Index = () => {
           onRunBacktest={() => setShowBacktest(true)}
         />
 
-        <GeopoliticalSentiment />
-
         <InvestmentRecommendation
           regression={regression}
           fundamentals={fundamentals}
