@@ -223,7 +223,7 @@ export function backtest(
 
   const models: ModelCalibration[] = WINDOW_SIZES.map(({ days, label }) => {
     // Full lookback slice — all data from lookback start to today
-    const fullSlice = data.slice(startIndex).map(d => d.actual);
+    const fullSlice = normalizedData.slice(startIndex).map(d => d.actual);
 
     if (fullSlice.length < days + 5) {
       return {
@@ -342,7 +342,7 @@ export function backtest(
     modelDisagreement,
     regime,
     confidenceScore:   Math.round(confidenceScore),
-    actualPath:        data.slice(-60), // last 60 days for chart
+    actualPath:        normalizedData.slice(-60), // last 60 days for chart
     lookbackMonths,
     currentPrice,
     priceMin,
@@ -350,8 +350,8 @@ export function backtest(
 
     // Compatibility fields for BacktestModal
     walkForward: {
-      actualPath:    data.slice(-30),
-      predictedPath: data.slice(-30).map((d, i) => ({
+      actualPath:    normalizedData.slice(-30),
+      predictedPath: normalizedData.slice(-30).map((d, i) => ({
         date:      d.date,
         timestamp: d.timestamp,
         actual:    currentPrice + winner.slope * (i - 29),
@@ -364,9 +364,9 @@ export function backtest(
     converged:         winner.errorPct < 2,
     epochsRun:         WINDOW_SIZES.length,
     latentVector:      [winner.slope, winner.rSquared, winner.errorPct, forecastPct],
-    reconstructedPath: data.slice(-60).map(d => ({
+    reconstructedPath: normalizedData.slice(-60).map(d => ({
       date: d.date, timestamp: d.timestamp,
-      actual: winner.slope * (data.indexOf(d)) + winner.intercept,
+      actual: winner.slope * (normalizedData.indexOf(d)) + winner.intercept,
     })),
   };
 }
