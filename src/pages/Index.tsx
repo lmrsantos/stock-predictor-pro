@@ -10,7 +10,7 @@ import { MarketTicker } from "@/components/MarketTicker";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
-import { InvestmentRecommendation } from "@/components/InvestmentRecommendation";
+
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
 import type { BacktestResult } from "@/lib/backtest";
@@ -232,16 +232,6 @@ const Index = () => {
           irWebsite={irWebsite}
           onRunBacktest={() => setShowBacktest(true)}
         />
-
-        <InvestmentRecommendation
-          regression={regression}
-          fundamentals={fundamentals}
-          analystRating={analystRating}
-          lastPrice={lastPrice}
-          ticker={ticker}
-          isLoading={isLoading}
-        />
-
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
             <div className="text-center space-y-2">
