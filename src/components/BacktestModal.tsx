@@ -215,10 +215,33 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
   useEffect(() => {
     const ask = async () => {
       try {
+        const ctxPayload = {
+          ticker,
+          price: result.currentPrice,
+          backtestResult: {
+            signal:              result.forecastDirection === "up" ? "BUY" : "SELL",
+            confidenceScore:     result.confidenceScore,
+            walkForwardAccuracy: Math.max(0, 100 - result.winningModel.errorPct),
+            hitRate:             result.ensembleAgreement * 100,
+            regime:              result.regime.outsideDistribution ? "SHIFTED" : "NORMAL",
+            forecastPct:         result.forecastPct,
+            forecastLabel:       "30 days",
+          },
+        };
+
+        // Step 1: create a real Anthropic-managed session
+        const init = await supabase.functions.invoke("quant-agent", {
+          body: { action: "create_session", ticker, context: ctxPayload },
+        });
+        if (init.error) throw new Error(init.error.message);
+        const realSessionId = init.data?.session_id;
+        if (!realSessionId) throw new Error("No session_id returned");
+
+        // Step 2: send the message using the real session id
         const { data, error: fnErr } = await supabase.functions.invoke("quant-agent", {
           body: {
             action: "send_message",
-            session_id: `backtest_${ticker}_${Date.now()}`,
+            session_id: realSessionId,
             message: `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
 
 The quantitative model shows:
@@ -229,19 +252,7 @@ The quantitative model shows:
 - Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
 
 Please search for current news, earnings calendar, analyst ratings, and macro factors for ${ticker}. Then give a concise 3-4 sentence market context that helps the user decide whether to act on this forecast. Focus on: any upcoming catalysts, recent price drivers, and key risks. Be direct.`,
-            context: {
-              ticker,
-              price: result.currentPrice,
-              backtestResult: {
-                signal:              result.forecastDirection === "up" ? "BUY" : "SELL",
-                confidenceScore:     result.confidenceScore,
-                walkForwardAccuracy: Math.max(0, 100 - result.winningModel.errorPct),
-                hitRate:             result.ensembleAgreement * 100,
-                regime:              result.regime.outsideDistribution ? "SHIFTED" : "NORMAL",
-                forecastPct:         result.forecastPct,
-                forecastLabel:       "30 days",
-              },
-            },
+            context: ctxPayload,
             ticker,
           },
         });
