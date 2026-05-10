@@ -110,16 +110,10 @@ function getThematicContext(ticker: string): string {
 
   const orderLabel = (o: number) => o === 1 ? "DIRECT beneficiary" : o === 2 ? "SECONDARY beneficiary" : "INDIRECT beneficiary";
   return matches.map(m =>
-    `📊 Theme: ${m.themeName} [${m.conviction} conviction]
-` +
-    `   Position: ${orderLabel(m.order)} (order ${m.order} of 3)
-` +
-    `   Active catalysts:
-${m.catalysts.map(c => `     - ${c}`).join("
-")}`
-  ).join("
-
-");
+    `📊 Theme: ${m.themeName} [${m.conviction} conviction]\n` +
+    `   Position: ${orderLabel(m.order)} (order ${m.order} of 3)\n` +
+    `   Active catalysts:\n${m.catalysts.map(c => `     - ${c}`).join("\n")}`
+  ).join("\n\n");
 }
 
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
