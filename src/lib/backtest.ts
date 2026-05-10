@@ -189,13 +189,19 @@ export function backtest(
     .filter(d => { if (seen.has(d.date)) return false; seen.add(d.date); return true; })
     .sort((a, b) => a.timestamp - b.timestamp);
 
-  if (data.length < 60) {
+  // Normalize timestamps — Supabase may return seconds instead of milliseconds
+  const normalizedData = data.map(d => ({
+    ...d,
+    timestamp: d.timestamp < 1e10 ? d.timestamp * 1000 : d.timestamp,
+  }));
+
+  if (normalizedData.length < 60) {
     throw new Error("Need at least 60 data points for calibration.");
   }
 
-  const currentPrice    = data[data.length - 1].actual;
-  const currentTs       = data[data.length - 1].timestamp;
-  const prices          = data.map(d => d.actual);
+  const currentPrice    = normalizedData[normalizedData.length - 1].actual;
+  const currentTs       = normalizedData[normalizedData.length - 1].timestamp;
+  const prices          = normalizedData.map(d => d.actual);
   const priceMin        = Math.min(...prices);
   const priceMax        = Math.max(...prices);
 
