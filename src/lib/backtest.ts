@@ -211,8 +211,8 @@ export function backtest(
 
   // Use full available history for lookback (up to 2 years = 504 trading days)
   // More data = better trend capture, especially for strongly trending stocks
-  const lookbackCount = Math.min(lookbackMonths * 21 * 2, data.length - 20);
-  const startIndex    = Math.max(0, data.length - lookbackCount - 1);
+  const lookbackCount = Math.min(lookbackMonths * 21 * 2, normalizedData.length - 20);
+  const startIndex    = Math.max(0, normalizedData.length - lookbackCount - 1);
 
   // For each model:
   // - Use the FULL lookback window as training data (not just first N days)
