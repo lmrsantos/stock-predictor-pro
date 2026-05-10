@@ -6,7 +6,7 @@ import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } fro
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
-import { GeopoliticalSentiment } from "@/components/GeopoliticalSentiment";
+import { MarketTicker } from "@/components/MarketTicker";
 import { MarketTicker } from "@/components/MarketTicker";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
