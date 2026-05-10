@@ -46,11 +46,6 @@ export interface ModelCalibration {
   errorPct: number;           // abs % error vs actual current price
   annualizedReturn: number;   // projected annual return from slope
   winner: boolean;            // true for the best-fitting model
-  // Compat fields for BacktestModal
-  forecast?: number[];
-  reconError?: number;
-  converged?: boolean;
-  epochsRun?: number;
 }
 
 export interface ForecastResult {
@@ -81,20 +76,6 @@ export interface ForecastResult {
   currentPrice: number;
   priceMin: number;
   priceMax: number;
-
-  // Compat fields for BacktestModal / Index
-  walkForward?: {
-    actualPath: BacktestDataPoint[];
-    predictedPath: BacktestDataPoint[];
-    mape: number;
-    hitRate: number;
-  };
-  mape?: number;
-  finalForecastError?: number;
-  converged?: boolean;
-  epochsRun?: number;
-  latentVector?: number[];
-  reconstructedPath?: BacktestDataPoint[];
 }
 
 export interface RegimeResult {
@@ -208,29 +189,46 @@ export function backtest(
   // Each model looks at a window ending at the LOOKBACK point,
   // projects forward to today, compares to actual current price.
 
-  const lookbackCount = Math.min(lookbackMonths * 21, data.length - 20); // trading days
+  // Use full available history for lookback (up to 2 years = 504 trading days)
+  // More data = better trend capture, especially for strongly trending stocks
+  const lookbackCount = Math.min(lookbackMonths * 21 * 2, data.length - 20);
   const startIndex    = Math.max(0, data.length - lookbackCount - 1);
 
-  const models: ModelCalibration[] = WINDOW_SIZES.map(({ days, label }) => {
-    // Training window: `days` days ending at the lookback start point
-    const trainEnd   = startIndex + days;
-    const trainSlice = data.slice(startIndex, trainEnd).map(d => d.actual);
+  // For each model:
+  // - Use the FULL lookback window as training data (not just first N days)
+  // - Apply a moving average of `days` width to smooth the regression input
+  //   (this is what the window size controls — smoothing, not data amount)
+  // - Fit regression on smoothed prices from lookback start → today
+  // - The predicted price at "today" is where the regression line ends
 
-    if (trainSlice.length < 5) {
+  const models: ModelCalibration[] = WINDOW_SIZES.map(({ days, label }) => {
+    // Full lookback slice — all data from lookback start to today
+    const fullSlice = data.slice(startIndex).map(d => d.actual);
+
+    if (fullSlice.length < days + 5) {
       return {
         windowSize: days, label,
-        slope: 0, intercept: trainSlice[0] ?? currentPrice,
+        slope: 0, intercept: fullSlice[0] ?? currentPrice,
         rSquared: 0, predictedTodayPrice: currentPrice,
         actualTodayPrice: currentPrice, errorPct: 100,
         annualizedReturn: 0, winner: false,
       };
     }
 
-    const reg = linReg(trainSlice);
+    // Apply simple moving average of `days` width to smooth the price series
+    // This lets each model capture trend at its own smoothing level
+    const smoothed: number[] = [];
+    for (let i = days - 1; i < fullSlice.length; i++) {
+      const window = fullSlice.slice(i - days + 1, i + 1);
+      smoothed.push(window.reduce((a, b) => a + b, 0) / window.length);
+    }
 
-    // Project forward from trainEnd to today
-    const daysToToday = data.length - trainEnd;
-    const predictedTodayPrice = reg.slope * (trainSlice.length - 1 + daysToToday) + reg.intercept;
+    // Fit linear regression on the smoothed series
+    const reg = linReg(smoothed);
+
+    // The last point of the smoothed series is close to today
+    // Project the regression line to the very last data point
+    const predictedTodayPrice = reg.slope * (smoothed.length - 1) + reg.intercept;
     const errorPct = Math.abs((predictedTodayPrice - currentPrice) / currentPrice) * 100;
 
     return {
@@ -319,6 +317,7 @@ export function backtest(
     forecastPct:       Math.round(forecastPct * 10) / 10,
     forecastDirection,
     winningModel:      winner,
+    models,
     ensembleAgreement,
     modelDisagreement,
     regime,
@@ -349,9 +348,9 @@ export function backtest(
       date: d.date, timestamp: d.timestamp,
       actual: winner.slope * (data.indexOf(d)) + winner.intercept,
     })),
-    // Ensemble models with compat fields
+    // Ensemble models compatibility
     models: models.map(m => ({
-      ...m,
+      windowSize: m.windowSize,
       forecast:   forecastPoints.map(fp => fp.mean),
       reconError: m.errorPct,
       converged:  m.errorPct < 2,
