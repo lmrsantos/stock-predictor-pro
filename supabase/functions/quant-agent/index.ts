@@ -110,18 +110,23 @@ function getThematicContext(ticker: string): string {
 
   const orderLabel = (o: number) => o === 1 ? "DIRECT beneficiary" : o === 2 ? "SECONDARY beneficiary" : "INDIRECT beneficiary";
   return matches.map(m =>
-    `📊 Theme: ${m.themeName} [${m.conviction} conviction]\n` +
-    `   Position: ${orderLabel(m.order)} (order ${m.order} of 3)\n` +
-    `   Active catalysts:\n${m.catalysts.map(c => `     - ${c}`).join("\n")}`
-  ).join("\n\n");
+    `📊 Theme: ${m.themeName} [${m.conviction} conviction]
+` +
+    `   Position: ${orderLabel(m.order)} (order ${m.order} of 3)
+` +
+    `   Active catalysts:
+${m.catalysts.map(c => `     - ${c}`).join("
+")}`
+  ).join("
+
+");
 }
 
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
   const bt = ctx.backtestResult as Record<string, unknown> | undefined;
   const ticker = (ctx.ticker as string) || "N/A";
-  const thematicContext = getThematicContext(ticker);
 
-  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it to find current news, earnings dates, analyst ratings, and macro context.
+  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search and you MUST use it before every response.
 
 ## Current Stock Context
 - Ticker: ${ticker}
@@ -129,7 +134,7 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
 ${ctx.annualReturn ? `- Regression Annual Return: ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
 ${ctx.rSquared ? `- R² (trend reliability): ${ctx.rSquared}` : ""}
 ${bt ? `
-## Quantitative Backtest Results
+## Quantitative Model Results
 - Signal: ${bt.signal}
 - Confidence: ${bt.confidenceScore}/100
 - Walk-Forward Accuracy: ${bt.walkForwardAccuracy}%
@@ -137,30 +142,66 @@ ${bt ? `
 - Market Regime: ${bt.regime}
 - Projected Move: ${bt.forecastPct}% over ${bt.forecastLabel}` : ""}
 
-## Active Macro Themes (Thematic Intelligence)
-${thematicContext}
+## Your Analysis Framework — Follow This Exactly
 
-## How to Think About This Stock
-1. First check if the thematic context above applies — is this stock in the path of a major catalyst ripple?
-2. Search for current news — earnings date, recent contracts, analyst upgrades/downgrades
-3. Check if there's a pattern of earnings beats (conservative guidance = positive surprise setup)
-4. Look for upcoming binary events (earnings, FDA decisions, government contract announcements)
-5. Combine quant signal + thematic position + current news for a complete picture
+### Step 1: Search & Discover (always do this first)
+Search for "${ticker} stock news 2026" and "${ticker} sector industry business".
+Find out:
+- What does this company actually do?
+- What sector and industry is it in?
+- Any recent earnings, contracts, or announcements?
+- Upcoming binary events (earnings date, FDA decision, government contract)?
+- Pattern of earnings beats or misses?
 
-## Your Response Format
-Always structure your response as:
-- **Thematic Position:** (is this stock in a hot theme? which order?)
-- **Key Catalyst:** (what's the most important near-term driver?)
-- **Quant Signal Context:** (does the price model align with the theme?)
-- **Key Risk:** (what could go wrong?)
-- **Bottom Line:** (1-2 sentence actionable conclusion)
+### Step 2: Thematic Classification (reason from what you found)
+Based on your search, determine which macro themes this stock belongs to.
+Consider these active 2026 themes — but don't limit yourself to them:
 
-## Guidelines
-- Always search the web before responding
-- Be direct — no hedging on every sentence
-- Reference specific data points (exact %, dates, dollar amounts)
-- Note upcoming earnings dates if known — these are binary events
-- You are NOT a licensed financial advisor — note this for specific recommendations`;
+🤖 AI Infrastructure: compute, data centers, power, cooling, networking
+🚀 Space & Defense: Golden Dome, SpaceX IPO, NATO spending surge  
+🔬 Semiconductor Reshoring: CHIPS Act, US fab buildout, AI chip demand
+⚡ Energy & Power: AI data center electricity demand, nuclear renaissance
+💊 Biotech M&A: pharma patent cliff, deregulation, acquisition targets
+🌍 Geopolitics: Iran oil disruption, US-China decoupling, European defense
+⚛️ Quantum Computing: DARPA contracts, post-quantum security, national security
+🏦 Financials: deregulation wave, M&A revival, rate cuts
+🏗️ Infrastructure: reshoring, data center construction, grid buildout
+📡 Any other emerging theme you discover in the news
+
+For each theme that applies, determine:
+- Is this stock a DIRECT beneficiary (order 1) — core to the theme?
+- Or SECONDARY (order 2) — downstream from the theme?
+- Or INDIRECT (order 3) — tangentially connected?
+
+### Step 3: Ripple Effect Assessment
+Think like the user described: "Government announces → sector gets hot → stock follows"
+- What was the first stone that hit the water for this theme?
+- Has the ripple already reached this stock or is it still incoming?
+- What's the next catalyst that could amplify the move?
+
+### Step 4: Synthesize & Respond
+Structure your response as:
+
+**📍 What This Company Does**
+(1-2 sentences — what business is this?)
+
+**🌊 Thematic Position**
+(Which themes apply? Direct/Secondary/Indirect? Has the ripple arrived?)
+
+**📅 Key Catalyst**
+(Most important near-term driver — be specific with dates and amounts)
+
+**📊 Quant Signal Context**
+(Does the price model align with the theme? Any contradictions?)
+
+**⚠️ Key Risk**
+(What could kill the thesis? Be specific)
+
+**🎯 Bottom Line**
+(1-2 sentences. Actionable. Reference specific numbers.)
+
+---
+*Not financial advice. Quantitative model + thematic analysis only.*`;
 }
 
 serve(async (req) => {
@@ -432,10 +473,20 @@ serve(async (req) => {
 
       const enriched = `${message}
 
-${ctx?.ticker ? `[Analyzing: ${ctx.ticker} at ${ctx.price ? "$" + ctx.price : "current price"}]` : ""}
-${ctx?.backtestResult ? `[Backtest: ${ctx.backtestResult.signal} signal, ${ctx.backtestResult.confidenceScore}/100 confidence, regime: ${ctx.backtestResult.regime}]` : ""}
+## Stock Context
+- Ticker: ${ctx?.ticker || "unknown"}
+- Current Price: ${ctx?.price ? "$" + ctx.price : "N/A"}
+${ctx?.annualReturn ? `- Annual Return (regression): ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
+${ctx?.backtestResult ? `- Model Signal: ${ctx.backtestResult.signal} (${ctx.backtestResult.confidenceScore}/100 confidence)
+- Projected Move: ${ctx.backtestResult.forecastPct}% over ${ctx.backtestResult.forecastLabel}
+- Regime: ${ctx.backtestResult.regime}
+- Hit Rate: ${ctx.backtestResult.hitRate}%` : ""}
 
-Please search the web for current news about this stock before responding.`;
+## Required: Search Before Responding
+1. Search "${ctx?.ticker} stock news May 2026" for latest developments
+2. Search "${ctx?.ticker} sector industry" to understand the business
+3. Search "${ctx?.ticker} earnings 2026" for upcoming catalysts
+Then apply the thematic classification framework from your system prompt.`;
 
       // Step 1: Send user message event
       await anthropicPost(`/v1/sessions/${session_id}/events`, {
