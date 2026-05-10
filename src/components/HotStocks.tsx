@@ -165,7 +165,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
       {/* Results */}
       {stocks.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
           {stocks.map((stock, i) => (
             <button
               key={stock.symbol}
