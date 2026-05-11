@@ -580,9 +580,9 @@ function scoreStock(closes: number[], riskTier = 4): {
   // Tier 2 (REITs/dividends):    medium bar — slightly relaxed vs stocks
   // Tier 3 (covered calls/commodities): same as stocks
   // Tier 4 (individual stocks):  full bar
-  const minConfidence  = riskTier === 1 ? 12 : riskTier === 2 ? 18 : 28;
-  const minHitRate     = riskTier === 1 ? 38 : riskTier === 2 ? 40 : 45;
-  const stayOutHitRate = riskTier === 1 ? 28 : riskTier === 2 ? 30 : 35;
+  const minConfidence  = riskTier === 1 ? 8  : riskTier === 2 ? 12 : 18;
+  const minHitRate     = riskTier === 1 ? 35 : riskTier === 2 ? 37 : 40;
+  const stayOutHitRate = riskTier === 1 ? 25 : riskTier === 2 ? 27 : 30;
 
   let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
   if (regime === "EXTREME" || hitRate < stayOutHitRate)              signal = "STAY OUT";
@@ -673,12 +673,12 @@ serve(async (req) => {
     // ── PRE-STEP: Force-refresh any symbol not seen in DB within last 7 days ───
     // Ensures the AE sees fresh data for ALL universe stocks, not just ones
     // users have previously searched on the main dashboard.
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const recentCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const allTickers = allSymbols.map(s => s.symbol);
 
     const { data: recentRows } = await supabase
       .from("stock_prices").select("ticker")
-      .in("ticker", allTickers).gte("date", sevenDaysAgo).limit(500);
+      .in("ticker", allTickers).gte("date", recentCutoff).limit(500);
 
     const freshSet = new Set((recentRows || []).map((r: {ticker:string}) => r.ticker));
     const staleSyms = allTickers.filter(t => !freshSet.has(t));
@@ -738,8 +738,8 @@ serve(async (req) => {
         const minRSquared = riskTier <= 2 ? 0.03 : 0.05;
         // Pass if EITHER recent momentum OR full year momentum is positive
         // Use lower threshold for conservative tiers (bonds/REITs have low returns by nature)
-        const hasRecentMomentum = qs.recentReturn > (riskTier <= 2 ? -0.05 : 0) && qs.recentRSquared >= minRSquared;
-        const hasFullYearMomentum = qs.annualReturn > (riskTier <= 1 ? -0.05 : riskTier <= 2 ? -0.02 : 0.02) && qs.rSquared >= minRSquared;
+        const hasRecentMomentum = qs.recentReturn > -0.10 && qs.recentRSquared >= 0.02;
+        const hasFullYearMomentum = qs.annualReturn > -0.05 && qs.rSquared >= 0.02;
         if (!hasRecentMomentum && !hasFullYearMomentum) return null;
         return {symbol,sector,riskTier,closes,qs};
       }));
@@ -760,7 +760,7 @@ serve(async (req) => {
       return (b.qs.combinedScore * biasB) - (a.qs.combinedScore * biasA);
     });
     // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 35 : riskProfile === "moderate" ? 28 : 22;
+    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 32 : 25;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
