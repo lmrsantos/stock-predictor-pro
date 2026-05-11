@@ -580,9 +580,9 @@ function scoreStock(closes: number[], riskTier = 4): {
   // Tier 2 (REITs/dividends):    medium bar — slightly relaxed vs stocks
   // Tier 3 (covered calls/commodities): same as stocks
   // Tier 4 (individual stocks):  full bar
-  const minConfidence = riskTier === 1 ? 20 : riskTier === 2 ? 28 : 40;
-  const minHitRate    = riskTier === 1 ? 45 : riskTier === 2 ? 47 : 50;
-  const stayOutHitRate= riskTier === 1 ? 35 : riskTier === 2 ? 38 : 45;
+  const minConfidence  = riskTier === 1 ? 12 : riskTier === 2 ? 18 : 28;
+  const minHitRate     = riskTier === 1 ? 38 : riskTier === 2 ? 40 : 45;
+  const stayOutHitRate = riskTier === 1 ? 28 : riskTier === 2 ? 30 : 35;
 
   let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
   if (regime === "EXTREME" || hitRate < stayOutHitRate)              signal = "STAY OUT";
@@ -736,8 +736,10 @@ serve(async (req) => {
         // Tier 1 instruments have very low annual returns by nature — don't filter them out
         // For breakout detection: allow negative full-year if recent is strongly positive
         const minRSquared = riskTier <= 2 ? 0.03 : 0.05;
-        const hasRecentMomentum = qs.recentReturn > 0 && qs.recentRSquared >= minRSquared;
-        const hasFullYearMomentum = qs.annualReturn > (riskTier <= 1 ? -0.02 : 0) && qs.rSquared >= minRSquared;
+        // Pass if EITHER recent momentum OR full year momentum is positive
+        // Use lower threshold for conservative tiers (bonds/REITs have low returns by nature)
+        const hasRecentMomentum = qs.recentReturn > (riskTier <= 2 ? -0.05 : 0) && qs.recentRSquared >= minRSquared;
+        const hasFullYearMomentum = qs.annualReturn > (riskTier <= 1 ? -0.05 : riskTier <= 2 ? -0.02 : 0.02) && qs.rSquared >= minRSquared;
         if (!hasRecentMomentum && !hasFullYearMomentum) return null;
         return {symbol,sector,riskTier,closes,qs};
       }));
@@ -758,7 +760,7 @@ serve(async (req) => {
       return (b.qs.combinedScore * biasB) - (a.qs.combinedScore * biasA);
     });
     // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 25 : riskProfile === "moderate" ? 20 : 18;
+    const shortlistSize = riskProfile === "conservative" ? 35 : riskProfile === "moderate" ? 28 : 22;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
