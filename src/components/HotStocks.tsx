@@ -19,6 +19,7 @@ interface HotStock {
   hitRate: number;
   breakout?: boolean;
   sectorHot?: boolean;
+  thematicHot?: boolean;
   regime: string;
   converged: boolean;
   riskTier: number;
@@ -41,6 +42,7 @@ const scanMessages = [
   "Training autoencoder on shortlisted candidates…",
   "Walk-forward validation on held-out data…",
   "Computing confidence & hit-rate scores…",
+  "Applying thematic & geopolitical bias…",
   "Ranking top BUY signals…",
 ];
 
@@ -191,7 +193,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                     {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono ml-1">
-                    projected over {stock.forecastLabel || "~3 weeks"}
+                    {stock.forecastLabel || "~3 weeks"}
                   </span>
                 </div>
               </div>
@@ -224,12 +226,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                       ⚡ Hot Sector
                     </span>
                   )}
+                  {stock.thematicHot && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 dark:text-red-400">
+                      🌍 Macro Tailwind
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
           ))}
           <p className="text-[9px] text-muted-foreground text-center mt-2 leading-relaxed">
-            Ranked by QuantPulse™ AE — autoencoder confidence × walk-forward accuracy<br />
+            Ranked by QuantPulse™ AE · momentum × sector performance × thematic bias<br />
             across 160+ stocks with risk-tiered screening
           </p>
         </div>
