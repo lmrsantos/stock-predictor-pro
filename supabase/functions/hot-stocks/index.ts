@@ -420,8 +420,8 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   let wt = {...w};
-  for (let e=0; e<40; e++) {
-    for (let i=0; i<wins.length; i++) {
+  for (let e=0; e<4; e++) {
+    for (let i=0; i<Math.min(wins.length, 16); i++) {
       const f  = fwd(wins[i], wt);
       const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
       const dWf2=dF.map(g => f.hf1.map(h => g*h));
@@ -476,59 +476,60 @@ function scoreStock(closes: number[], riskTier = 4): {
   // ── 1. Normalize full price series ────────────────────────────────
   const { n: nm, mn, mx } = norm(closes);
 
-  // ── 2. Build sliding windows ───────────────────────────────────────
+  // ── 2. Build sliding windows (limit to last 60 bars, stride 2) ────
   const wins: number[][] = [];
-  for (let i = 0; i + WS <= nm.length; i++) wins.push(nm.slice(i, i + WS));
+  const winStart = Math.max(0, nm.length - 60);
+  for (let i = winStart; i + WS <= nm.length; i += 2) wins.push(nm.slice(i, i + WS));
 
-  // ── 3. Train autoencoder unsupervised (60 epochs) ─────────────────
+  // ── 3. Train autoencoder unsupervised (8 epochs max) ──────────────
   let W = initAE();
   const curNorm = nm[nm.length - 1];
   let converged = false;
   let lr = 0.001;
 
-  for (let e = 0; e < 60; e++) {
+  for (let e = 0; e < 8; e++) {
     for (const win of wins) {
       const f = fwd(win, W);
       W = bwd(win, f, W, lr);
     }
-    // Check endpoint reconstruction error
     const lw  = nm.slice(nm.length - WS);
     const f   = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length - 1] - curNorm) / (curNorm || 1)) * 100;
-    if (err < 1.5 && e > 10) { converged = true; break; }
-    if (e === 30) lr *= 0.5;
+    if (err < 3 && e > 2) { converged = true; break; }
+    if (e === 4) lr *= 0.5;
   }
 
   // ── 4. Train forecaster head (self-supervised) ────────────────────
   const fwWins: number[][] = [], fwTgts: number[][] = [];
-  for (let i = 0; i + WS + FD <= nm.length; i++) {
+  for (let i = Math.max(0, nm.length - 60); i + WS + FD <= nm.length; i += 2) {
     fwWins.push(nm.slice(i, i + WS));
     fwTgts.push(nm.slice(i + WS, i + WS + FD));
   }
-  if (fwWins.length > 0) W = trainFwd(fwWins, fwTgts, W, 0.0005);
+  if (fwWins.length > 0) W = trainFwd(fwWins.slice(0, 12), fwTgts.slice(0, 12), W, 0.0005);
 
   // ── 5. Walk-forward validation on held-out HOLD days ──────────────
   const trainC = closes.slice(0, closes.length - HOLD);
   const held   = closes.slice(closes.length - HOLD);
   const { n: tNm, mn: tMn, mx: tMx } = norm(trainC);
 
-  // Train a separate validation AE on train-only slice
+  // Train a separate validation AE on train-only slice (lightweight)
   let Wv = initAE();
   const vWins: number[][] = [];
-  for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
+  const vWinStart = Math.max(0, tNm.length - 50);
+  for (let i = vWinStart; i + WS <= tNm.length; i += 2) vWins.push(tNm.slice(i, i + WS));
   let vlr = 0.001;
-  for (let e = 0; e < 50; e++) {
+  for (let e = 0; e < 6; e++) {
     for (const win of vWins) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
-    if (e === 25) vlr *= 0.5;
+    if (e === 3) vlr *= 0.5;
   }
 
   // Train its forecaster head on held-out targets
   const vFwWins: number[][] = [], vFwTgts: number[][] = [];
-  for (let i = 0; i + WS + HOLD <= tNm.length; i++) {
+  for (let i = vWinStart; i + WS + HOLD <= tNm.length; i += 2) {
     vFwWins.push(tNm.slice(i, i + WS));
     vFwTgts.push(tNm.slice(i + WS, i + WS + HOLD));
   }
-  if (vFwWins.length > 0) Wv = trainFwd(vFwWins, vFwTgts, Wv, 0.0005);
+  if (vFwWins.length > 0) Wv = trainFwd(vFwWins.slice(0, 10), vFwTgts.slice(0, 10), Wv, 0.0005);
 
   // Forecast held-out period and measure accuracy
   const lastTrainWin = tNm.slice(tNm.length - WS);
@@ -757,7 +758,7 @@ serve(async (req) => {
       return (b.qs.combinedScore * biasB) - (a.qs.combinedScore * biasA);
     });
     // Conservative profiles have fewer candidates — take all of them up to 40
-    const shortlistSize = riskProfile === "conservative" ? 40 : riskProfile === "moderate" ? 35 : 30;
+    const shortlistSize = riskProfile === "conservative" ? 25 : riskProfile === "moderate" ? 20 : 18;
     const shortlist=candidates.slice(0, shortlistSize);
     console.log(`Step 2: AE scoring ${shortlist.length} shortlisted stocks (profile: ${riskProfile})`);
 
