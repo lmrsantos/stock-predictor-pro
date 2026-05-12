@@ -22,12 +22,17 @@ const corsHeaders = {
 // ─── Risk tiers ───────────────────────────────────────────────────────────────
 
 const RISK_TIERS: Record<string, number> = {
-  TLT:1, IEF:1, SHV:1, BIL:1, SGOV:1, TIPS:1, LQD:1, AGG:1, BND:1, VCSH:1, VGSH:1,
-  VNQ:2, O:2, AMT:2, PLD:2, REGL:2, XLRE:2, GLD:2, SLV:2, IAU:2, DJP:2, PDBC:2,
-  VYM:2, SCHD:2, DVY:2, HDV:2, PFF:2, PFFD:2,
-  JEPI:3, QQQI:3, RYLD:3, QYLD:3, XYLD:3,
-  USO:3, UNG:3, CORN:3, WEAT:3, CPER:3,
-  XLK:3, XLF:3, XLV:3, XLE:3, XLU:3, XLI:3,
+  // ── Tier 1: Fixed Income ETFs ──────────────────────────────────────
+  TLT:1, IEF:1, SHV:1, BIL:1, SGOV:1, TIPS:1, LQD:1, AGG:1, BND:1,
+  VCSH:1, VGSH:1, IUSB:1,
+  // ── Tier 2: Real Assets + Income ETFs ─────────────────────────────
+  VNQ:2, O:2, AMT:2, GLD:2, IAU:2, IGSB:2, IGIB:2, IGLB:2,
+  VYM:2, SCHD:2, DVY:2, HDV:2, PFF:2, PFFD:2, QDIV:2, DGRW:2,
+  // ── Tier 3: Sector ETFs ────────────────────────────────────────────
+  JEPI:3, XLK:3, XLF:3, XLV:3, XLE:3, XLI:3, IYW:3, IYE:3, IYH:3,
+  // ── Tier 4: Individual stocks + Quantum (high risk) ───────────────
+  // Quantum computing — explicitly tier 4 (speculative, high volatility)
+  IONQ:4, ARQQ:4, RGTI:4, QBTS:4, QUBT:4,
 };
 
 const RISK_LABELS: Record<number, string> = {
@@ -44,16 +49,38 @@ const RISK_PROFILE_TIERS: Record<string, number[]> = {
 // ─── Sector universes ─────────────────────────────────────────────────────────
 
 const SECTOR_UNIVERSES: Record<string, string[]> = {
-  Technology: ["AAPL","MSFT","GOOGL","META","NVDA","AMD","AVGO","CRM","ADBE","ORCL","INTC","CSCO","IBM","NOW","QCOM","TXN","AMAT","MU","PANW","SNPS"],
-  "Aerospace & Defense": ["LMT","RTX","BA","NOC","GD","LHX","HII","TDG","HWM","AXON","LDOS","KTOS","RKLB","LUNR","PLTR","SPR","ERJ","TXT","CW"],
-  Biotech: ["LLY","ABBV","JNJ","MRK","PFE","AMGN","GILD","REGN","VRTX","BMY","MRNA","BIIB","ILMN","ISRG","DXCM","ALGN","HOLX","EXAS","SGEN","ALNY"],
-  Consumer: ["PG","KO","PEP","WMT","COST","MCD","NKE","SBUX","TGT","CL","GIS","K","HSY","KMB","CHD","SJM","CAG","MKC","CLX","KHC"],
-  "Utilities & Energy": ["NEE","DUK","SO","D","AEP","SRE","EXC","XEL","WEC","ES","ED","AWK","ATO","CMS","DTE","ETR","FE","PEG","PPL","CEG"],
-  Financials: ["JPM","V","MA","BAC","WFC","GS","MS","BLK","SCHW","AXP","SPGI","ICE","CME","MCO","CB","AON","MMC","TFC","PNC","USB"],
-  "Fixed Income": ["TLT","IEF","SHV","BIL","SGOV","TIPS","LQD","AGG","BND","VCSH","VGSH"],
-  "Real Assets": ["VNQ","O","AMT","PLD","REGL","XLRE","GLD","SLV","IAU","DJP","PDBC"],
-  "Income & Dividends": ["VYM","SCHD","DVY","HDV","PFF","PFFD","JEPI","QQQI","RYLD","QYLD","XYLD"],
-  "Commodities & Sectors": ["USO","UNG","GLD","SLV","CPER","XLK","XLF","XLV","XLE","XLU","XLI"],
+  // ── Technology (AI + Semiconductors) ──────────────────────────────
+  Technology: ["NVDA","AAPL","MSFT","AMD","AVGO","META","GOOGL","QCOM","AMAT","INTC","TSLA","AMZN","TSM"],
+
+  // ── Quantum Computing ─────────────────────────────────────────────
+  "Quantum Computing": ["IONQ","ARQQ","RGTI","QBTS","QUBT"],
+
+  // ── Aerospace & Defense (Space + Golden Dome theme) ───────────────
+  "Aerospace & Defense": ["LMT","RTX","RKLB","PLTR","NOC","AXON","LUNR","KTOS"],
+
+  // ── Biotech & Healthcare ──────────────────────────────────────────
+  Biotech: ["LLY","ABBV","VRTX","REGN","AMGN","MRK","ISRG","MRNA"],
+
+  // ── Consumer Staples ──────────────────────────────────────────────
+  Consumer: ["WMT","COST","PG","KO","MCD"],
+
+  // ── Utilities & Energy (AI power demand theme) ────────────────────
+  "Utilities & Energy": ["NEE","CEG","VST","XEL","ETR","XOM","CVX"],
+
+  // ── Financials ────────────────────────────────────────────────────
+  Financials: ["JPM","V","GS","BLK","SPGI"],
+
+  // ── Fixed Income ETFs — iShares + Vanguard (tier 1) ──────────────
+  "Fixed Income": ["TLT","IEF","BIL","AGG","LQD","SGOV","SHV","VCSH","VGSH","IUSB"],
+
+  // ── Real Assets — iShares ETFs (tier 2) ──────────────────────────
+  "Real Assets": ["GLD","IAU","VNQ","AMT","O","IGSB","IGIB","IGLB"],
+
+  // ── Income & Dividends — iShares ETFs (tier 2) ───────────────────
+  "Income & Dividends": ["SCHD","VYM","JEPI","HDV","PFFD","DVY","QDIV","DGRW"],
+
+  // ── Sector ETFs — iShares + SPDR (tier 3) ────────────────────────
+  "Commodities & Sectors": ["XLE","XLK","XLF","XLV","XLI","IYW","IYE","IYH"],
 };
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
@@ -149,7 +176,7 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   let wt = { ...w };
-  for (let e = 0; e < 50; e++) {
+  for (let e = 0; e < 30; e++) {
     for (let i = 0; i < wins.length; i++) {
       const f = fwd(wins[i], wt);
       const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v-tgts[i][j]));
@@ -211,7 +238,7 @@ function scoreStockFull(closes: number[], riskTier = 4): {
   let converged = false;
   const curNorm = nm[nm.length - 1];
 
-  for (let e = 0; e < 120; e++) {
+  for (let e = 0; e < 50; e++) {
     const shuffled = [...wins].sort(() => Math.random() - 0.5);
     for (const win of shuffled) {
       const f = fwd(win, W);
@@ -220,9 +247,9 @@ function scoreStockFull(closes: number[], riskTier = 4): {
     const lw = nm.slice(nm.length - WS);
     const f = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length-1] - curNorm) / (curNorm||1)) * 100;
-    if (err < 1.5 && e > 15) { converged = true; break; }
-    if (e === 60)  lr *= 0.5;
-    if (e === 100) lr *= 0.5;
+    if (err < 3.0 && e > 10) { converged = true; break; }
+    if (e === 25)  lr *= 0.5;
+    if (e === 40)  lr *= 0.5;
   }
 
   // ── Train forecaster head ─────────────────────────────────────────
@@ -243,10 +270,10 @@ function scoreStockFull(closes: number[], riskTier = 4): {
   for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
   let vlr = 0.001;
 
-  for (let e = 0; e < 80; e++) {
+  for (let e = 0; e < 40; e++) {
     const shuffled = [...vWins].sort(() => Math.random() - 0.5);
     for (const win of shuffled) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
-    if (e === 40) vlr *= 0.5;
+    if (e === 20) vlr *= 0.5;
   }
 
   const vFwWins: number[][] = [], vFwTgts: number[][] = [];
@@ -366,6 +393,7 @@ async function fetchThematicBias(supabase: ReturnType<typeof createClient>): Pro
     Technology:1.0, "Aerospace & Defense":1.0, Biotech:1.0, Consumer:1.0,
     "Utilities & Energy":1.0, Financials:1.0, "Fixed Income":1.0,
     "Real Assets":1.0, "Income & Dividends":1.0, "Commodities & Sectors":1.0,
+    "Quantum Computing":1.0,
   };
   try {
     const { data } = await supabase.from("geopolitical_sentiment")
@@ -376,19 +404,22 @@ async function fetchThematicBias(supabase: ReturnType<typeof createClient>): Pro
     const events = (data[0].key_events || []) as { region:string; impact:string }[];
 
     if (score >= 60) {
-      bias["Aerospace & Defense"] = score >= 75 ? 2.0 : 1.6;
-      bias["Utilities & Energy"]  = score >= 75 ? 1.8 : 1.4;
-      bias["Real Assets"]         = score >= 75 ? 1.5 : 1.3;
+      bias["Aerospace & Defense"]  = score >= 75 ? 2.0 : 1.6;
+      bias["Utilities & Energy"]   = score >= 75 ? 1.8 : 1.4;
+      bias["Real Assets"]          = score >= 75 ? 1.5 : 1.3;
       bias["Commodities & Sectors"] = 1.4;
-      bias["Technology"]          = score >= 75 ? 0.8 : 0.9;
+      bias["Technology"]           = score >= 75 ? 0.8 : 0.9;
+      bias["Quantum Computing"]    = 1.3; // defense contracts (DARPA, Golden Dome)
     } else if (score >= 30) {
-      bias["Aerospace & Defense"] = 1.2;
-      bias["Technology"]          = 1.1;
-      bias["Utilities & Energy"]  = 1.1;
+      bias["Aerospace & Defense"]  = 1.2;
+      bias["Technology"]           = 1.1;
+      bias["Utilities & Energy"]   = 1.1;
+      bias["Quantum Computing"]    = 1.2; // AI + defense theme active
     } else {
-      bias["Technology"]          = 1.4;
-      bias["Biotech"]             = 1.3;
-      bias["Consumer"]            = 1.2;
+      bias["Technology"]           = 1.4;
+      bias["Quantum Computing"]    = 1.5; // risk-on → speculative growth boosted
+      bias["Biotech"]              = 1.3;
+      bias["Consumer"]             = 1.2;
     }
 
     if (events.some(e => e.region?.toLowerCase().includes("middle east") && e.impact==="high")) {
@@ -491,7 +522,7 @@ serve(async (req) => {
         return (b.combinedScore * biasB) - (a.combinedScore * biasA);
       });
 
-      const shortlist = candidates.slice(0, 15);
+      const shortlist = candidates.slice(0, 8);
       console.log(`${riskProfile}: ${shortlist.length} candidates → running full AE (200 epochs)...`);
 
       // Step 2: Full AE scoring (200 epochs) on top 40 candidates
