@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.hot-stocks]
 verify_jwt = false
 
+[functions.run-hot-stocks-scan]
+verify_jwt = false
+
 [functions.chat-insights]
 verify_jwt = false
 
