@@ -57,6 +57,8 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [hasScanned, setHasScanned] = useState(false);
   const [message, setMessage] = useState("");
   const [riskProfile, setRiskProfile] = useState<RiskProfile>("aggressive");
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [isStale, setIsStale] = useState(false);
 
   const discover = async (profile?: RiskProfile) => {
     const activeProfile = profile ?? riskProfile;
@@ -82,7 +84,10 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       if (data?.stocks) {
         setStocks(data.stocks);
         setHasScanned(true);
+        setLastUpdated(data.ageMinutes ?? null);
+        setIsStale(data.isStale ?? false);
       }
+      if (data?.message) setMessage(data.message);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -138,6 +143,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         )}
         {isScanning ? "Scanning…" : hasScanned ? "Scan Again" : "Discover Hot Stocks"}
       </button>
+
+      {/* Cache age indicator */}
+      {hasScanned && lastUpdated !== null && (
+        <p className={`text-[9px] font-mono text-center ${isStale ? "text-amber-500" : "text-zinc-600"}`}>
+          {isStale ? "⚠️" : "✓"} Last scan: {lastUpdated} min ago
+          {isStale ? " — refreshing in background" : ""}
+        </p>
+      )}
 
       {/* Scanning animation */}
       {isScanning && (
