@@ -211,7 +211,7 @@ function scoreStockFull(closes: number[], riskTier = 4): {
   let converged = false;
   const curNorm = nm[nm.length - 1];
 
-  for (let e = 0; e < 200; e++) {
+  for (let e = 0; e < 120; e++) {
     const shuffled = [...wins].sort(() => Math.random() - 0.5);
     for (const win of shuffled) {
       const f = fwd(win, W);
@@ -220,9 +220,9 @@ function scoreStockFull(closes: number[], riskTier = 4): {
     const lw = nm.slice(nm.length - WS);
     const f = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length-1] - curNorm) / (curNorm||1)) * 100;
-    if (err < 1.0 && e > 20) { converged = true; break; }
-    if (e === 80)  lr *= 0.5;
-    if (e === 150) lr *= 0.5;
+    if (err < 1.5 && e > 15) { converged = true; break; }
+    if (e === 60)  lr *= 0.5;
+    if (e === 100) lr *= 0.5;
   }
 
   // ── Train forecaster head ─────────────────────────────────────────
@@ -243,10 +243,10 @@ function scoreStockFull(closes: number[], riskTier = 4): {
   for (let i = 0; i + WS <= tNm.length; i++) vWins.push(tNm.slice(i, i + WS));
   let vlr = 0.001;
 
-  for (let e = 0; e < 150; e++) {
+  for (let e = 0; e < 80; e++) {
     const shuffled = [...vWins].sort(() => Math.random() - 0.5);
     for (const win of shuffled) { const f = fwd(win, Wv); Wv = bwd(win, f, Wv, vlr); }
-    if (e === 75) vlr *= 0.5;
+    if (e === 40) vlr *= 0.5;
   }
 
   const vFwWins: number[][] = [], vFwTgts: number[][] = [];
@@ -416,13 +416,21 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const profiles = ["conservative", "moderate", "aggressive"];
+    // Accept single profile per call to stay within resource limits
+    // pg_cron calls this 3 times with different profiles
+    let body: { riskProfile?: string; triggered_by?: string } = {};
+    try { body = await req.json(); } catch { /* no body */ }
+    const riskProfile = ["conservative","moderate","aggressive"].includes(body.riskProfile||"")
+      ? body.riskProfile!
+      : "aggressive";
+
     const sectorBias   = await fetchSectorBias(FMP_API_KEY);
     const thematicBias = await fetchThematicBias(supabase);
 
-    console.log("Starting full scan for all profiles...");
+    console.log(`Starting scan for profile: ${riskProfile}`);
 
-    for (const riskProfile of profiles) {
+    // Single profile per invocation
+    {
       const allowedTiers = RISK_PROFILE_TIERS[riskProfile];
 
       // Build symbol list for this profile
@@ -483,8 +491,8 @@ serve(async (req) => {
         return (b.combinedScore * biasB) - (a.combinedScore * biasA);
       });
 
-      const shortlist = candidates.slice(0, 40);
-      console.log(`${riskProfile}: ${shortlist.length} candidates → running full AE...`);
+      const shortlist = candidates.slice(0, 15);
+      console.log(`${riskProfile}: ${shortlist.length} candidates → running full AE (200 epochs)...`);
 
       // Step 2: Full AE scoring (200 epochs) on top 40 candidates
       const buySignals: unknown[] = [];
