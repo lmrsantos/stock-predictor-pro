@@ -141,56 +141,60 @@ serve(async (req) => {
       return true;
     }
 
-    // Process sequentially in batches of 3 with throttling --------------------
-    let refreshed = 0;
-    let failed = 0;
-    const BATCH = 3;
-    const BATCH_DELAY_MS = 1500;
+    // Run backfill in background so we don't hit gateway timeout ------------
+    const work = (async () => {
+      let refreshed = 0;
+      let failed = 0;
+      const BATCH = 3;
+      const BATCH_DELAY_MS = 1500;
 
-    for (let i = 0; i < stale.length; i += BATCH) {
-      const batch = stale.slice(i, i + BATCH);
+      for (let i = 0; i < stale.length; i += BATCH) {
+        const batch = stale.slice(i, i + BATCH);
 
-      await Promise.allSettled(batch.map(async (symbol) => {
-        try {
-          let rows: Row[] | null = null;
+        await Promise.allSettled(batch.map(async (symbol) => {
+          try {
+            let rows: Row[] | null = null;
 
-          // Attempt FMP, with 1 retry on 429 (after a backoff)
-          let result = await fetchFMP(symbol);
-          if (result && "retry" in result) {
-            await new Promise(r => setTimeout(r, 2000));
-            result = await fetchFMP(symbol);
+            let result = await fetchFMP(symbol);
+            if (result && "retry" in result) {
+              await new Promise(r => setTimeout(r, 2000));
+              result = await fetchFMP(symbol);
+            }
+            if (Array.isArray(result)) rows = result;
+
+            if (!rows) rows = await fetchYahoo(symbol);
+
+            if (!rows) { failed++; console.warn(`${symbol}: no data from FMP or Yahoo`); return; }
+
+            const ok = await upsert(symbol, rows);
+            if (ok) { refreshed++; console.log(`✓ ${symbol}: ${rows.length} rows`); }
+            else failed++;
+          } catch (e) {
+            console.error(`${symbol}: ${(e as Error).message}`);
+            failed++;
           }
-          if (Array.isArray(result)) rows = result;
+        }));
 
-          // Fallback to Yahoo if FMP didn't return rows
-          if (!rows) rows = await fetchYahoo(symbol);
-
-          if (!rows) { failed++; console.warn(`${symbol}: no data from FMP or Yahoo`); return; }
-
-          const ok = await upsert(symbol, rows);
-          if (ok) { refreshed++; console.log(`✓ ${symbol}: ${rows.length} rows`); }
-          else failed++;
-        } catch (e) {
-          console.error(`${symbol}: ${(e as Error).message}`);
-          failed++;
+        if (i + BATCH < stale.length) {
+          await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
         }
-      }));
-
-      if (i + BATCH < stale.length) {
-        await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
       }
-    }
 
-    console.log(`Backfill complete: ${refreshed} refreshed, ${failed} failed`);
+      console.log(`Backfill complete: ${refreshed} refreshed, ${failed} failed`);
+    })();
+
+    // @ts-ignore — EdgeRuntime is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(work);
+    else work.catch((e) => console.error("background work error:", e));
 
     return new Response(JSON.stringify({
       success: true,
+      message: "Backfill started in background",
       total: UNIVERSE.length,
       alreadyFresh: UNIVERSE.length - stale.length,
-      refreshed,
-      failed,
+      queued: stale.length,
       staleTickers: stale,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 });
 
   } catch (error) {
     console.error("Backfill error:", error);
