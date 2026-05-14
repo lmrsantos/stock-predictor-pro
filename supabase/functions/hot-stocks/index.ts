@@ -61,7 +61,7 @@ serve(async (req) => {
                 "Authorization": `Bearer ${serviceKey}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ triggered_by: "hot-stocks-stale" }),
+              body: JSON.stringify({ riskProfile, triggered_by: "hot-stocks-stale" }),
             }).catch(e => console.warn("Background scan trigger failed:", e));
             console.log(`Cache stale (${ageMin} min) — triggered background refresh`);
           }
@@ -80,22 +80,24 @@ serve(async (req) => {
       } catch { /* fall through */ }
     }
 
-    // No cache yet — trigger scan and return empty with message
+    // No cache yet — trigger scan for this profile and return status
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
     fetch(`${supabaseUrl}/functions/v1/run-hot-stocks-scan`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${serviceKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ triggered_by: "hot-stocks-cold-start" }),
+      body: JSON.stringify({ riskProfile, triggered_by: "hot-stocks-cold-start" }),
     }).catch(e => console.warn("Background scan trigger failed:", e));
 
     return new Response(JSON.stringify({
       stocks: [],
       cached: false,
-      message: "First scan running in background — check back in 2-3 minutes",
+      scanning: true,
+      message: `Scanning ${riskProfile} profile for the first time — results ready in ~3 minutes. Click "Scan Again" after waiting.`,
       riskProfile,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
