@@ -251,6 +251,10 @@ async function callClaude(
 
   if (!res.ok) {
     const err = await res.text();
+    // Graceful handling for rate limits — return a friendly message instead of crashing
+    if (res.status === 429) {
+      return "I'm temporarily rate-limited by the analysis provider (too many tokens this minute). Give me about 60 seconds and ask again — your context is saved.";
+    }
     // Fallback without web search if tool not supported
     if (res.status === 400 && err.includes("tool")) {
       const fallback = await fetch("https://api.anthropic.com/v1/messages", {
