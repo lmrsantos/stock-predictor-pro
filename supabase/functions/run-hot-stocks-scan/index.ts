@@ -475,20 +475,26 @@ serve(async (req) => {
         }
       }
 
-      // Fetch prices from DB for all symbols
+      // Fetch prices from DB — last 260 trading days only (1 year)
       const allTickers = [...new Set(allSymbols.map(s => s.symbol))];
+      const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+        .toISOString().split("T")[0];
       const { data: priceRows } = await supabase
         .from("stock_prices")
-        .select("ticker, close, date")
+        .select("ticker, close")
         .in("ticker", allTickers)
+        .gte("date", oneYearAgo)
         .order("date", { ascending: true });
 
-      // Group closes by ticker
+      // Group closes by ticker — filter out symbols with insufficient data
       const closesByTicker: Record<string, number[]> = {};
       for (const row of (priceRows || [])) {
         if (!closesByTicker[row.ticker]) closesByTicker[row.ticker] = [];
         closesByTicker[row.ticker].push(Number(row.close));
       }
+      // Log coverage
+      const covered = Object.keys(closesByTicker).length;
+      console.log(`${riskProfile}: ${covered}/${allTickers.length} symbols have price data in DB`);
 
       // Step 1: Linear regression pre-filter — fast, no training needed
       const candidates: {
