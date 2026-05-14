@@ -59,6 +59,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [riskProfile, setRiskProfile] = useState<RiskProfile>("aggressive");
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [isStale, setIsStale] = useState(false);
+  const [isBackgroundScanning, setIsBackgroundScanning] = useState(false);
 
   const discover = async (profile?: RiskProfile) => {
     const activeProfile = profile ?? riskProfile;
@@ -86,6 +87,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         setHasScanned(true);
         setLastUpdated(data.ageMinutes ?? null);
         setIsStale(data.isStale ?? false);
+        setIsBackgroundScanning(data.scanning ?? false);
       }
       if (data?.message) setMessage(data.message);
     } catch (e) {
@@ -171,11 +173,25 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         </div>
       )}
 
-      {/* No results */}
+      {/* No results / scanning states */}
       {hasScanned && stocks.length === 0 && !isScanning && (
-        <p className="text-xs text-muted-foreground text-center py-2">
-          {message || "No strong candidates found right now. Try again later."}
-        </p>
+        <div className="text-center py-4 space-y-2">
+          {isBackgroundScanning ? (
+            <>
+              <div className="flex items-center justify-center gap-2 text-xs font-mono text-sky-400">
+                <div className="w-3 h-3 border border-sky-400/40 border-t-sky-400 rounded-full animate-spin" />
+                Running first scan in background...
+              </div>
+              <p className="text-[10px] font-mono text-zinc-500">
+                {message}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {message || "No strong BUY signals found right now. Market conditions may be mixed — try again later or switch profiles."}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Results */}
