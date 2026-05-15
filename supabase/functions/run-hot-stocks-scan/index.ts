@@ -178,14 +178,16 @@ function normPx(prices:number[]){
 }
 const dn=(v:number,mn:number,mx:number)=>v*(mx-mn)+mn;
 
-function scoreStock(closes:number[],riskTier=4):{
+interface ScoreResult {
   signal:"BUY"|"SELL"|"WAIT"|"STAY OUT";
   confidence:number;forecastPct:number;
   forecastDays:number;forecastLabel:string;
   walkForwardAccuracy:number;hitRate:number;
   regime:"NORMAL"|"SHIFTED"|"EXTREME";
   converged:boolean;
-}|null{
+}
+
+function scoreStock(closes:number[],riskTier=4): ScoreResult|null {
   const FD=riskTier===1?45:riskTier===2?30:riskTier===3?20:15;
   const FL=FD>=45?"~2 months":FD>=30?"~6 weeks":FD>=20?"~1 month":"~3 weeks";
   const minData=WS+FD+20;
@@ -474,7 +476,7 @@ serve(async(req)=>{
       if(!qs) continue;
 
       console.log(`  AE: ${symbol} (${closes.length} bars)...`);
-      const scored=scoreStock(closes,riskTier);
+      const scored: ScoreResult|null=scoreStock(closes,riskTier);
       if(!scored) continue;
 
       console.log(`  ${symbol}: ${scored.signal} conf=${scored.confidence} hit=${scored.hitRate}% fPct=${scored.forecastPct}%`);
