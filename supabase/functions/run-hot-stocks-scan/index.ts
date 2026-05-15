@@ -444,20 +444,24 @@ serve(async(req)=>{
     ]);
 
     // ── Step 1: Linear regression pre-filter — rank ALL symbols ─────
-    // Fast pass to find top 20 candidates for full AE scoring
     const candidates:{symbol:string;sector:string;riskTier:number;
       closes:number[];combinedScore:number;breakout:boolean}[]=[];
 
+    let noData=0, tooShort=0, noQS=0, passed=0;
     for(const {symbol,sector,riskTier} of allSymbols){
       const closes=closesByTicker[symbol];
-      if(!closes||closes.length<60) continue;
+      if(!closes){noData++;continue;}
+      if(closes.length<30){tooShort++;continue;}
       const qs=quickScore(closes);
-      if(!qs) continue;
-      // Only pass symbols with positive recent momentum
-      if(qs.recentReturn<-0.05&&qs.annualReturn<-0.05) continue;
+      if(!qs){noQS++;continue;}
+      // Log first few symbols to diagnose
+      if(passed<5||noData===0&&tooShort===0&&noQS===0)
+        console.log(`  ${symbol}: ${closes.length} bars, recentRet=${qs.recentReturn.toFixed(3)}, annualRet=${qs.annualReturn.toFixed(3)}, combinedScore=${qs.combinedScore.toFixed(3)}`);
+      passed++;
       candidates.push({symbol,sector,riskTier,closes,
         combinedScore:qs.combinedScore,breakout:qs.breakout});
     }
+    console.log(`Pre-filter: ${passed} passed, ${noData} no-data, ${tooShort} too-short, ${noQS} no-qs → top 20 for AE`);
 
     // Sort by momentum × biases, take top 20 for full AE
     candidates.sort((a,b)=>{
