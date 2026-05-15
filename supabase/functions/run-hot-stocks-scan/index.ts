@@ -480,7 +480,7 @@ serve(async(req)=>{
       const biasB=(sectorBias[b.sector]??1.0)*(thematicBias[b.sector]??1.0);
       return(b.combinedScore*biasB)-(a.combinedScore*biasA);
     });
-    const shortlist=candidates.slice(0,20);
+    const shortlist=candidates.slice(0,10);
     console.log(`Pre-filter: ${candidates.length} candidates → top ${shortlist.length} for AE`);
 
     // ── Step 2: Full AE scoring on top 20 candidates ─────────────────
