@@ -425,11 +425,21 @@ serve(async(req)=>{
     const allTickers=[...new Set(allSymbols.map(s=>s.symbol))];
     const oneYearAgo=new Date(Date.now()-365*24*60*60*1000).toISOString().split("T")[0];
 
-    const {data:priceRows}=await supabase
-      .from("stock_prices").select("ticker,close")
-      .in("ticker",allTickers).gte("date",oneYearAgo)
-      .order("date",{ascending:true})
-      .limit(100000);
+    // Paginate — PostgREST caps responses at ~1000 rows regardless of .limit()
+    const priceRows: { ticker: string; close: number }[] = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error } = await supabase
+        .from("stock_prices").select("ticker,close")
+        .in("ticker", allTickers).gte("date", oneYearAgo)
+        .order("date", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) { console.error("price page error:", error.message); break; }
+      if (!page || page.length === 0) break;
+      priceRows.push(...page);
+      if (page.length < PAGE) break;
+    }
+    console.log(`Fetched ${priceRows.length} price rows across ${allTickers.length} tickers`);
 
     const closesByTicker:Record<string,number[]>={};
     for(const row of (priceRows||[])){
