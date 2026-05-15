@@ -462,8 +462,7 @@ serve(async(req)=>{
     for(const {symbol,sector,riskTier} of allSymbols){
       const closes=closesByTicker[symbol];
       if(!closes){noData++;continue;}
-      if(closes.length<30){console.log(`  TOO-SHORT: ${symbol} has ${closes.length} bars`);tooShort++;continue;}
-      console.log(`  OK: ${symbol} has ${closes.length} bars`);
+      if(closes.length<30){tooShort++;continue;}
       const qs=quickScore(closes);
       if(!qs){noQS++;continue;}
       // Log first few symbols to diagnose
