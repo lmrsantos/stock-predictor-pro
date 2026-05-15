@@ -154,7 +154,7 @@ serve(async (req) => {
     const allTickers = [...new Set(allSymbols.map(s => s.symbol))];
 
     // Fetch ALL price data using pagination to bypass 1000 row limit
-    const PAGE_SIZE = 10000;
+    const PAGE_SIZE = 1000;
     let allRows: { ticker: string; close: number }[] = [];
     let page = 0;
     while (true) {
