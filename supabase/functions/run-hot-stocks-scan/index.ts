@@ -425,11 +425,21 @@ serve(async(req)=>{
     const allTickers=[...new Set(allSymbols.map(s=>s.symbol))];
     const oneYearAgo=new Date(Date.now()-365*24*60*60*1000).toISOString().split("T")[0];
 
-    const {data:priceRows}=await supabase
-      .from("stock_prices").select("ticker,close")
-      .in("ticker",allTickers).gte("date",oneYearAgo)
-      .order("date",{ascending:true})
-      .limit(100000);
+    // Paginate — PostgREST caps responses at ~1000 rows regardless of .limit()
+    const priceRows: { ticker: string; close: number }[] = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error } = await supabase
+        .from("stock_prices").select("ticker,close")
+        .in("ticker", allTickers).gte("date", oneYearAgo)
+        .order("date", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) { console.error("price page error:", error.message); break; }
+      if (!page || page.length === 0) break;
+      priceRows.push(...page);
+      if (page.length < PAGE) break;
+    }
+    console.log(`Fetched ${priceRows.length} price rows across ${allTickers.length} tickers`);
 
     const closesByTicker:Record<string,number[]>={};
     for(const row of (priceRows||[])){
@@ -452,8 +462,7 @@ serve(async(req)=>{
     for(const {symbol,sector,riskTier} of allSymbols){
       const closes=closesByTicker[symbol];
       if(!closes){noData++;continue;}
-      if(closes.length<30){console.log(`  TOO-SHORT: ${symbol} has ${closes.length} bars`);tooShort++;continue;}
-      console.log(`  OK: ${symbol} has ${closes.length} bars`);
+      if(closes.length<30){tooShort++;continue;}
       const qs=quickScore(closes);
       if(!qs){noQS++;continue;}
       // Log first few symbols to diagnose
@@ -471,13 +480,15 @@ serve(async(req)=>{
       const biasB=(sectorBias[b.sector]??1.0)*(thematicBias[b.sector]??1.0);
       return(b.combinedScore*biasB)-(a.combinedScore*biasA);
     });
-    const shortlist=candidates.slice(0,20);
+    const shortlist=candidates.slice(0,10);
     console.log(`Pre-filter: ${candidates.length} candidates → top ${shortlist.length} for AE`);
 
     // ── Step 2: Full AE scoring on top 20 candidates ─────────────────
     const buySignals:unknown[]=[];
 
-    for(const {symbol,sector,riskTier,closes,breakout} of shortlist){
+    for(const {symbol,sector,riskTier,closes:fullCloses,breakout} of shortlist){
+      // Cap to last 120 bars (~6 months) to keep AE scoring within worker CPU budget
+      const closes = fullCloses.length > 120 ? fullCloses.slice(-120) : fullCloses;
       const qs=quickScore(closes);
       if(!qs) continue;
 
