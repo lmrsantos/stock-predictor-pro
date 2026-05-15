@@ -486,7 +486,9 @@ serve(async(req)=>{
     // ── Step 2: Full AE scoring on top 20 candidates ─────────────────
     const buySignals:unknown[]=[];
 
-    for(const {symbol,sector,riskTier,closes,breakout} of shortlist){
+    for(const {symbol,sector,riskTier,closes:fullCloses,breakout} of shortlist){
+      // Cap to last 120 bars (~6 months) to keep AE scoring within worker CPU budget
+      const closes = fullCloses.length > 120 ? fullCloses.slice(-120) : fullCloses;
       const qs=quickScore(closes);
       if(!qs) continue;
 
