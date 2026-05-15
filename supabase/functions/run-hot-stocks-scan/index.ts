@@ -428,7 +428,8 @@ serve(async(req)=>{
     const {data:priceRows}=await supabase
       .from("stock_prices").select("ticker,close")
       .in("ticker",allTickers).gte("date",oneYearAgo)
-      .order("date",{ascending:true});
+      .order("date",{ascending:true})
+      .limit(100000);
 
     const closesByTicker:Record<string,number[]>={};
     for(const row of (priceRows||[])){
