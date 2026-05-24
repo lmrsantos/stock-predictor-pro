@@ -250,14 +250,23 @@ function scoreStock(closes: number[], riskTier = 4): {
   const pen = regime==="EXTREME"?-25:regime==="SHIFTED"?-10:0;
   const confidence = Math.min(100, Math.max(0, s1+s2+s3+s4+s5+pen));
 
-  const minConf  = riskTier===1?20:riskTier===2?25:30;
-  const minHit   = riskTier===1?45:riskTier===2?48:52;
-  const stayOut  = riskTier===1?35:riskTier===2?38:42;
+  const minConf  = riskTier===1?10:riskTier===2?12:15;
+  const minHit   = riskTier===1?38:riskTier===2?40:42;
+  const stayOut  = riskTier===1?25:riskTier===2?27:30;
+
+  // ── Dip-buying override ──────────────────────────────────────────
+  // If full-year trend is very strong but recent pullback < 15%,
+  // treat as consolidation not reversal → lower bar for BUY
+  const qs2 = quickScore(closes);
+  const fullYearStrong = qs2 && qs2.annualReturn > 0.25 && qs2.rSquared > 0.5;
+  const recentPullback = qs2 && qs2.recentReturn < 0 && qs2.recentReturn > -0.15;
+  const isDipBuying = fullYearStrong && recentPullback;
 
   let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
-  if (regime==="EXTREME"||hitRate<stayOut)                   signal = "STAY OUT";
-  else if (confidence>=minConf&&fPct>0&&hitRate>=minHit)     signal = "BUY";
-  else if (confidence>=minConf&&fPct<0&&hitRate>=minHit)     signal = "SELL";
+  if (regime==="EXTREME"||hitRate<stayOut)                                         signal = "STAY OUT";
+  else if (isDipBuying && confidence >= minConf*0.7 && hitRate >= minHit*0.9)      signal = "BUY"; // dip buy
+  else if (confidence>=minConf&&fPct>0&&hitRate>=minHit)                           signal = "BUY";
+  else if (confidence>=minConf&&fPct<0&&hitRate>=minHit)                           signal = "SELL";
 
   return {
     signal, confidence: Math.round(confidence*10)/10,
@@ -324,7 +333,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         await new Promise(r => setTimeout(r, 0));
 
         const scored = scoreStock(c.closes, c.riskTier);
-        if (!scored || scored.signal !== "BUY") continue;
+        console.log(`${c.symbol}: ${scored?.signal} conf=${scored?.confidence} hit=${scored?.hitRate} fPct=${scored?.forecastPct}`);
+        if (!scored) continue;
+        // Include BUY signals AND strong WAIT signals (top momentum)
+        if (scored.signal !== "BUY" && scored.signal !== "WAIT") continue;
+        if (scored.signal === "WAIT" && scored.confidence < 20) continue;
+        // Tag signal strength for UI
+        const effectiveSignal = scored.signal;
+        if (effectiveSignal !== "BUY") continue; // strict BUY only for now
 
         buySignals.push({
           symbol:              c.symbol,
