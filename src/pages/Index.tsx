@@ -27,6 +27,7 @@ const Index = () => {
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [activeView, setActiveView] = useState<"chart" | "advisor">("chart");
   const tableRef = useRef<HTMLDivElement>(null);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
