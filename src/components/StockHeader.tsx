@@ -42,6 +42,8 @@ export function StockHeader({
   website,
   irWebsite,
   onRunBacktest,
+  activeView = "chart",
+  onViewChange,
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
