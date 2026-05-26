@@ -25,6 +25,8 @@ interface StockHeaderProps {
   website?: string | null;
   irWebsite?: string | null;
   onRunBacktest?: () => void;
+  activeView?: "chart" | "advisor";
+  onViewChange?: (view: "chart" | "advisor") => void;
 }
 
 export function StockHeader({
