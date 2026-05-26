@@ -25,6 +25,8 @@ interface StockHeaderProps {
   website?: string | null;
   irWebsite?: string | null;
   onRunBacktest?: () => void;
+  activeView?: "chart" | "advisor";
+  onViewChange?: (view: "chart" | "advisor") => void;
 }
 
 export function StockHeader({
@@ -40,6 +42,8 @@ export function StockHeader({
   website,
   irWebsite,
   onRunBacktest,
+  activeView = "chart",
+  onViewChange,
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
@@ -140,6 +144,19 @@ export function StockHeader({
           >
             💰 Simulator
           </button>
+          {onViewChange && (
+            <button
+              onClick={() => onViewChange(activeView === "advisor" ? "chart" : "advisor")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeView === "advisor"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-accent"
+              }`}
+            >
+              <span className="text-base">💼</span>
+              Advisor
+            </button>
+          )}
         </div>
       </header>
 

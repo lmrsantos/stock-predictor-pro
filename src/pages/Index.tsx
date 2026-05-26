@@ -10,6 +10,7 @@ import { MarketTicker } from "@/components/MarketTicker";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
+import { PortfolioAdvisor } from "@/components/PortfolioAdvisor";
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
@@ -26,6 +27,7 @@ const Index = () => {
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [activeView, setActiveView] = useState<"chart" | "advisor">("chart");
   const tableRef = useRef<HTMLDivElement>(null);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
@@ -231,6 +233,8 @@ const Index = () => {
           website={website}
           irWebsite={irWebsite}
           onRunBacktest={() => setShowBacktest(true)}
+          activeView={activeView}
+          onViewChange={setActiveView}
         />
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
@@ -239,6 +243,8 @@ const Index = () => {
               <p className="text-muted-foreground text-xs">{(error as Error).message}</p>
             </div>
           </div>
+        ) : activeView === "advisor" ? (
+          <PortfolioAdvisor />
         ) : (
           <>
             <RegressionChart
