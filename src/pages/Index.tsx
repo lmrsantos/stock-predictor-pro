@@ -233,6 +233,8 @@ const Index = () => {
           website={website}
           irWebsite={irWebsite}
           onRunBacktest={() => setShowBacktest(true)}
+          activeView={activeView}
+          onViewChange={setActiveView}
         />
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
@@ -241,6 +243,8 @@ const Index = () => {
               <p className="text-muted-foreground text-xs">{(error as Error).message}</p>
             </div>
           </div>
+        ) : activeView === "advisor" ? (
+          <PortfolioAdvisor />
         ) : (
           <>
             <RegressionChart
