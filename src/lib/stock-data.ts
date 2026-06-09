@@ -81,14 +81,20 @@ export async function getStockDataFromDB(
   const days = periodDays[period] || 365;
   const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
+  // Order descending + cap range so PostgREST's default 1000-row limit
+  // can't silently truncate the most-recent rows (matters for 5y ≈ 1256 rows).
   const { data, error } = await supabase
     .from("stock_prices")
     .select("date, open, high, low, close, volume")
     .eq("ticker", ticker.toUpperCase())
     .gte("date", startDate.toISOString().split("T")[0])
-    .order("date", { ascending: true });
+    .order("date", { ascending: false })
+    .range(0, 2999);
 
   if (error) throw new Error(`DB query failed: ${error.message}`);
+
+  // Reverse to ascending order for downstream consumers (charts, regression).
+  data?.reverse();
 
   return (data || []).map((row) => ({
     date: row.date,
