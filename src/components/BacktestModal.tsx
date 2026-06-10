@@ -1,5 +1,6 @@
 // components/BacktestModal.tsx
 import { useState, useEffect } from "react";
+import { CycleAnalysisPanel } from "@/components/CycleAnalysis";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine, Legend,
@@ -449,7 +450,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
   const [dataPoints, setDataPoints] = useState<{ date: string; timestamp: number; actual: number }[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataReady, setDataReady]   = useState(false);
-  const [activeTab, setActiveTab]   = useState<"forecast" | "calibration" | "regime">("forecast");
+  const [activeTab, setActiveTab]   = useState<"forecast" | "calibration" | "regime" | "cycle">("forecast");
 
   useEffect(() => {
     if (!isOpen || !ticker) return;
@@ -649,6 +650,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                   { id: "forecast",    label: "Forecast + Cone" },
                   { id: "calibration", label: "Model Calibration" },
                   { id: "regime",      label: "Regime Detection" },
+                  { id: "cycle",       label: "Cycle Analysis" },
                 ] as const).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     className={`px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? "border-sky-500 text-sky-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
@@ -682,6 +684,13 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                       Above 2.5× — do not act on the forecast.
                     </p>
                   </div>
+                )}
+                {activeTab === "cycle" && (
+                  <CycleAnalysisPanel
+                    ticker={ticker}
+                    prices={dataPoints.map(d => d.actual)}
+                    dates={dataPoints.map(d => d.date)}
+                  />
                 )}
               </div>
             </>
