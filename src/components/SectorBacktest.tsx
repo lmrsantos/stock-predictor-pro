@@ -107,7 +107,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker }: Props) {
               Sector Backtest
               <InfoTooltip
                 title="Sector Backtest"
-                whatIsIt="Runs the calibration-by-hindsight backtest model across every ticker in a sector and ranks them by confidence."
+                what="Runs the calibration-by-hindsight backtest model across every ticker in a sector and ranks them by confidence."
                 howToRead="The model fits 5 trend windows (10–40 days) and picks the one that best predicted today's price from 6 months ago. The same model then projects the next 30 days. Higher confidence = lower error + higher R² + better ensemble agreement + stable regime."
               />
             </h2>
