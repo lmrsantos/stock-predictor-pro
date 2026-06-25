@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
@@ -6,7 +7,8 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
-import { Briefcase } from "lucide-react";
+import { SectorBacktest } from "./SectorBacktest";
+import { Briefcase, BarChart3 } from "lucide-react";
 
 
 interface SidebarProps {
