@@ -291,6 +291,13 @@ export function Sidebar({
       {/* Navigation Links */}
       <div className="space-y-2">
         <label className="label-upper">Tools</label>
+        <button
+          onClick={() => setSectorOpen(true)}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <BarChart3 className="w-4 h-4" />
+          Sector Backtest
+        </button>
         <Link
           to="/portfolio"
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
@@ -299,6 +306,15 @@ export function Sidebar({
           My Portfolio
         </Link>
       </div>
+
+      <SectorBacktest
+        isOpen={sectorOpen}
+        onClose={() => setSectorOpen(false)}
+        onSelectTicker={(symbol) => {
+          onSearchInputChange(symbol);
+          onSearch(symbol);
+        }}
+      />
 
     </aside>
   );
