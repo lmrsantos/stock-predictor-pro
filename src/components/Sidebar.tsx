@@ -58,6 +58,7 @@ export function Sidebar({
   fundamentals,
   ticker,
 }: SidebarProps) {
+  const [sectorOpen, setSectorOpen] = useState(false);
   const annualReturn = regression && lastPrice
     ? slopeToAnnualReturn(regression.slope, lastPrice)
     : null;
