@@ -181,17 +181,19 @@ function scoreStock(closes: number[], riskTier = 4): {
   const wins: number[][] = [];
   for (let i = 0; i+WS <= nm.length; i++) wins.push(nm.slice(i, i+WS));
 
-  let W = initAE(), lr = 0.001, converged = false;
+  let W = initAE(), lr = 0.0003, converged = false;
   const curNorm = nm[nm.length-1];
   for (let e = 0; e < 200; e++) {
     const shuffled = [...wins].sort(() => Math.random()-0.5);
     for (const win of shuffled) { const f = fwd(win, W); W = bwd(win, f, W, lr); }
     const lw = nm.slice(nm.length-WS), f = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length-1] - curNorm)/(curNorm||1))*100;
+    if (!Number.isFinite(err)) return null;
     if (err < 1.0 && e > 20) { converged = true; break; }
     if (e === 80)  lr *= 0.5;
     if (e === 150) lr *= 0.5;
   }
+
 
   const fwWins: number[][] = [], fwTgts: number[][] = [];
   for (let i = 0; i+WS+FD <= nm.length; i++) {
@@ -204,7 +206,7 @@ function scoreStock(closes: number[], riskTier = 4): {
   const trainC = closes.slice(0, closes.length-HOLD);
   const held   = closes.slice(closes.length-HOLD);
   const { n: tNm, mn: tMn, mx: tMx } = normPx(trainC);
-  let Wv = initAE(), vlr = 0.001;
+  let Wv = initAE(), vlr = 0.0003;
   const vWins: number[][] = [];
   for (let i = 0; i+WS <= tNm.length; i++) vWins.push(tNm.slice(i, i+WS));
   for (let e = 0; e < 150; e++) {
@@ -252,7 +254,9 @@ function scoreStock(closes: number[], riskTier = 4): {
   const s4 = regime==="NORMAL"?15:regime==="SHIFTED"?5:0;
   const s5 = Math.max(0, 1-mape/20)*10;
   const pen = regime==="EXTREME"?-25:regime==="SHIFTED"?-10:0;
-  const confidence = Math.min(100, Math.max(0, s1+s2+s3+s4+s5+pen));
+  const confidence = Number.isFinite(s1+s2+s3+s4+s5+pen) ? Math.min(100, Math.max(0, s1+s2+s3+s4+s5+pen)) : 0;
+  if (!Number.isFinite(fPct)) return null;
+
 
   const minConf  = riskTier===1?10:riskTier===2?12:15;
   const minHit   = riskTier===1?38:riskTier===2?40:42;
