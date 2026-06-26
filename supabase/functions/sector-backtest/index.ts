@@ -15,7 +15,8 @@ const corsHeaders = {
 
 // Curated sector universes (large-cap, liquid US-listed).
 const CURATED_UNIVERSES: Record<string, string[]> = {
-  "Semiconductors":      ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU","ASML","MRVL","NXPI","ADI","TXN","ON","MCHP","SWKS","QRVO","MPWR","ARM","SMCI","WOLF","ENPH","STM"],
+  "Semiconductors":      ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU","ASML","MRVL","NXPI","ADI","TXN","ON","MCHP","SWKS","QRVO","MPWR","ARM","SMCI","WOLF","STM","TER","ENTG","ALAB","CRDO","SITM","RMBS"],
+  "Solar & Clean Energy":["ENPH","FSLR","SEDG","RUN","NOVA","ARRY","SHLS","CSIQ","JKS","PLUG","BE","BLDP","FCEL"],
   "Software":            ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY","TEAM","DDOG","CRWD","SNOW","NET","ZS","MDB","HUBS","DOCU","OKTA","ZM","SHOP"],
   "Mega-cap Tech":       ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
   "Banks":               ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW","COF","BK","STT","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
