@@ -86,6 +86,7 @@ function fwd(input: number[], w: AEW) {
   const forecast = affine(w.Wf2, w.bf2, hf1);
   return { he1pre, he1, latent, hd1pre, hd1, recon, hf1pre, hf1, forecast };
 }
+const cw = (x: number) => Math.max(-3, Math.min(3, x));
 function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AEW {
   const clip = (x: number) => Math.max(-1, Math.min(1, x));
   const n = input.length, dR = f.recon.map((r, i) => clip((2/n)*(r - input[i])));
@@ -98,8 +99,8 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
   const dHe1  = f.he1.map((_,j) => dLat.reduce((s,g,i) => s+g*w.We2[i][j], 0));
   const dHe1p = dHe1.map((g,i) => clip(g*reluGrad(f.he1pre[i])));
   const dWe1  = dHe1p.map(g => input.map(x => g*x));
-  const up  = (M: number[][], dM: number[][]) => M.map((r,i) => r.map((v,j) => v - lr*clip(dM[i][j])));
-  const upV = (b: number[], db: number[]) => b.map((v,i) => v - lr*clip(db[i]));
+  const up  = (M: number[][], dM: number[][]) => M.map((r,i) => r.map((v,j) => cw(v - lr*clip(dM[i][j]))));
+  const upV = (b: number[], db: number[]) => b.map((v,i) => cw(v - lr*clip(db[i])));
   return {
     We1:up(w.We1,dWe1), be1:upV(w.be1,dHe1p),
     We2:up(w.We2,dWe2), be2:upV(w.be2,dLat),
@@ -108,6 +109,7 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
     Wf1:w.Wf1, bf1:w.bf1, Wf2:w.Wf2, bf2:w.bf2,
   };
 }
+
 
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   const clip = (x: number) => Math.max(-1, Math.min(1, x));
