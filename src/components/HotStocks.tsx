@@ -87,18 +87,19 @@ function fwd(input: number[], w: AEW) {
   return { he1pre, he1, latent, hd1pre, hd1, recon, hf1pre, hf1, forecast };
 }
 function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AEW {
-  const n = input.length, dR = f.recon.map((r, i) => (2/n)*(r - input[i]));
+  const clip = (x: number) => Math.max(-1, Math.min(1, x));
+  const n = input.length, dR = f.recon.map((r, i) => clip((2/n)*(r - input[i])));
   const dWd2  = dR.map(g => f.hd1.map(h => g*h));
   const dHd1  = f.hd1.map((_,j) => dR.reduce((s,g,i) => s+g*w.Wd2[i][j], 0));
-  const dHd1p = dHd1.map((g,i) => g*reluGrad(f.hd1pre[i]));
+  const dHd1p = dHd1.map((g,i) => clip(g*reluGrad(f.hd1pre[i])));
   const dWd1  = dHd1p.map(g => f.latent.map(l => g*l));
-  const dLat  = f.latent.map((_,j) => dHd1p.reduce((s,g,i) => s+g*w.Wd1[i][j], 0));
+  const dLat  = f.latent.map((_,j) => clip(dHd1p.reduce((s,g,i) => s+g*w.Wd1[i][j], 0)));
   const dWe2  = dLat.map(g => f.he1.map(h => g*h));
   const dHe1  = f.he1.map((_,j) => dLat.reduce((s,g,i) => s+g*w.We2[i][j], 0));
-  const dHe1p = dHe1.map((g,i) => g*reluGrad(f.he1pre[i]));
+  const dHe1p = dHe1.map((g,i) => clip(g*reluGrad(f.he1pre[i])));
   const dWe1  = dHe1p.map(g => input.map(x => g*x));
-  const up  = (M: number[][], dM: number[][]) => M.map((r,i) => r.map((v,j) => v - lr*dM[i][j]));
-  const upV = (b: number[], db: number[]) => b.map((v,i) => v - lr*db[i]);
+  const up  = (M: number[][], dM: number[][]) => M.map((r,i) => r.map((v,j) => v - lr*clip(dM[i][j])));
+  const upV = (b: number[], db: number[]) => b.map((v,i) => v - lr*clip(db[i]));
   return {
     We1:up(w.We1,dWe1), be1:upV(w.be1,dHe1p),
     We2:up(w.We2,dWe2), be2:upV(w.be2,dLat),
@@ -107,26 +108,29 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
     Wf1:w.Wf1, bf1:w.bf1, Wf2:w.Wf2, bf2:w.bf2,
   };
 }
+
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
+  const clip = (x: number) => Math.max(-1, Math.min(1, x));
   let wt = { ...w };
   for (let e = 0; e < 80; e++) {
     for (let i = 0; i < wins.length; i++) {
       const f = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v - tgts[i][j]));
+      const dF = f.forecast.map((v,j) => clip((2/tgts[i].length)*(v - tgts[i][j])));
       const dWf2  = dF.map(g => f.hf1.map(h => g*h));
       const dHf1  = f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j], 0));
-      const dHf1p = dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
+      const dHf1p = dHf1.map((g,i) => clip(g*reluGrad(f.hf1pre[i])));
       const dWf1  = dHf1p.map(g => f.latent.map(l => g*l));
       wt = { ...wt,
-        Wf1: wt.Wf1.map((r,i) => r.map((v,j) => v - lr*dWf1[i][j])),
-        bf1: wt.bf1.map((v,i) => v - lr*dHf1p[i]),
-        Wf2: wt.Wf2.map((r,i) => r.map((v,j) => v - lr*dWf2[i][j])),
-        bf2: wt.bf2.map((v,i) => v - lr*dF[i]),
+        Wf1: wt.Wf1.map((r,i) => r.map((v,j) => v - lr*clip(dWf1[i][j]))),
+        bf1: wt.bf1.map((v,i) => v - lr*clip(dHf1p[i])),
+        Wf2: wt.Wf2.map((r,i) => r.map((v,j) => v - lr*clip(dWf2[i][j]))),
+        bf2: wt.bf2.map((v,i) => v - lr*clip(dF[i])),
       };
     }
   }
   return wt;
 }
+
 
 function normPx(prices: number[]) {
   const mn = Math.min(...prices), mx = Math.max(...prices), rng = mx - mn || 1;
