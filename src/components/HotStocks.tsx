@@ -253,7 +253,8 @@ function scoreStock(closes: number[], riskTier = 4): {
   const curPx  = closes[closes.length-1];
   const anchorShift = curPx - dn(nm[nm.length-1], mn, mx);
   const fPct   = curPx>0?((fPx[fPx.length-1]+anchorShift-curPx)/curPx)*100:0;
-  console.log(`DBG fPx[last]=${fPx[fPx.length-1]} cur=${curPx} mape=${mape} hit=${hitRate} mn=${mn} mx=${mx}`);
+  console.log(`DBG2 finalW.len=${finalW.length} forecast[0]=${finalF.forecast[0]} hf1pre[0]=${finalF.hf1pre[0]} latent=${JSON.stringify(finalF.latent)} W.We1[0][0]=${W.We1[0][0]} W.Wf2[0][0]=${W.Wf2[0][0]}`);
+
 
 
   const s1 = Math.max(0, 1-mape/10)*30;
