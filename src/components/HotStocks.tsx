@@ -250,6 +250,8 @@ function scoreStock(closes: number[], riskTier = 4): {
   const curPx  = closes[closes.length-1];
   const anchorShift = curPx - dn(nm[nm.length-1], mn, mx);
   const fPct   = curPx>0?((fPx[fPx.length-1]+anchorShift-curPx)/curPx)*100:0;
+  console.log(`DBG fPx[last]=${fPx[fPx.length-1]} cur=${curPx} mape=${mape} hit=${hitRate} mn=${mn} mx=${mx}`);
+
 
   const s1 = Math.max(0, 1-mape/10)*30;
   const s2 = Math.max(0, (hitRate-50)/50)*25;
