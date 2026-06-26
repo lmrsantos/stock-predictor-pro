@@ -117,7 +117,9 @@ function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
   for (let e = 0; e < 80; e++) {
     for (let i = 0; i < wins.length; i++) {
       const f = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => clip((2/tgts[i].length)*(v - tgts[i][j])));
+      const tlen = tgts[i].length;
+      const dF = f.forecast.map((v,j) => j < tlen ? clip((2/tlen)*(v - tgts[i][j])) : 0);
+
       const dWf2  = dF.map(g => f.hf1.map(h => g*h));
       const dHf1  = f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j], 0));
       const dHf1p = dHf1.map((g,i) => clip(g*reluGrad(f.hf1pre[i])));
@@ -253,7 +255,7 @@ function scoreStock(closes: number[], riskTier = 4): {
   const curPx  = closes[closes.length-1];
   const anchorShift = curPx - dn(nm[nm.length-1], mn, mx);
   const fPct   = curPx>0?((fPx[fPx.length-1]+anchorShift-curPx)/curPx)*100:0;
-  console.log(`DBG2 finalW.len=${finalW.length} forecast[0]=${finalF.forecast[0]} hf1pre[0]=${finalF.hf1pre[0]} latent=${JSON.stringify(finalF.latent)} W.We1[0][0]=${W.We1[0][0]} W.Wf2[0][0]=${W.Wf2[0][0]}`);
+  // debug removed
 
 
 
