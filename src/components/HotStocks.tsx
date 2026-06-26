@@ -123,11 +123,12 @@ function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
       const dHf1p = dHf1.map((g,i) => clip(g*reluGrad(f.hf1pre[i])));
       const dWf1  = dHf1p.map(g => f.latent.map(l => g*l));
       wt = { ...wt,
-        Wf1: wt.Wf1.map((r,i) => r.map((v,j) => v - lr*clip(dWf1[i][j]))),
-        bf1: wt.bf1.map((v,i) => v - lr*clip(dHf1p[i])),
-        Wf2: wt.Wf2.map((r,i) => r.map((v,j) => v - lr*clip(dWf2[i][j]))),
-        bf2: wt.bf2.map((v,i) => v - lr*clip(dF[i])),
+        Wf1: wt.Wf1.map((r,i) => r.map((v,j) => cw(v - lr*clip(dWf1[i][j])))),
+        bf1: wt.bf1.map((v,i) => cw(v - lr*clip(dHf1p[i]))),
+        Wf2: wt.Wf2.map((r,i) => r.map((v,j) => cw(v - lr*clip(dWf2[i][j])))),
+        bf2: wt.bf2.map((v,i) => cw(v - lr*clip(dF[i]))),
       };
+
     }
   }
   return wt;
