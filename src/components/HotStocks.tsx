@@ -86,19 +86,21 @@ function fwd(input: number[], w: AEW) {
   const forecast = affine(w.Wf2, w.bf2, hf1);
   return { he1pre, he1, latent, hd1pre, hd1, recon, hf1pre, hf1, forecast };
 }
+const cw = (x: number) => Math.max(-3, Math.min(3, x));
 function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AEW {
-  const n = input.length, dR = f.recon.map((r, i) => (2/n)*(r - input[i]));
+  const clip = (x: number) => Math.max(-1, Math.min(1, x));
+  const n = input.length, dR = f.recon.map((r, i) => clip((2/n)*(r - input[i])));
   const dWd2  = dR.map(g => f.hd1.map(h => g*h));
   const dHd1  = f.hd1.map((_,j) => dR.reduce((s,g,i) => s+g*w.Wd2[i][j], 0));
-  const dHd1p = dHd1.map((g,i) => g*reluGrad(f.hd1pre[i]));
+  const dHd1p = dHd1.map((g,i) => clip(g*reluGrad(f.hd1pre[i])));
   const dWd1  = dHd1p.map(g => f.latent.map(l => g*l));
-  const dLat  = f.latent.map((_,j) => dHd1p.reduce((s,g,i) => s+g*w.Wd1[i][j], 0));
+  const dLat  = f.latent.map((_,j) => clip(dHd1p.reduce((s,g,i) => s+g*w.Wd1[i][j], 0)));
   const dWe2  = dLat.map(g => f.he1.map(h => g*h));
   const dHe1  = f.he1.map((_,j) => dLat.reduce((s,g,i) => s+g*w.We2[i][j], 0));
-  const dHe1p = dHe1.map((g,i) => g*reluGrad(f.he1pre[i]));
+  const dHe1p = dHe1.map((g,i) => clip(g*reluGrad(f.he1pre[i])));
   const dWe1  = dHe1p.map(g => input.map(x => g*x));
-  const up  = (M: number[][], dM: number[][]) => M.map((r,i) => r.map((v,j) => v - lr*dM[i][j]));
-  const upV = (b: number[], db: number[]) => b.map((v,i) => v - lr*db[i]);
+  const up  = (M: number[][], dM: number[][]) => M.map((r,i) => r.map((v,j) => cw(v - lr*clip(dM[i][j]))));
+  const upV = (b: number[], db: number[]) => b.map((v,i) => cw(v - lr*clip(db[i])));
   return {
     We1:up(w.We1,dWe1), be1:upV(w.be1,dHe1p),
     We2:up(w.We2,dWe2), be2:upV(w.be2,dLat),
@@ -107,31 +109,41 @@ function bwd(input: number[], f: ReturnType<typeof fwd>, w: AEW, lr: number): AE
     Wf1:w.Wf1, bf1:w.bf1, Wf2:w.Wf2, bf2:w.bf2,
   };
 }
+
+
 function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
+  const clip = (x: number) => Math.max(-1, Math.min(1, x));
   let wt = { ...w };
   for (let e = 0; e < 80; e++) {
     for (let i = 0; i < wins.length; i++) {
       const f = fwd(wins[i], wt);
-      const dF = f.forecast.map((v,j) => (2/tgts[i].length)*(v - tgts[i][j]));
+      const tlen = tgts[i].length;
+      const dF = f.forecast.map((v,j) => j < tlen ? clip((2/tlen)*(v - tgts[i][j])) : 0);
+
       const dWf2  = dF.map(g => f.hf1.map(h => g*h));
       const dHf1  = f.hf1.map((_,j) => dF.reduce((s,g,i) => s+g*wt.Wf2[i][j], 0));
-      const dHf1p = dHf1.map((g,i) => g*reluGrad(f.hf1pre[i]));
+      const dHf1p = dHf1.map((g,i) => clip(g*reluGrad(f.hf1pre[i])));
       const dWf1  = dHf1p.map(g => f.latent.map(l => g*l));
       wt = { ...wt,
-        Wf1: wt.Wf1.map((r,i) => r.map((v,j) => v - lr*dWf1[i][j])),
-        bf1: wt.bf1.map((v,i) => v - lr*dHf1p[i]),
-        Wf2: wt.Wf2.map((r,i) => r.map((v,j) => v - lr*dWf2[i][j])),
-        bf2: wt.bf2.map((v,i) => v - lr*dF[i]),
+        Wf1: wt.Wf1.map((r,i) => r.map((v,j) => cw(v - lr*clip(dWf1[i][j])))),
+        bf1: wt.bf1.map((v,i) => cw(v - lr*clip(dHf1p[i]))),
+        Wf2: wt.Wf2.map((r,i) => r.map((v,j) => cw(v - lr*clip(dWf2[i][j])))),
+        bf2: wt.bf2.map((v,i) => cw(v - lr*clip(dF[i]))),
       };
+
     }
   }
   return wt;
 }
 
+
 function normPx(prices: number[]) {
-  const mn = Math.min(...prices), mx = Math.max(...prices), rng = mx - mn || 1;
+  let mn = Infinity, mx = -Infinity;
+  for (const p of prices) { if (p < mn) mn = p; if (p > mx) mx = p; }
+  const rng = mx - mn || 1;
   return { n: prices.map(p => (p-mn)/rng), mn, mx };
 }
+
 const dn = (v: number, mn: number, mx: number) => v*(mx-mn)+mn;
 const avg = (a: number[]) => a.reduce((s,v) => s+v, 0)/a.length;
 const sd  = (a: number[]) => { const m = avg(a); return Math.sqrt(a.reduce((s,v) => s+(v-m)**2, 0)/a.length); };
@@ -177,17 +189,19 @@ function scoreStock(closes: number[], riskTier = 4): {
   const wins: number[][] = [];
   for (let i = 0; i+WS <= nm.length; i++) wins.push(nm.slice(i, i+WS));
 
-  let W = initAE(), lr = 0.001, converged = false;
+  let W = initAE(), lr = 0.0003, converged = false;
   const curNorm = nm[nm.length-1];
   for (let e = 0; e < 200; e++) {
     const shuffled = [...wins].sort(() => Math.random()-0.5);
     for (const win of shuffled) { const f = fwd(win, W); W = bwd(win, f, W, lr); }
     const lw = nm.slice(nm.length-WS), f = fwd(lw, W);
     const err = Math.abs((f.recon[f.recon.length-1] - curNorm)/(curNorm||1))*100;
+    if (!Number.isFinite(err)) return null;
     if (err < 1.0 && e > 20) { converged = true; break; }
     if (e === 80)  lr *= 0.5;
     if (e === 150) lr *= 0.5;
   }
+
 
   const fwWins: number[][] = [], fwTgts: number[][] = [];
   for (let i = 0; i+WS+FD <= nm.length; i++) {
@@ -200,7 +214,7 @@ function scoreStock(closes: number[], riskTier = 4): {
   const trainC = closes.slice(0, closes.length-HOLD);
   const held   = closes.slice(closes.length-HOLD);
   const { n: tNm, mn: tMn, mx: tMx } = normPx(trainC);
-  let Wv = initAE(), vlr = 0.001;
+  let Wv = initAE(), vlr = 0.0003;
   const vWins: number[][] = [];
   for (let i = 0; i+WS <= tNm.length; i++) vWins.push(tNm.slice(i, i+WS));
   for (let e = 0; e < 150; e++) {
@@ -241,6 +255,9 @@ function scoreStock(closes: number[], riskTier = 4): {
   const curPx  = closes[closes.length-1];
   const anchorShift = curPx - dn(nm[nm.length-1], mn, mx);
   const fPct   = curPx>0?((fPx[fPx.length-1]+anchorShift-curPx)/curPx)*100:0;
+  // debug removed
+
+
 
   const s1 = Math.max(0, 1-mape/10)*30;
   const s2 = Math.max(0, (hitRate-50)/50)*25;
@@ -248,7 +265,9 @@ function scoreStock(closes: number[], riskTier = 4): {
   const s4 = regime==="NORMAL"?15:regime==="SHIFTED"?5:0;
   const s5 = Math.max(0, 1-mape/20)*10;
   const pen = regime==="EXTREME"?-25:regime==="SHIFTED"?-10:0;
-  const confidence = Math.min(100, Math.max(0, s1+s2+s3+s4+s5+pen));
+  const confidence = Number.isFinite(s1+s2+s3+s4+s5+pen) ? Math.min(100, Math.max(0, s1+s2+s3+s4+s5+pen)) : 0;
+  if (!Number.isFinite(fPct)) return null;
+
 
   const minConf  = riskTier===1?10:riskTier===2?12:15;
   const minHit   = riskTier===1?38:riskTier===2?40:42;
