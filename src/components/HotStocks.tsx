@@ -133,9 +133,12 @@ function trainFwd(wins: number[][], tgts: number[][], w: AEW, lr: number): AEW {
 
 
 function normPx(prices: number[]) {
-  const mn = Math.min(...prices), mx = Math.max(...prices), rng = mx - mn || 1;
+  let mn = Infinity, mx = -Infinity;
+  for (const p of prices) { if (p < mn) mn = p; if (p > mx) mx = p; }
+  const rng = mx - mn || 1;
   return { n: prices.map(p => (p-mn)/rng), mn, mx };
 }
+
 const dn = (v: number, mn: number, mx: number) => v*(mx-mn)+mn;
 const avg = (a: number[]) => a.reduce((s,v) => s+v, 0)/a.length;
 const sd  = (a: number[]) => { const m = avg(a); return Math.sqrt(a.reduce((s,v) => s+(v-m)**2, 0)/a.length); };
