@@ -337,7 +337,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           const scoreB = (b.qs!.combinedScore) * (b.sectorBias) * (b.thematicBias);
           return scoreB - scoreA;
         })
-        .slice(0, 20);
+        .slice(0, 40);
 
       setScanStatus(`Training AE on top ${candidates.length} candidates...`);
 
