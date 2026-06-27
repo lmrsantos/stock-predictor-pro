@@ -14,51 +14,77 @@ const corsHeaders = {
 };
 
 const SECTOR_UNIVERSES: Record<string, string[]> = {
-  Technology:            ["NVDA","AAPL","MSFT","AMD","AVGO","META","GOOGL","QCOM","AMAT","INTC","TSLA","AMZN","TSM"],
-  "Quantum Computing":   ["IONQ","ARQQ","RGTI","QBTS","QUBT"],
-  "Aerospace & Defense": ["LMT","RTX","RKLB","PLTR","NOC","AXON","LUNR","KTOS"],
-  Biotech:               ["LLY","ABBV","VRTX","REGN","AMGN","MRK","ISRG","MRNA"],
-  Consumer:              ["WMT","COST","PG","KO","MCD"],
-  "Utilities & Energy":  ["NEE","CEG","VST","XEL","ETR","XOM","CVX"],
-  Financials:            ["JPM","V","GS","BLK","SPGI"],
-  "Fixed Income":        ["TLT","IEF","BIL","AGG","LQD","SGOV","SHV","VCSH","VGSH","IUSB"],
-  "Real Assets":         ["GLD","IAU","VNQ","AMT","O","IGSB","IGIB","IGLB"],
-  "Income & Dividends":  ["SCHD","VYM","JEPI","HDV","PFFD","DVY","QDIV","DGRW"],
-  "Commodities & Sectors": ["XLE","XLK","XLF","XLV","XLI","IYW","IYE","IYH"],
+  "Semiconductors":         ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU"],
+  "Solar & Clean Energy":   ["ENPH","FSLR","SEDG","RUN","NOVA","ARRY","SHLS","CSIQ","JKS","PLUG"],
+  "Software":               ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY"],
+  "Mega-cap Tech":          ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
+  "Banks":                  ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW"],
+  "Biotech & Pharma":       ["LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD"],
+  "Energy":                 ["XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","HES"],
+  "Consumer Staples":       ["WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","HSY"],
+  "Consumer Discretionary": ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG"],
+  "Industrials & Defense":  ["CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD"],
+  "Utilities":              ["NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC"],
+  "Real Estate":            ["AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC"],
+  "Quantum Computing":      ["IONQ","RGTI","QBTS","QUBT","ARQQ"],
+  "Aerospace & Space":      ["LMT","RTX","NOC","GD","BA","HEI","TDG","RKLB","ASTS","LUNR"],
 };
 
+// Default risk tier per sector (1=safest, 4=most speculative).
+const SECTOR_RISK_TIER: Record<string, number> = {
+  "Utilities": 2,
+  "Real Estate": 2,
+  "Consumer Staples": 2,
+  "Banks": 2,
+  "Mega-cap Tech": 3,
+  "Software": 3,
+  "Semiconductors": 3,
+  "Biotech & Pharma": 3,
+  "Energy": 3,
+  "Industrials & Defense": 3,
+  "Consumer Discretionary": 3,
+  "Aerospace & Space": 3,
+  "Solar & Clean Energy": 4,
+  "Quantum Computing": 4,
+};
+
+// Per-symbol overrides for tickers that don't match their sector default.
 const RISK_TIERS: Record<string, number> = {
-  TLT:1,IEF:1,BIL:1,AGG:1,LQD:1,SGOV:1,SHV:1,VCSH:1,VGSH:1,IUSB:1,
-  GLD:2,IAU:2,VNQ:2,AMT:2,O:2,IGSB:2,IGIB:2,IGLB:2,
-  VYM:2,SCHD:2,DVY:2,HDV:2,PFF:2,PFFD:2,QDIV:2,DGRW:2,
-  JEPI:3,XLK:3,XLF:3,XLV:3,XLE:3,XLI:3,IYW:3,IYE:3,IYH:3,
-  IONQ:4,ARQQ:4,RGTI:4,QBTS:4,QUBT:4,
+  // Mega-caps inside other sectors stay tier 3
+  AAPL:3, MSFT:3, GOOGL:3, AMZN:3, META:3, NVDA:3, TSLA:3, AVGO:3, ORCL:3, NFLX:3,
+  // SPAC-era speculative names
+  RKLB:4, ASTS:4, LUNR:4, PLUG:4, BLDP:4, FCEL:4,
 };
 
 const RISK_PROFILE_TIERS: Record<string, number[]> = {
   conservative:[1,2], moderate:[1,2,3], aggressive:[1,2,3,4],
 };
 
+const SECTOR_KEYS = Object.keys(SECTOR_UNIVERSES);
+const defaultBias = (): Record<string, number> =>
+  Object.fromEntries(SECTOR_KEYS.map(k => [k, 1.0]));
+
 async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> {
-  const bias: Record<string, number> = {
-    Technology:1.0,"Aerospace & Defense":1.0,Biotech:1.0,Consumer:1.0,
-    "Utilities & Energy":1.0,Financials:1.0,"Fixed Income":1.0,
-    "Real Assets":1.0,"Income & Dividends":1.0,"Commodities & Sectors":1.0,
-    "Quantum Computing":1.0,
-  };
+  const bias = defaultBias();
   try {
     const r = await fetch(`https://financialmodelingprep.com/stable/sector-performance?apikey=${fmpKey}`);
     if (!r.ok) { await r.text(); return bias; }
     const data = await r.json();
     if (!Array.isArray(data)) return bias;
     const map: Record<string, string[]> = {
-      Technology:["Technology","Information Technology"],
-      "Utilities & Energy":["Energy","Utilities"],
-      Financials:["Financials","Financial Services"],
-      Consumer:["Consumer Defensive","Consumer Cyclical"],
-      Biotech:["Healthcare"],"Real Assets":["Real Estate"],
-      "Commodities & Sectors":["Materials","Industrials"],
-      "Aerospace & Defense":["Industrials"],
+      "Semiconductors":         ["Technology","Information Technology"],
+      "Software":               ["Technology","Information Technology"],
+      "Mega-cap Tech":          ["Technology","Information Technology"],
+      "Energy":                 ["Energy"],
+      "Utilities":              ["Utilities"],
+      "Banks":                  ["Financials","Financial Services"],
+      "Consumer Staples":       ["Consumer Defensive"],
+      "Consumer Discretionary": ["Consumer Cyclical"],
+      "Biotech & Pharma":       ["Healthcare"],
+      "Real Estate":            ["Real Estate"],
+      "Industrials & Defense":  ["Industrials"],
+      "Aerospace & Space":      ["Industrials"],
+      "Solar & Clean Energy":   ["Energy","Utilities"],
     };
     for (const item of data) {
       const pct = parseFloat(item.changesPercentage || item.changePercentage || "0");
@@ -75,12 +101,7 @@ async function fetchSectorBias(fmpKey: string): Promise<Record<string, number>> 
 }
 
 async function fetchThematicBias(supabase: ReturnType<typeof createClient>): Promise<Record<string, number>> {
-  const bias: Record<string, number> = {
-    Technology:1.0,"Aerospace & Defense":1.0,Biotech:1.0,Consumer:1.0,
-    "Utilities & Energy":1.0,Financials:1.0,"Fixed Income":1.0,
-    "Real Assets":1.0,"Income & Dividends":1.0,"Commodities & Sectors":1.0,
-    "Quantum Computing":1.0,
-  };
+  const bias = defaultBias();
   try {
     const { data } = await supabase.from("geopolitical_sentiment")
       .select("tension_score,key_events")
@@ -89,34 +110,43 @@ async function fetchThematicBias(supabase: ReturnType<typeof createClient>): Pro
     const score = Number(data[0].tension_score) || 50;
     const events = (data[0].key_events || []) as { region: string; impact: string }[];
     if (score >= 60) {
-      bias["Aerospace & Defense"] = score >= 75 ? 2.0 : 1.6;
-      bias["Utilities & Energy"]  = score >= 75 ? 1.8 : 1.4;
-      bias["Real Assets"]         = score >= 75 ? 1.5 : 1.3;
-      bias["Commodities & Sectors"] = 1.4;
-      bias["Technology"]          = score >= 75 ? 0.8 : 0.9;
-      bias["Quantum Computing"]   = 1.3;
+      bias["Aerospace & Space"]      = score >= 75 ? 2.0 : 1.6;
+      bias["Industrials & Defense"]  = score >= 75 ? 1.8 : 1.4;
+      bias["Energy"]                 = score >= 75 ? 1.8 : 1.4;
+      bias["Utilities"]              = score >= 75 ? 1.4 : 1.2;
+      bias["Real Estate"]            = score >= 75 ? 1.4 : 1.2;
+      bias["Mega-cap Tech"]          = score >= 75 ? 0.8 : 0.9;
+      bias["Semiconductors"]         = score >= 75 ? 0.8 : 0.9;
+      bias["Quantum Computing"]      = 1.3;
     } else if (score >= 30) {
-      bias["Aerospace & Defense"] = 1.2;
-      bias["Technology"]          = 1.1;
-      bias["Utilities & Energy"]  = 1.1;
-      bias["Quantum Computing"]   = 1.2;
+      bias["Aerospace & Space"]      = 1.2;
+      bias["Industrials & Defense"]  = 1.2;
+      bias["Mega-cap Tech"]          = 1.1;
+      bias["Software"]               = 1.1;
+      bias["Energy"]                 = 1.1;
+      bias["Quantum Computing"]      = 1.2;
     } else {
-      bias["Technology"]          = 1.4;
-      bias["Quantum Computing"]   = 1.5;
-      bias["Biotech"]             = 1.3;
-      bias["Consumer"]            = 1.2;
+      bias["Mega-cap Tech"]          = 1.4;
+      bias["Software"]               = 1.4;
+      bias["Semiconductors"]         = 1.3;
+      bias["Quantum Computing"]      = 1.5;
+      bias["Biotech & Pharma"]       = 1.3;
+      bias["Consumer Discretionary"] = 1.2;
+      bias["Solar & Clean Energy"]   = 1.2;
     }
     if (events.some(e => e.region?.toLowerCase().includes("middle east") && e.impact === "high")) {
-      bias["Utilities & Energy"] = Math.max(bias["Utilities & Energy"], 1.8);
-      bias["Real Assets"] = Math.max(bias["Real Assets"], 1.4);
+      bias["Energy"]      = Math.max(bias["Energy"], 1.8);
+      bias["Real Estate"] = Math.max(bias["Real Estate"], 1.4);
     }
     if (events.some(e => (e.region?.toLowerCase().includes("europe") ||
       e.region?.toLowerCase().includes("eastern")) && e.impact === "high")) {
-      bias["Aerospace & Defense"] = Math.max(bias["Aerospace & Defense"], 1.8);
+      bias["Aerospace & Space"]     = Math.max(bias["Aerospace & Space"], 1.8);
+      bias["Industrials & Defense"] = Math.max(bias["Industrials & Defense"], 1.8);
     }
   } catch(e) { console.error("Thematic bias failed:", e); }
   return bias;
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -144,7 +174,7 @@ serve(async (req) => {
     const allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
     for (const [sector, syms] of Object.entries(SECTOR_UNIVERSES)) {
       for (const sym of syms) {
-        const riskTier = RISK_TIERS[sym] ?? 4;
+        const riskTier = RISK_TIERS[sym] ?? SECTOR_RISK_TIER[sector] ?? 3;
         if (allowedTiers.includes(riskTier)) {
           allSymbols.push({ symbol: sym, sector, riskTier });
         }

@@ -14,31 +14,37 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Full universe — must match run-hot-stocks-scan
-const UNIVERSE = [
-  // Technology
-  "NVDA","AAPL","MSFT","AMD","AVGO","META","GOOGL","QCOM","AMAT","INTC","TSLA","AMZN","TSM",
+// Full universe — top ~10 per sector, mirrors hot-stocks SECTOR_UNIVERSES.
+const UNIVERSE = [...new Set([
+  // Semiconductors
+  "NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU",
+  // Solar & Clean Energy
+  "ENPH","FSLR","SEDG","RUN","NOVA","ARRY","SHLS","CSIQ","JKS","PLUG",
+  // Software
+  "MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY",
+  // Mega-cap Tech
+  "AAPL","GOOGL","AMZN","META","TSLA","NFLX",
+  // Banks
+  "JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW",
+  // Biotech & Pharma
+  "LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD",
+  // Energy
+  "XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","HES",
+  // Consumer Staples
+  "WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","HSY",
+  // Consumer Discretionary
+  "HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG",
+  // Industrials & Defense
+  "CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD",
+  // Utilities
+  "NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC",
+  // Real Estate
+  "AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC",
   // Quantum Computing
-  "IONQ","ARQQ","RGTI","QBTS","QUBT",
-  // Aerospace & Defense
-  "LMT","RTX","RKLB","PLTR","NOC","AXON","LUNR","KTOS",
-  // Biotech
-  "LLY","ABBV","VRTX","REGN","AMGN","MRK","ISRG","MRNA",
-  // Consumer
-  "WMT","COST","PG","KO","MCD",
-  // Utilities & Energy
-  "NEE","CEG","VST","XEL","ETR","XOM","CVX",
-  // Financials
-  "JPM","V","GS","BLK","SPGI",
-  // Fixed Income
-  "TLT","IEF","BIL","AGG","LQD","SGOV","SHV","VCSH","VGSH","IUSB",
-  // Real Assets
-  "GLD","IAU","VNQ","AMT","O","IGSB","IGIB","IGLB",
-  // Income & Dividends
-  "SCHD","VYM","JEPI","HDV","PFFD","DVY","QDIV","DGRW",
-  // Sector ETFs
-  "XLE","XLK","XLF","XLV","XLI","IYW","IYE","IYH",
-];
+  "IONQ","RGTI","QBTS","QUBT","ARQQ",
+  // Aerospace & Space
+  "HEI","TDG","RKLB","ASTS","LUNR",
+])];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
