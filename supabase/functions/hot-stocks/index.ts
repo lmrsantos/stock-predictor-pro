@@ -174,7 +174,7 @@ serve(async (req) => {
     const allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
     for (const [sector, syms] of Object.entries(SECTOR_UNIVERSES)) {
       for (const sym of syms) {
-        const riskTier = RISK_TIERS[sym] ?? 4;
+        const riskTier = RISK_TIERS[sym] ?? SECTOR_RISK_TIER[sector] ?? 3;
         if (allowedTiers.includes(riskTier)) {
           allSymbols.push({ symbol: sym, sector, riskTier });
         }
