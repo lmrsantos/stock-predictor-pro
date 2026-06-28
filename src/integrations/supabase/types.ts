@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_config: {
+        Row: {
+          api_name: string
+          daily_cap_calls: number | null
+          daily_cap_usd: number | null
+          enabled: boolean
+          notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_name: string
+          daily_cap_calls?: number | null
+          daily_cap_usd?: number | null
+          enabled?: boolean
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_name?: string
+          daily_cap_calls?: number | null
+          daily_cap_usd?: number | null
+          enabled?: boolean
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      api_usage: {
+        Row: {
+          api_name: string
+          calls: number
+          cost_usd: number
+          day: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_name: string
+          calls?: number
+          cost_usd?: number
+          day?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_name?: string
+          calls?: number
+          cost_usd?: number
+          day?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       geopolitical_sentiment: {
         Row: {
           created_at: string
@@ -182,15 +236,125 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          environment: string
+          id: string
+          price_id: string
+          product_id: string
+          status: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          price_id: string
+          product_id: string
+          status?: string
+          stripe_customer_id: string
+          stripe_subscription_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          environment?: string
+          id?: string
+          price_id?: string
+          product_id?: string
+          status?: string
+          stripe_customer_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      usage_counters: {
+        Row: {
+          count: number
+          day: string
+          feature: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          day?: string
+          feature: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          feature?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_tier: {
+        Args: { check_env?: string; user_uuid: string }
+        Returns: string
+      }
+      has_active_subscription: {
+        Args: { check_env?: string; user_uuid: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -317,6 +481,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
