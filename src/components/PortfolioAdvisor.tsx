@@ -452,7 +452,8 @@ Search for any relevant current market news before responding.`;
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Portfolio Advisor</p>
-            <h2 className="text-lg font-mono font-bold text-zinc-100">Your Recommendation</h2>
+            <h2 className="text-lg font-mono font-bold text-zinc-100">Illustrative Model Output</h2>
+            <p className="text-[10px] font-mono text-zinc-500 mt-0.5">Educational only — not a recommendation.</p>
           </div>
           <button onClick={reset} className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition-colors">
             <RotateCcw className="w-3 h-3" />
