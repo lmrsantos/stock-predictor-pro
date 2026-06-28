@@ -353,14 +353,30 @@ Search for any relevant current market news before responding.`;
         </label>
 
         <button
-          disabled={!ackChecked}
-          onClick={() => {
-            localStorage.setItem(ACK_KEY, "1");
-            setAcknowledged(true);
+          disabled={!ackChecked || ackSaving}
+          onClick={async () => {
+            setAckSaving(true);
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              await supabase.from("legal_acknowledgments").insert({
+                user_id: user?.id ?? null,
+                document: "portfolio_insights_disclaimer",
+                version: ACK_VERSION,
+                acknowledgment_text: ACK_TEXT,
+                user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+                page_url: typeof window !== "undefined" ? window.location.href : null,
+              });
+            } catch (e) {
+              console.error("Failed to record acknowledgment:", e);
+            } finally {
+              localStorage.setItem(ACK_KEY, "1");
+              setAcknowledged(true);
+              setAckSaving(false);
+            }
           }}
           className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-mono font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          I Understand — Continue
+          {ackSaving ? "Recording…" : "I Understand — Continue"}
         </button>
       </div>
     );
