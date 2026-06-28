@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
@@ -7,8 +6,9 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
-import { SectorBacktest } from "./SectorBacktest";
-import { Briefcase, BarChart3 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
+import { Briefcase, BarChart3, Sparkles, User } from "lucide-react";
 
 
 interface SidebarProps {
@@ -58,7 +58,8 @@ export function Sidebar({
   fundamentals,
   ticker,
 }: SidebarProps) {
-  const [sectorOpen, setSectorOpen] = useState(false);
+  const { user } = useAuth();
+  const { tier } = useSubscription();
   const annualReturn = regression && lastPrice
     ? slopeToAnnualReturn(regression.slope, lastPrice)
     : null;
@@ -305,16 +306,24 @@ export function Sidebar({
           <Briefcase className="w-4 h-4" />
           My Portfolio
         </Link>
+        <Link
+          to="/pricing"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <Sparkles className="w-4 h-4" />
+          Pricing
+          {tier !== "free" && <span className="ml-auto text-[10px] uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary">{tier}</span>}
+        </Link>
+        {user && (
+          <Link
+            to="/account"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <User className="w-4 h-4" />
+            Account
+          </Link>
+        )}
       </div>
-
-      <SectorBacktest
-        isOpen={sectorOpen}
-        onClose={() => setSectorOpen(false)}
-        onSelectTicker={(symbol) => {
-          onSearchInputChange(symbol);
-          onSearch(symbol);
-        }}
-      />
 
     </aside>
   );
