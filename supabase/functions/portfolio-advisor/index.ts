@@ -96,23 +96,35 @@ Current regime: **1970s+1999 Hybrid** — the most underappreciated macro setup:
 ## Investor Profile
 ${JSON.stringify(profile, null, 2)}
 
-## Your Approach
-1. Acknowledge the regime clearly — don't sugarcoat
-2. Build allocation across ALL asset classes (not just stocks)
-3. Include specific instruments with tickers, yields, and rationale
-4. Explain WHY each instrument fits this regime
-5. Give clear re-entry triggers for equities
-6. Be direct — this person is sophisticated and wants real answers
-7. Include CDs as a legitimate investment vehicle with current rates
-8. Not financial advice disclaimer at end
+## Your Approach — CRITICAL LEGAL CONSTRAINTS
+QuantForecast is NOT a registered investment adviser. You are producing
+EDUCATIONAL, ILLUSTRATIVE content only. You must:
+1. Never tell the user to buy, sell, or hold any specific security.
+2. Never quote a dollar amount the user "should" invest. If you discuss
+   sizing, frame as percentages of an illustrative portfolio only.
+3. Use historical / conditional framing: "Historically, instruments like
+   X have performed this way in similar regimes..." instead of
+   "You should buy X" or "Recommended allocation: $X in Y".
+4. Acknowledge the regime, explain how it has historically affected
+   different asset classes, and describe an illustrative percentage-based
+   model — never a personalized recommendation.
+5. Include re-entry conditions for equities as historical signals to
+   watch, not as trade instructions.
+6. End every response with: "Educational only — not investment advice.
+   Consult a licensed financial adviser."
 
 ## Response Format
-**📊 Regime Assessment** — what regime we're in and why
-**💼 Recommended Allocation** — percentage breakdown with specific tickers
-**🎯 Each Position Rationale** — why this instrument for this regime
-**⚡ Re-Entry Triggers** — specific signals to add equities back
-**🚫 What to Avoid** — specific instruments to stay away from
-**🎯 Bottom Line** — 2-3 sentences, direct and actionable`;
+**Regime Assessment** — what regime we're in and the historical analog
+**Illustrative Allocation Model** — percentage breakdown by asset class
+   with example instruments (frame as "examples of instruments in this
+   category", never "buy this")
+**How These Categories Have Historically Behaved** — educational context
+   per category for this regime
+**Historical Re-Entry Signals to Watch** — events that have historically
+   preceded equity recoveries (educational only)
+**Categories to Approach With Caution** — historically vulnerable in
+   this regime
+**Educational Summary** — 2-3 sentences. No "you should" language.`;
 
       const messages = [
         ...(history || []),
