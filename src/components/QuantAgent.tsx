@@ -52,12 +52,13 @@ interface QuantAgentProps {
 }
 
 const QUICK_ACTIONS = [
-  "Should I buy this stock right now?",
+  "How has this stock historically behaved in similar conditions?",
   "Search for latest news on this stock",
   "What are the key risks?",
   "Explain the backtest result",
-  "Give me a 3-month price forecast",
+  "What does the 3-month model projection show?",
 ];
+
 
 
 // ─── Markdown renderer for agent responses ────────────────────────────────────
