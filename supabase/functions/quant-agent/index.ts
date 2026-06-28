@@ -221,74 +221,41 @@ Always respond with ALL of these sections:
 Not financial advice. Quantitative + thematic analysis only.`;
 }
 
-// ─── Call Claude with web search tool ────────────────────────────────────────
+// ─── Call Lovable AI Gateway (Gemini) ────────────────────────────────────────
 
 async function callClaude(
   messages: ChatMessage[],
   system: string,
   apiKey: string
 ): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: "google/gemini-3-flash-preview",
       max_tokens: 1500,
-      system,
-      messages,
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-        }
+      messages: [
+        { role: "system", content: system },
+        ...messages,
       ],
     }),
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    // Graceful handling for rate limits — return a friendly message instead of crashing
     if (res.status === 429) {
-      return "I'm temporarily rate-limited by the analysis provider (too many tokens this minute). Give me about 60 seconds and ask again — your context is saved.";
+      return "I'm temporarily rate-limited. Give me about 60 seconds and ask again — your context is saved.";
     }
-    // Fallback without web search if tool not supported
-    if (res.status === 400 && err.includes("tool")) {
-      const fallback = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1500,
-          system,
-          messages,
-        }),
-      });
-      if (!fallback.ok) throw new Error(`Claude error: ${await fallback.text()}`);
-      const data = await fallback.json();
-      return extractText(data);
+    if (res.status === 402) {
+      return "AI credits are exhausted for the workspace. Please add credits in Lovable settings.";
     }
-    throw new Error(`Claude API error ${res.status}: ${err}`);
+    throw new Error(`AI gateway error ${res.status}: ${await res.text()}`);
   }
 
   const data = await res.json();
-  return extractText(data);
-}
-
-function extractText(data: { content: { type: string; text?: string }[]; stop_reason?: string }): string {
-  // Handle tool use responses — concatenate all text blocks
-  const texts = (data.content || [])
-    .filter((block) => block.type === "text" && block.text)
-    .map((block) => block.text!)
-    .join("\n");
-  return texts || "No response generated.";
+  return data.choices?.[0]?.message?.content || "No response generated.";
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
