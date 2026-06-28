@@ -35,6 +35,7 @@ const App = () => (
             <Route path="/account" element={<Account />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/privacy" element={<Privacy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
