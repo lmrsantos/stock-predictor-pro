@@ -595,9 +595,12 @@ Search for any relevant current market news before responding.`;
           </div>
         </div>
 
-        <p className="text-[9px] font-mono text-zinc-700 text-center leading-relaxed">
-          Not financial advice. QuantForecast combines quantitative signals with macro analysis.
-          Always consult a licensed financial advisor before investing.
+        <p className="text-[9px] font-mono text-zinc-500 text-center leading-relaxed border border-amber-900/40 bg-amber-950/10 rounded-lg p-3">
+          <strong className="text-amber-300">Not investment advice.</strong> QuantForecast is not a registered
+          investment adviser. This is an illustrative educational model based on
+          quantitative signals and macro regime analysis — not a recommendation to
+          buy, sell, or hold any security. Any dollar figures are for illustration
+          math only. Always consult a licensed financial adviser before investing.
         </p>
       </div>
     );
