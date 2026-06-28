@@ -310,7 +310,7 @@ Search for any relevant current market news before responding.`;
       <div className="flex flex-col gap-4 max-w-lg mx-auto py-8 px-4">
         <div className="text-center space-y-1">
           <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-            QuantForecast · Portfolio Advisor
+            QuantForecast · Portfolio Insights
           </p>
           <h2 className="text-xl font-mono font-bold text-zinc-100">
             Before You Continue
@@ -370,7 +370,7 @@ Search for any relevant current market news before responding.`;
         {/* Header */}
         <div className="text-center space-y-1">
           <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-            QuantForecast · Portfolio Advisor
+            QuantForecast · Portfolio Insights
           </p>
           <h2 className="text-xl font-mono font-bold text-zinc-100">
             Let's Build Your Portfolio
@@ -451,7 +451,7 @@ Search for any relevant current market news before responding.`;
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Portfolio Advisor</p>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Portfolio Insights</p>
             <h2 className="text-lg font-mono font-bold text-zinc-100">Illustrative Model Output</h2>
             <p className="text-[10px] font-mono text-zinc-500 mt-0.5">Educational only — not a recommendation.</p>
           </div>
@@ -537,7 +537,7 @@ Search for any relevant current market news before responding.`;
         {/* Chat with advisor */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
           <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-            Ask the Advisor
+            Ask Portfolio Insights
           </p>
 
           {/* Chat messages */}

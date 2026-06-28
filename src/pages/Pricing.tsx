@@ -39,7 +39,7 @@ const PLANS = [
       "Sector Backtest (5/day)",
       "All 3 Hot Stocks risk tiers",
       "Cycle Analysis",
-      "Full Portfolio Advisor",
+      "Full Portfolio Insights",
       "50 QuantAgent chats / day",
       "CSV exports",
     ],
