@@ -162,11 +162,15 @@ function BucketCard({ bucket }: { bucket: AllocationBucket }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const ACK_KEY = "qf_advisor_ack_v1";
+const ACK_VERSION = "2026-06-28";
+const ACK_TEXT =
+  "I understand this is educational content only, not investment advice, and I accept full responsibility for my own investment decisions.";
 
 export function PortfolioAdvisor() {
   const [acknowledged, setAcknowledged] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem(ACK_KEY) === "1"
   );
+  const [ackSaving, setAckSaving] = useState(false);
   const [ackChecked, setAckChecked] = useState(false);
   const [step, setStep]           = useState<"intake" | "loading" | "result" | "chat">("intake");
   const [questionIdx, setQuestionIdx] = useState(0);
