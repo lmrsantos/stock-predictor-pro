@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Table2, Globe, FileText, FlaskConical } from "lucide-react";
+import { Table2, Globe, FileText, FlaskConical, BarChart3 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
@@ -114,9 +114,16 @@ export function StockHeader({
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <FlaskConical className="w-4 h-4" />
-              Run Backtest
+              Symbol Backtest
             </button>
           )}
+          <Link
+            to="/sector-backtest"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Sector Backtest
+          </Link>
           <button
             onClick={() => setHotStocksOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
