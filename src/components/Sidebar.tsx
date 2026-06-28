@@ -306,17 +306,8 @@ export function Sidebar({
           <Briefcase className="w-4 h-4" />
           My Portfolio
         </Link>
-
-        {user && (
-          <Link
-            to="/account"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-          >
-            <User className="w-4 h-4" />
-            Account
-          </Link>
-        )}
       </div>
+
 
     </aside>
   );
