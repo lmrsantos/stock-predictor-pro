@@ -304,6 +304,64 @@ Search for any relevant current market news before responding.`;
     setAdvisorResponse("");
   };
 
+  // ── Acknowledgment Gate ───────────────────────────────────────────────────
+  if (!acknowledged) {
+    return (
+      <div className="flex flex-col gap-4 max-w-lg mx-auto py-8 px-4">
+        <div className="text-center space-y-1">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+            QuantForecast · Portfolio Advisor
+          </p>
+          <h2 className="text-xl font-mono font-bold text-zinc-100">
+            Before You Continue
+          </h2>
+        </div>
+
+        <div className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-4 space-y-3 text-[11px] font-mono text-amber-100/90 leading-relaxed">
+          <p className="font-semibold text-amber-200">
+            This tool is for educational and informational purposes only.
+          </p>
+          <ul className="space-y-1.5 list-disc list-inside text-amber-100/80">
+            <li>QuantForecast is <strong>not a registered investment adviser</strong>.</li>
+            <li>Output is an <strong>illustrative model</strong>, not a personalized recommendation to buy, sell, or hold any security.</li>
+            <li>Any dollar figures shown are purely for illustration math — not advice to invest that amount.</li>
+            <li>Always consult a licensed financial adviser before making investment decisions.</li>
+          </ul>
+          <p className="text-[10px] text-amber-200/70">
+            Read the full{" "}
+            <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>
+            {" "}and{" "}
+            <a href="/disclaimer" target="_blank" rel="noreferrer" className="underline">Disclaimer</a>.
+          </p>
+        </div>
+
+        <label className="flex items-start gap-2 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={ackChecked}
+            onChange={(e) => setAckChecked(e.target.checked)}
+            className="mt-0.5 accent-primary"
+          />
+          <span className="text-[11px] font-mono text-zinc-300 leading-relaxed">
+            I understand this is educational content only, not investment advice,
+            and I accept full responsibility for my own investment decisions.
+          </span>
+        </label>
+
+        <button
+          disabled={!ackChecked}
+          onClick={() => {
+            localStorage.setItem(ACK_KEY, "1");
+            setAcknowledged(true);
+          }}
+          className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-mono font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          I Understand — Continue
+        </button>
+      </div>
+    );
+  }
+
   // ── Intake UI ─────────────────────────────────────────────────────────────
   if (step === "intake") {
     const progress = (questionIdx / QUESTIONS.length) * 100;
