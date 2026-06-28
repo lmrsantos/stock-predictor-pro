@@ -38,8 +38,8 @@ serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not configured");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     const FMP_API_KEY = Deno.env.get("FMP_API_KEY");
 
@@ -67,17 +67,7 @@ serve(async (req) => {
       : `Assess the current global geopolitical tension level. Respond with ONLY a JSON object, no markdown.`;
 
     // Call Claude
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 800,
-        system: `You are a geopolitical risk analyst. Respond with ONLY valid JSON in this exact format:
+    const systemPrompt = `You are a geopolitical risk analyst. Respond with ONLY valid JSON in this exact format:
 {
   "tension_score": <number 0-100>,
   "severity": "<low|moderate|elevated|high|severe>",
@@ -89,15 +79,28 @@ serve(async (req) => {
 
 Scoring: 0-20=low, 21-40=moderate, 41-60=elevated, 61-80=high, 81-100=severe.
 Include 3-5 key events. Focus on conflicts, sanctions, nuclear threats, trade wars.
-Output ONLY the JSON object. No markdown, no explanation.`,
-        messages: [{ role: "user", content: userPrompt }],
+Output ONLY the JSON object. No markdown, no explanation.`;
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        max_tokens: 800,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
       }),
     });
 
-    if (!res.ok) throw new Error(`Claude error ${res.status}: ${await res.text()}`);
+    if (!res.ok) throw new Error(`AI gateway error ${res.status}: ${await res.text()}`);
 
     const aiData = await res.json();
-    let content = aiData.content?.[0]?.text || "";
+    let content = aiData.choices?.[0]?.message?.content || "";
     content = content.trim().replace(/^```json?\s*/i, "").replace(/```\s*$/, "").trim();
 
     const parsed = JSON.parse(content);
