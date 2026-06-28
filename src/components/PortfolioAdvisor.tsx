@@ -161,7 +161,13 @@ function BucketCard({ bucket }: { bucket: AllocationBucket }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const ACK_KEY = "qf_advisor_ack_v1";
+
 export function PortfolioAdvisor() {
+  const [acknowledged, setAcknowledged] = useState<boolean>(
+    () => typeof window !== "undefined" && localStorage.getItem(ACK_KEY) === "1"
+  );
+  const [ackChecked, setAckChecked] = useState(false);
   const [step, setStep]           = useState<"intake" | "loading" | "result" | "chat">("intake");
   const [questionIdx, setQuestionIdx] = useState(0);
   const [profile, setProfile]     = useState<Partial<InvestorProfile>>({ exclusions: [] });
@@ -217,7 +223,7 @@ export function PortfolioAdvisor() {
         totalPct: buckets.reduce((s, b) => s + b.pct, 0),
         reEntryTriggers: triggers,
         avoidList: avoid,
-        summary: `Based on the ${regime.label} regime and your ${p.horizon} investment horizon, the model recommends a defensive-leaning portfolio. ${regime.description}`,
+        summary: `Based on the ${regime.label} regime and your ${p.horizon} horizon, an investor profile matching your inputs has historically been associated with a defensive-leaning allocation. ${regime.description} This is an illustrative educational model, not a recommendation.`,
         generatedAt: new Date().toISOString(),
       };
       setRec(rec);
@@ -297,6 +303,64 @@ Search for any relevant current market news before responding.`;
     setChatHistory([]);
     setAdvisorResponse("");
   };
+
+  // ── Acknowledgment Gate ───────────────────────────────────────────────────
+  if (!acknowledged) {
+    return (
+      <div className="flex flex-col gap-4 max-w-lg mx-auto py-8 px-4">
+        <div className="text-center space-y-1">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+            QuantForecast · Portfolio Advisor
+          </p>
+          <h2 className="text-xl font-mono font-bold text-zinc-100">
+            Before You Continue
+          </h2>
+        </div>
+
+        <div className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-4 space-y-3 text-[11px] font-mono text-amber-100/90 leading-relaxed">
+          <p className="font-semibold text-amber-200">
+            This tool is for educational and informational purposes only.
+          </p>
+          <ul className="space-y-1.5 list-disc list-inside text-amber-100/80">
+            <li>QuantForecast is <strong>not a registered investment adviser</strong>.</li>
+            <li>Output is an <strong>illustrative model</strong>, not a personalized recommendation to buy, sell, or hold any security.</li>
+            <li>Any dollar figures shown are purely for illustration math — not advice to invest that amount.</li>
+            <li>Always consult a licensed financial adviser before making investment decisions.</li>
+          </ul>
+          <p className="text-[10px] text-amber-200/70">
+            Read the full{" "}
+            <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms</a>
+            {" "}and{" "}
+            <a href="/disclaimer" target="_blank" rel="noreferrer" className="underline">Disclaimer</a>.
+          </p>
+        </div>
+
+        <label className="flex items-start gap-2 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={ackChecked}
+            onChange={(e) => setAckChecked(e.target.checked)}
+            className="mt-0.5 accent-primary"
+          />
+          <span className="text-[11px] font-mono text-zinc-300 leading-relaxed">
+            I understand this is educational content only, not investment advice,
+            and I accept full responsibility for my own investment decisions.
+          </span>
+        </label>
+
+        <button
+          disabled={!ackChecked}
+          onClick={() => {
+            localStorage.setItem(ACK_KEY, "1");
+            setAcknowledged(true);
+          }}
+          className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-mono font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          I Understand — Continue
+        </button>
+      </div>
+    );
+  }
 
   // ── Intake UI ─────────────────────────────────────────────────────────────
   if (step === "intake") {
@@ -388,7 +452,8 @@ Search for any relevant current market news before responding.`;
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Portfolio Advisor</p>
-            <h2 className="text-lg font-mono font-bold text-zinc-100">Your Recommendation</h2>
+            <h2 className="text-lg font-mono font-bold text-zinc-100">Illustrative Model Output</h2>
+            <p className="text-[10px] font-mono text-zinc-500 mt-0.5">Educational only — not a recommendation.</p>
           </div>
           <button onClick={reset} className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 hover:text-zinc-300 transition-colors">
             <RotateCcw className="w-3 h-3" />
@@ -418,7 +483,7 @@ Search for any relevant current market news before responding.`;
         {/* Portfolio allocation */}
         <div className="space-y-2">
           <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-            Allocation{totalAmount ? ` · $${totalAmount.toLocaleString()} total` : ""}
+            Illustrative Allocation Model (percentages){totalAmount ? ` · math on $${totalAmount.toLocaleString()} for illustration only` : ""}
           </p>
           {buckets.map(bucket => (
             <BucketCard key={bucket.name} bucket={bucket} />
@@ -530,9 +595,12 @@ Search for any relevant current market news before responding.`;
           </div>
         </div>
 
-        <p className="text-[9px] font-mono text-zinc-700 text-center leading-relaxed">
-          Not financial advice. QuantForecast combines quantitative signals with macro analysis.
-          Always consult a licensed financial advisor before investing.
+        <p className="text-[9px] font-mono text-zinc-500 text-center leading-relaxed border border-amber-900/40 bg-amber-950/10 rounded-lg p-3">
+          <strong className="text-amber-300">Not investment advice.</strong> QuantForecast is not a registered
+          investment adviser. This is an illustrative educational model based on
+          quantitative signals and macro regime analysis — not a recommendation to
+          buy, sell, or hold any security. Any dollar figures are for illustration
+          math only. Always consult a licensed financial adviser before investing.
         </p>
       </div>
     );
