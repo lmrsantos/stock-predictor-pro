@@ -95,6 +95,42 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          acknowledgment_text: string
+          created_at: string
+          document: string
+          id: string
+          page_url: string | null
+          user_agent: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          acknowledged_at?: string
+          acknowledgment_text: string
+          created_at?: string
+          document: string
+          id?: string
+          page_url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version: string
+        }
+        Update: {
+          acknowledged_at?: string
+          acknowledgment_text?: string
+          created_at?: string
+          document?: string
+          id?: string
+          page_url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       market_updates: {
         Row: {
           content: string

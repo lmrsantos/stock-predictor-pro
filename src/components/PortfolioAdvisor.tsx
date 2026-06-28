@@ -162,11 +162,15 @@ function BucketCard({ bucket }: { bucket: AllocationBucket }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const ACK_KEY = "qf_advisor_ack_v1";
+const ACK_VERSION = "2026-06-28";
+const ACK_TEXT =
+  "I understand this is educational content only, not investment advice, and I accept full responsibility for my own investment decisions.";
 
 export function PortfolioAdvisor() {
   const [acknowledged, setAcknowledged] = useState<boolean>(
     () => typeof window !== "undefined" && localStorage.getItem(ACK_KEY) === "1"
   );
+  const [ackSaving, setAckSaving] = useState(false);
   const [ackChecked, setAckChecked] = useState(false);
   const [step, setStep]           = useState<"intake" | "loading" | "result" | "chat">("intake");
   const [questionIdx, setQuestionIdx] = useState(0);
@@ -349,14 +353,30 @@ Search for any relevant current market news before responding.`;
         </label>
 
         <button
-          disabled={!ackChecked}
-          onClick={() => {
-            localStorage.setItem(ACK_KEY, "1");
-            setAcknowledged(true);
+          disabled={!ackChecked || ackSaving}
+          onClick={async () => {
+            setAckSaving(true);
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              await supabase.from("legal_acknowledgments").insert({
+                user_id: user?.id ?? null,
+                document: "portfolio_insights_disclaimer",
+                version: ACK_VERSION,
+                acknowledgment_text: ACK_TEXT,
+                user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+                page_url: typeof window !== "undefined" ? window.location.href : null,
+              });
+            } catch (e) {
+              console.error("Failed to record acknowledgment:", e);
+            } finally {
+              localStorage.setItem(ACK_KEY, "1");
+              setAcknowledged(true);
+              setAckSaving(false);
+            }
           }}
           className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-mono font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          I Understand — Continue
+          {ackSaving ? "Recording…" : "I Understand — Continue"}
         </button>
       </div>
     );
