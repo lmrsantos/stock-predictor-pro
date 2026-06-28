@@ -1,129 +1,61 @@
-# Launch Plan — Subscriptions + Cost Control
+# Launch Plan — Payments, Subscriptions, Feature Gating, Emails
 
-Goal: launch the terminal as a freemium SaaS with paid tiers, while keeping tight control over upstream API spend (FMP, Yahoo Finance, Anthropic, Lovable AI) so a viral day can't bankrupt you or break the service.
-
----
-
-## 1. Subscription Tiers
-
-| Feature | Free | Pro ($19/mo) | Elite ($49/mo) |
-|---|---|---|---|
-| Regression chart (any ticker) | ✅ | ✅ | ✅ |
-| Forecast horizons | 30d only | 30 / 90 / 180d | All + custom |
-| Symbol Backtest | 3 / day | Unlimited | Unlimited |
-| Sector Backtest | ❌ | 5 / day | Unlimited |
-| Hot Stocks | Aggressive only, top 5 | All 3 risk tiers | All + alerts |
-| Cycle Analysis | ❌ | ✅ | ✅ |
-| Portfolio Advisor | View only | Full | Full + rebalance alerts |
-| QuantAgent chat | 5 msgs/day | 50/day | 500/day |
-| Data export (CSV) | ❌ | ✅ | ✅ + API access |
-
-Annual pricing: 2 months free (Pro $190/yr, Elite $490/yr).
+Goal: ship the freemium SaaS end-to-end. The earlier work created DB tables, hooks, and a Pricing/Account page, but the **payments connector is not actually enabled yet** (your Payments view still shows "no integration"). We need to enable it for real, finish the flows, gate features, and wire emails.
 
 ---
 
-## 2. Build Order (3 phases)
+## Phase 1 — Payments (foundation, must come first)
 
-**Phase A — Paywall infrastructure (week 1)**
-1. Enable Stripe payments (built-in, Lovable-managed, no Stripe account needed).
-2. Create products: Pro monthly/yearly, Elite monthly/yearly.
-3. DB tables: `subscribers` (user_id, tier, status, current_period_end), `usage_counters` (user_id, feature, count, day).
-4. Edge function `check-entitlement` → returns `{ tier, limits, usageRemaining }`.
-5. Edge function `track-usage` → increments counter, returns 429 if over limit.
-6. Front-end `useEntitlement()` hook, `<PaywallGate feature="...">` wrapper.
+1. **Enable built-in Stripe payments** via Lovable's managed connector (no Stripe account needed to start; sandbox keys auto-provisioned).
+2. **Re-create products in the connector** with proper tax codes (digital SaaS = `txcd_10103001`): Pro monthly/yearly, Elite monthly/yearly.
+3. **Rewrite `create-checkout`** to use the **Embedded Checkout** pattern (current code likely uses redirect / wrong client). Pin `@stripe/stripe-js@9.2.0` and `@stripe/react-stripe-js@6.2.0`.
+4. **Rewrite `payments-webhook`** to use the shared `_shared/stripe.ts` `verifyWebhook` helper, key tiers off `lookup_key` (stable across sandbox/live), and stamp `environment`.
+5. **Fix `src/lib/stripe.ts`** to derive env from `VITE_PAYMENTS_CLIENT_TOKEN` prefix (throw on missing — do NOT default to live).
+6. Add `CheckoutReturn` page at `/checkout/return` and wire `PaymentTestModeBanner` into the app shell.
 
-**Phase B — Pricing + auth polish (week 2)**
-1. `/pricing` page with 3 tier cards + FAQ.
-2. Upgrade CTA in sidebar when limit hit.
-3. `/account` page: current plan, manage subscription (Stripe portal), usage meters.
-4. Email/password + Google sign-in (already wired); require auth for Pro features.
+## Phase 2 — Subscription state + feature gating (Phase B)
 
-**Phase C — Cost controls (week 2–3, see §3).**
+1. Confirm `useSubscription` filters by `environment` and orders `created_at desc` (per shared utility rules).
+2. Wire `useEntitlement` checks into:
+   - **HotStocks**: free = aggressive top 5 only; Pro/Elite = all 3 tiers.
+   - **SectorBacktest**: free = blocked with upgrade card; Pro = 5/day; Elite = unlimited.
+   - **CycleAnalysis tab in BacktestModal**: Pro+ only.
+   - **BacktestModal (symbol backtest)**: free = 3/day counter via `track-usage`.
+   - **QuantAgent**: msg cap via `track-usage` (5/50/500).
+   - **PortfolioAdvisor**: free = view only, no AI calls.
+3. Build a reusable `<PaywallGate feature="...">` component that renders children when allowed, otherwise an upgrade card linking to `/pricing`.
+4. Sidebar: show current tier badge + "Upgrade" CTA when on free.
 
----
+## Phase 3 — Emails
 
-## 3. Upstream API Cost Controls — What You Need to Watch
+1. Set up email domain (prompt user — required before anything else).
+2. Run email infra setup (queues, cron, send-log).
+3. Scaffold transactional templates:
+   - **welcome** (on signup)
+   - **subscription-activated** (from webhook on `customer.subscription.created`)
+   - **subscription-canceled** (on `customer.subscription.deleted`)
+   - **payment-failed** (on `invoice.payment_failed`)
+   - **usage-limit-warning** (optional, sent by `track-usage` at 80%)
+4. Customize auth emails (signup confirmation, password reset) with QuantForecast branding.
+5. Wire send-calls into webhook + signup flow.
 
-This is the part that protects your margins. Each upstream has different risk:
+## Phase 4 — Admin / cost control
 
-### 3a. FMP (Financial Modeling Prep)
-- **Risk:** rate-limited plan. Backfill currently hits ~124 symbols every 6h.
-- **Controls to add:**
-  - Daily call counter in DB (`api_usage` table, key=`fmp`, day=today).
-  - Hard cap in `backfill-prices` edge function: `if (today_calls > MAX) skip`.
-  - Set `MAX` to ~80% of your FMP plan limit.
-  - Alert (email via Resend) when 90% reached.
-- **What you control manually:** the `MAX` env var per plan tier.
-
-### 3b. Yahoo Finance (unofficial)
-- **Risk:** no contract, IP bans if abused. Used as fallback + ticker search.
-- **Controls to add:**
-  - In-memory + DB cache: 15 min for quotes, 6h for historical, 24h for fundamentals.
-  - Per-IP rate limit on `search-ticker` and `fetch-stock-data` (10 req/min).
-  - Circuit breaker: if Yahoo returns 429/403 → pause calls 30 min, serve from cache.
-
-### 3c. Anthropic (Claude — quant-agent, portfolio-advisor, geopolitical-sentiment)
-- **Risk:** highest $ per call. Already hit 429s. This is where users can burn you fastest.
-- **Controls to add:**
-  - Per-user message counters (already in tier table: 5/50/500 per day).
-  - Global daily $ cap: track input+output tokens per call, sum in `api_usage`. Hard stop at $X/day.
-  - Use cheaper model (Haiku) for free tier, Sonnet for Pro, Opus for Elite.
-  - Cache geopolitical-sentiment + market-update results 30–60 min (already partially done).
-
-### 3d. Lovable AI Gateway
-- Same pattern as Anthropic. Free monthly allowance (40 cr Free/Pro plan, 20 cr Business). Buy top-ups in Lovable settings.
-- Monitor via Lovable's credit dashboard; mirror counter in your `api_usage` so you can throttle BEFORE Lovable does.
-
-### 3e. Edge function CPU (Supabase)
-- **Risk:** already hit "CPU exceeded" with hot-stocks AE training. Solved by moving AE to browser.
-- **Rule going forward:** any new heavy compute → run in browser, not edge.
+1. `/admin` route gated by `has_role(_, 'admin')`.
+2. Live counters: today's FMP calls, Lovable AI credits, active subs by tier, recent 429s.
+3. Per-API kill switches (write to `api_config`); edge functions short-circuit when disabled.
+4. Editable daily caps (FMP, Lovable AI).
 
 ---
 
-## 4. The Master Control Panel (Admin-only page)
+## Things I need from you before I start
 
-Build `/admin` (gated by `has_role(user, 'admin')`):
-- Live counters: FMP calls today, Anthropic $ today, Lovable AI credits used, active subscriptions.
-- Per-API kill switches (boolean in `api_config` table): `fmp_enabled`, `anthropic_enabled`, `lovable_ai_enabled`.
-- Per-API daily caps (editable from UI).
-- Recent errors / 429s log.
+1. **Confirm pricing stays $19 / $49** monthly, $190 / $490 yearly. ✅ or change.
+2. **Daily caps to seed in `api_config`**:
+   - FMP: 250 calls/day default — your plan limit?
+   - Lovable AI: $5/day default — bump to $10 or $20?
+3. **Your email — make you admin?** I'll insert your `user_id` into `user_roles` with role `admin` so you can see `/admin`.
+4. **Email domain**: do you have one ready (e.g. `quantforecast.com`)? If yes, I'll trigger the setup dialog. If not, we ship Phase 1+2+4 first and add emails later.
+5. **Build order**: do all 4 phases sequentially, or pause for testing after each? My recommendation: **Phase 1 → test checkout in sandbox → Phase 2 → Phase 3 → Phase 4**.
 
-This is your "panic button" — flip a switch, the app falls back to cached data instead of breaking.
-
----
-
-## 5. Technical Stack Additions
-
-```
-DB tables:
-  subscribers(user_id pk, stripe_customer_id, tier, status, current_period_end)
-  usage_counters(user_id, feature, day, count)  -- per-user limits
-  api_usage(api_name, day, calls, cost_usd)     -- global spend tracking
-  api_config(api_name pk, enabled bool, daily_cap_usd, daily_cap_calls)
-  user_roles(user_id, role)                     -- for admin gate
-
-Edge functions:
-  stripe-checkout      -- create checkout session
-  stripe-webhook       -- update subscribers table on events
-  stripe-portal        -- manage subscription
-  check-entitlement    -- read tier + limits
-  track-usage          -- increment + enforce
-  admin-metrics        -- read counters for /admin
-
-Front-end:
-  /pricing, /account, /admin pages
-  useEntitlement() hook
-  <PaywallGate feature="sector-backtest"> wrapper
-  Usage meter component in sidebar
-```
-
----
-
-## 6. What I Need From You Before Starting
-
-1. **Confirm pricing** ($19 / $49) or adjust.
-2. **Stripe enable**: I'll call `enable_stripe_payments` — you fill the form (business name, email).
-3. **Caps**: rough monthly budget for Anthropic + FMP plan tier so I can set sane defaults.
-4. **Start phase**: A only (paywall infra) first, or A+B together?
-
-Once confirmed I'll execute Phase A end-to-end (Stripe + DB + gating hook) and you can test before we move on.
+Once you answer those, I'll execute Phase 1 immediately.
