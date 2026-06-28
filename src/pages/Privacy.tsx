@@ -132,7 +132,7 @@ export default function Privacy() {
         </section>
 
         <p className="text-xs text-muted-foreground pt-6">
-          Contact: admin@quantforecast.com
+          Contact: contact@quant-forecast.com · quant-forecast.com
         </p>
       </div>
     </div>
