@@ -22,6 +22,8 @@ import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { tier } = useSubscription();
   const initialTicker = (searchParams.get("ticker") || "^DJI").toUpperCase();
   const [ticker, setTicker] = useState(initialTicker);
   const [searchInput, setSearchInput] = useState(initialTicker);
