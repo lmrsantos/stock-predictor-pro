@@ -161,7 +161,7 @@ export function StockHeader({
               }`}
             >
               <span className="text-base">💼</span>
-              Advisor
+              Portfolio Insights
             </button>
           )}
         </div>
