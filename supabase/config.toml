@@ -23,3 +23,15 @@ verify_jwt = false
 
 [functions.quant-agent]
 verify_jwt = false
+
+[functions.payments-webhook]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.create-portal-session]
+verify_jwt = false
+
+[functions.track-usage]
+verify_jwt = false
