@@ -483,7 +483,7 @@ Search for any relevant current market news before responding.`;
         {/* Portfolio allocation */}
         <div className="space-y-2">
           <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
-            Allocation{totalAmount ? ` · $${totalAmount.toLocaleString()} total` : ""}
+            Illustrative Allocation Model (percentages){totalAmount ? ` · math on $${totalAmount.toLocaleString()} for illustration only` : ""}
           </p>
           {buckets.map(bucket => (
             <BucketCard key={bucket.name} bucket={bucket} />
