@@ -1,5 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
+import { Sparkles, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
@@ -19,6 +22,8 @@ import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { tier } = useSubscription();
   const initialTicker = (searchParams.get("ticker") || "^DJI").toUpperCase();
   const [ticker, setTicker] = useState(initialTicker);
   const [searchInput, setSearchInput] = useState(initialTicker);
@@ -193,6 +198,39 @@ const Index = () => {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+      {/* Top nav bar */}
+      <div className="flex items-center justify-end gap-2 px-4 py-2 border-b border-border bg-background">
+        <Link
+          to="/pricing"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Sparkles className="w-4 h-4" />
+          Plans
+          {tier !== "free" && (
+            <span className="ml-1 text-[10px] uppercase px-1.5 py-0.5 rounded bg-primary-foreground/20">
+              {tier}
+            </span>
+          )}
+        </Link>
+        {user ? (
+          <Link
+            to="/account"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <User className="w-4 h-4" />
+            Account
+          </Link>
+        ) : (
+          <Link
+            to="/auth"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <User className="w-4 h-4" />
+            Sign in
+          </Link>
+        )}
+      </div>
+
       {/* Top ticker bar */}
       <MarketTicker currentTicker={ticker} onSelectTicker={(symbol) => {
         setSearchInput(symbol);
@@ -200,6 +238,7 @@ const Index = () => {
       }} />
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
+
 
       <Sidebar
         searchInput={searchInput}

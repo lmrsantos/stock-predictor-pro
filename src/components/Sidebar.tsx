@@ -306,24 +306,8 @@ export function Sidebar({
           <Briefcase className="w-4 h-4" />
           My Portfolio
         </Link>
-        <Link
-          to="/pricing"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <Sparkles className="w-4 h-4" />
-          Pricing
-          {tier !== "free" && <span className="ml-auto text-[10px] uppercase px-1.5 py-0.5 rounded bg-primary/20 text-primary">{tier}</span>}
-        </Link>
-        {user && (
-          <Link
-            to="/account"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-          >
-            <User className="w-4 h-4" />
-            Account
-          </Link>
-        )}
       </div>
+
 
     </aside>
   );
