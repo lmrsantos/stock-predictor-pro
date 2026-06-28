@@ -230,7 +230,7 @@ export default function Terms() {
         </section>
 
         <p className="text-xs text-muted-foreground pt-6">
-          Questions? Contact admin@quantforecast.com.
+          Questions? Contact contact@quant-forecast.com · quant-forecast.com
         </p>
       </div>
     </div>

@@ -81,8 +81,8 @@ export default function Privacy() {
             correct, delete, export, or restrict processing of your personal
             data, and to opt out of "sale" of personal information (we do not
             sell). To exercise any right, email{" "}
-            <a href="mailto:admin@quantforecast.com" className="underline">
-              admin@quantforecast.com
+            <a href="mailto:contact@quant-forecast.com" className="underline">
+              contact@quant-forecast.com
             </a>
             . We will respond within 30 days.
           </p>
@@ -132,7 +132,7 @@ export default function Privacy() {
         </section>
 
         <p className="text-xs text-muted-foreground pt-6">
-          Contact: admin@quantforecast.com
+          Contact: contact@quant-forecast.com · quant-forecast.com
         </p>
       </div>
     </div>
