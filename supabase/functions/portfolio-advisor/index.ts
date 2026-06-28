@@ -119,28 +119,29 @@ ${JSON.stringify(profile, null, 2)}
         { role: "user", content: message },
       ];
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: "google/gemini-3-flash-preview",
           max_tokens: 2000,
-          system: systemPrompt,
-          messages,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...messages,
+          ],
         }),
       });
 
-      if (!res.ok) throw new Error(`Claude error: ${await res.text()}`);
+      if (!res.ok) {
+        if (res.status === 429) throw new Error("Rate limited — please retry in a minute.");
+        if (res.status === 402) throw new Error("AI credits exhausted. Please add credits in Lovable settings.");
+        throw new Error(`AI gateway error: ${await res.text()}`);
+      }
       const data = await res.json();
-      const text = (data.content || [])
-        .filter((b: { type: string }) => b.type === "text")
-        .map((b: { text: string }) => b.text)
-        .join("\n");
+      const text = data.choices?.[0]?.message?.content || "";
 
       return new Response(JSON.stringify({ response: text }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
