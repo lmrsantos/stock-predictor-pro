@@ -264,8 +264,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Supabase secrets");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) throw new Error("LOVABLE_API_KEY not set");
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
