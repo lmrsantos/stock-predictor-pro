@@ -288,7 +288,7 @@ export default function Portfolio() {
       toast.error("Please fill in all fields with valid values");
       return;
     }
-    addMutation.mutate({ ticker, shares, avgCost });
+    addMutation.mutate({ ticker, shares, avgCost, purchaseDate: newDate || null });
   };
 
   const handleProjection = useCallback((id: string, p: HoldingProjection | null) => {
