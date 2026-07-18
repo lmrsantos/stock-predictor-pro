@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://xsytjrvpqmbiedcmgebb.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "quantforecast-mcp",
+      "version": "0.1.0",
+      "title": "QuantForecast"
+    },
+    "tools": [
+      {
+        "name": "get_geopolitical_sentiment",
+        "title": "Get geopolitical sentiment",
+        "description": "Return the latest geopolitical tension score, severity, summary, and key events from QuantForecast. Educational context only, not investment advice.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_stock_fundamentals",
+        "title": "Get stock fundamentals",
+        "description": "Return cached fundamentals (sector, P/E, EPS, market cap, website) for a ticker symbol. Educational reference only, not investment advice.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "ticker": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12,
+              "description": "Ticker symbol, e.g. AAPL."
+            }
+          },
+          "required": [
+            "ticker"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_hot_stocks",
+        "title": "Get hot stocks screener",
+        "description": "Return QuantForecast's Hot Stocks screener candidates for a given risk profile (conservative, moderate, aggressive). Historical/educational — not a buy or sell recommendation.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "riskProfile": {
+              "type": "string",
+              "enum": [
+                "conservative",
+                "moderate",
+                "aggressive"
+              ],
+              "description": "Risk profile to screen for."
+            }
+          },
+          "required": [
+            "riskProfile"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_portfolios",
+        "title": "List my portfolio holdings",
+        "description": "Return the signed-in user's saved portfolio holdings from QuantForecast. Requires OAuth. Educational tracking only, not investment advice.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
