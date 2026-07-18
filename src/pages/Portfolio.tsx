@@ -194,7 +194,7 @@ function HoldingRow({
               <button onClick={saveEdit} className="p-1 rounded hover:bg-primary/10 text-primary" title="Save">
                 <Check className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => { setEditing(false); setEditShares(String(holding.shares)); setEditCost(String(holding.avg_cost)); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel">
+              <button onClick={() => { setEditing(false); setEditShares(String(holding.shares)); setEditCost(String(holding.avg_cost)); setEditDate(holding.purchase_date || ""); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel">
                 <X className="w-3.5 h-3.5" />
               </button>
             </>
