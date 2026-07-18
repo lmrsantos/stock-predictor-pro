@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { computeLinearRegression } from "@/lib/regression";
 import { TickerSearch } from "@/components/TickerSearch";
-import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface Holding {
@@ -35,7 +35,21 @@ interface HoldingProjection {
   rSquared: number;
 }
 
-function HoldingRow({ holding, onDelete }: { holding: Holding; onDelete: (id: string) => void }) {
+function HoldingRow({
+  holding,
+  onDelete,
+  onUpdate,
+  onProjection,
+}: {
+  holding: Holding;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, shares: number, avgCost: number) => void;
+  onProjection: (id: string, p: HoldingProjection | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editShares, setEditShares] = useState(String(holding.shares));
+  const [editCost, setEditCost] = useState(String(holding.avg_cost));
+
   const { data: meta } = useQuery({
     queryKey: ["portfolio-fetch", holding.ticker],
     queryFn: () => fetchAndStoreStockData(holding.ticker, "1y"),
@@ -52,15 +66,12 @@ function HoldingRow({ holding, onDelete }: { holding: Holding; onDelete: (id: st
 
   const projection = useMemo((): HoldingProjection | null => {
     if (!stockData?.length) return null;
-
     const regression = computeLinearRegression(stockData, 365);
     const currentPrice = stockData[stockData.length - 1].close;
     const totalCost = holding.shares * holding.avg_cost;
     const currentValue = holding.shares * currentPrice;
     const dailySlope = regression.slope;
-
     const project = (days: number) => holding.shares * (currentPrice + dailySlope * days);
-
     return {
       ticker: holding.ticker,
       companyName: holding.company_name || meta?.name || holding.ticker,
@@ -79,11 +90,26 @@ function HoldingRow({ holding, onDelete }: { holding: Holding; onDelete: (id: st
     };
   }, [stockData, holding, meta]);
 
+  useEffect(() => {
+    onProjection(holding.id, projection);
+  }, [projection, holding.id, onProjection]);
+
+  const saveEdit = () => {
+    const s = Number(editShares);
+    const c = Number(editCost);
+    if (s <= 0 || c <= 0 || !isFinite(s) || !isFinite(c)) {
+      toast.error("Enter valid values");
+      return;
+    }
+    onUpdate(holding.id, s, c);
+    setEditing(false);
+  };
+
   if (!projection) {
     return (
       <tr className="border-b border-border/50">
         <td className="px-4 py-3 font-mono font-bold text-primary">{holding.ticker}</td>
-        <td colSpan={8} className="px-4 py-3 text-muted-foreground text-sm">
+        <td colSpan={9} className="px-4 py-3 text-muted-foreground text-sm">
           <Loader2 className="w-3 h-3 animate-spin inline mr-2" />Loading…
         </td>
       </tr>
@@ -99,8 +125,24 @@ function HoldingRow({ holding, onDelete }: { holding: Holding; onDelete: (id: st
         <Link to={`/?ticker=${p.ticker}`} className="font-mono font-bold text-primary hover:underline">{p.ticker}</Link>
         <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">{p.companyName}</div>
       </td>
-      <td className="px-4 py-3 text-right font-mono text-sm">{p.shares}</td>
-      <td className="px-4 py-3 text-right font-mono text-sm">${p.avgCost.toFixed(2)}</td>
+      <td className="px-4 py-3 text-right font-mono text-sm">
+        {editing ? (
+          <input
+            type="number" step="0.01" min="0.01" value={editShares}
+            onChange={(e) => setEditShares(e.target.value)}
+            className="w-20 bg-secondary border border-border rounded px-2 py-1 text-right text-xs"
+          />
+        ) : p.shares}
+      </td>
+      <td className="px-4 py-3 text-right font-mono text-sm">
+        {editing ? (
+          <input
+            type="number" step="0.01" min="0.01" value={editCost}
+            onChange={(e) => setEditCost(e.target.value)}
+            className="w-24 bg-secondary border border-border rounded px-2 py-1 text-right text-xs"
+          />
+        ) : `$${p.avgCost.toFixed(2)}`}
+      </td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${gl ? "price-positive" : "price-negative"}`}>
@@ -113,9 +155,27 @@ function HoldingRow({ holding, onDelete }: { holding: Holding; onDelete: (id: st
         {p.annualReturn >= 0 ? "+" : ""}{(p.annualReturn * 100).toFixed(1)}%
       </td>
       <td className="px-4 py-3 text-center">
-        <button onClick={() => onDelete(holding.id)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center justify-center gap-1">
+          {editing ? (
+            <>
+              <button onClick={saveEdit} className="p-1 rounded hover:bg-primary/10 text-primary" title="Save">
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => { setEditing(false); setEditShares(String(holding.shares)); setEditCost(String(holding.avg_cost)); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => setEditing(true)} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground" title="Edit">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => onDelete(holding.id)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="Delete">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -130,51 +190,49 @@ export default function Portfolio() {
   const [newShares, setNewShares] = useState("");
   const [newCost, setNewCost] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
-  // Fetch holdings
   const { data: holdings = [], isLoading } = useQuery({
     queryKey: ["portfolio-holdings", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("portfolio_holdings")
-        .select("*")
-        .order("added_at", { ascending: false });
+      const { data, error } = await supabase.from("portfolio_holdings").select("*").order("added_at", { ascending: false });
       if (error) throw error;
       return data as Holding[];
     },
     enabled: !!user,
   });
 
-  // Add holding
   const addMutation = useMutation({
     mutationFn: async ({ ticker, shares, avgCost, companyName }: { ticker: string; shares: number; avgCost: number; companyName?: string }) => {
       const { error } = await supabase.from("portfolio_holdings").insert({
-        user_id: user!.id,
-        ticker: ticker.toUpperCase(),
-        shares,
-        avg_cost: avgCost,
-        company_name: companyName || null,
+        user_id: user!.id, ticker: ticker.toUpperCase(), shares, avg_cost: avgCost, company_name: companyName || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
-      setNewTicker("");
-      setNewShares("");
-      setNewCost("");
-      setShowAdd(false);
+      setNewTicker(""); setNewShares(""); setNewCost(""); setShowAdd(false);
       toast.success("Holding added to portfolio");
     },
     onError: (err: any) => {
-      if (err.message?.includes("duplicate")) {
-        toast.error("This ticker is already in your portfolio");
-      } else {
-        toast.error("Failed to add holding");
-      }
+      if (err.message?.includes("duplicate")) toast.error("This ticker is already in your portfolio");
+      else toast.error("Failed to add holding");
     },
   });
 
-  // Delete holding
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, shares, avgCost }: { id: string; shares: number; avgCost: number }) => {
+      const { error } = await supabase.from("portfolio_holdings").update({ shares, avg_cost: avgCost }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
+      toast.success("Holding updated");
+    },
+    onError: () => toast.error("Failed to update holding"),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("portfolio_holdings").delete().eq("id", id);
@@ -197,42 +255,70 @@ export default function Portfolio() {
     addMutation.mutate({ ticker, shares, avgCost });
   };
 
-  // Portfolio totals
-  const totalCost = holdings.reduce((sum, h) => sum + h.shares * h.avg_cost, 0);
+  const handleProjection = useCallback((id: string, p: HoldingProjection | null) => {
+    setProjections((prev) => (prev[id] === p ? prev : { ...prev, [id]: p }));
+  }, []);
+
+  const refreshPrices = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["portfolio-fetch"] });
+    await queryClient.invalidateQueries({ queryKey: ["portfolio-db"] });
+    toast.success("Refreshing latest prices…");
+  };
+
+  // Aggregate totals
+  const totals = useMemo(() => {
+    const valid = holdings.map(h => projections[h.id]).filter(Boolean) as HoldingProjection[];
+    if (!valid.length) return null;
+    const totalCost = valid.reduce((s, p) => s + p.totalCost, 0);
+    const currentValue = valid.reduce((s, p) => s + p.currentValue, 0);
+    const projected30d = valid.reduce((s, p) => s + p.projected30d, 0);
+    const projected1y = valid.reduce((s, p) => s + p.projected1y, 0);
+    const gainLoss = currentValue - totalCost;
+    const weightedReturn = currentValue > 0
+      ? valid.reduce((s, p) => s + p.annualReturn * p.currentValue, 0) / currentValue
+      : 0;
+    const weightedR2 = currentValue > 0
+      ? valid.reduce((s, p) => s + p.rSquared * p.currentValue, 0) / currentValue
+      : 0;
+    return {
+      totalCost, currentValue, gainLoss,
+      gainLossPct: totalCost > 0 ? gainLoss / totalCost : 0,
+      projected30d, projected1y, weightedReturn, weightedR2,
+      count: valid.length, allLoaded: valid.length === holdings.length,
+    };
+  }, [holdings, projections]);
+
+  const analysis = useMemo(() => {
+    if (!totals || !totals.allLoaded) return null;
+    const valid = holdings.map(h => projections[h.id]).filter(Boolean) as HoldingProjection[];
+    const byReturn = [...valid].sort((a, b) => b.annualReturn - a.annualReturn);
+    const bestPerformer = byReturn[0];
+    const worstPerformer = byReturn[byReturn.length - 1];
+    const concentration = valid.map(p => ({ ticker: p.ticker, pct: p.currentValue / totals.currentValue }))
+      .sort((a, b) => b.pct - a.pct);
+    const topHolding = concentration[0];
+    const concentrationRisk = topHolding.pct > 0.4 ? "high" : topHolding.pct > 0.25 ? "moderate" : "low";
+    const laggards = valid.filter(p => p.annualReturn < 0);
+    const modelConfidence = totals.weightedR2 > 0.6 ? "high" : totals.weightedR2 > 0.3 ? "moderate" : "low";
+    return { bestPerformer, worstPerformer, topHolding, concentration, concentrationRisk, laggards, modelConfidence };
+  }, [totals, holdings, projections]);
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <header className="border-b border-border px-6 py-4 flex items-center gap-4">
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-primary" />
-            <h1 className="text-sm font-mono font-bold tracking-widest uppercase">Portfolio</h1>
-          </div>
+          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
+          <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" /><h1 className="text-sm font-mono font-bold tracking-widest uppercase">Portfolio</h1></div>
         </header>
         <div className="max-w-md mx-auto mt-24 text-center space-y-4 px-6">
           <Briefcase className="w-12 h-12 text-muted-foreground mx-auto" />
           <h2 className="text-xl font-bold">Sign in to access your Portfolio</h2>
-          <p className="text-sm text-muted-foreground">
-            Track your holdings, see projected performance using our regression model, and simulate investment outcomes.
-          </p>
-          <button
-            onClick={() => navigate("/auth")}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-mono font-bold hover:bg-primary/90 transition-colors"
-          >
-            <LogIn className="w-4 h-4" />
-            Sign In
-          </button>
+          <p className="text-sm text-muted-foreground">Track your holdings and see projected performance.</p>
+          <button onClick={() => navigate("/auth")} className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-mono font-bold hover:bg-primary/90 transition-colors"><LogIn className="w-4 h-4" />Sign In</button>
         </div>
       </div>
     );
@@ -240,70 +326,42 @@ export default function Portfolio() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-primary" />
-            <h1 className="text-sm font-mono font-bold tracking-widest uppercase">My Portfolio</h1>
-          </div>
+          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
+          <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" /><h1 className="text-sm font-mono font-bold tracking-widest uppercase">My Portfolio</h1></div>
         </div>
-        <button
-          onClick={() => setShowAdd(!showAdd)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Holding
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={refreshPrices} className="px-3 py-2 border border-border rounded-lg text-xs font-mono hover:bg-accent transition-colors flex items-center gap-2" title="Refresh latest prices">
+            <RefreshCw className="w-3.5 h-3.5" />Refresh
+          </button>
+          {holdings.length > 0 && (
+            <button onClick={() => setAnalysisOpen(true)} disabled={!totals?.allLoaded} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 disabled:opacity-50">
+              <Sparkles className="w-4 h-4" />Analyze Portfolio
+            </button>
+          )}
+          <button onClick={() => setShowAdd(!showAdd)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors flex items-center gap-2">
+            <Plus className="w-4 h-4" />Add Holding
+          </button>
+        </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Add Form */}
         {showAdd && (
           <div className="chart-surface p-5 space-y-4">
             <h3 className="text-sm font-mono font-bold">Add New Holding</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Ticker</label>
-                <TickerSearch
-                  value={newTicker}
-                  onChange={setNewTicker}
-                  onSelect={(symbol) => setNewTicker(symbol)}
-                />
+              <div className="space-y-1"><label className="text-xs text-muted-foreground">Ticker</label>
+                <TickerSearch value={newTicker} onChange={setNewTicker} onSelect={(symbol) => setNewTicker(symbol)} />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Shares</label>
-                <input
-                  type="number"
-                  value={newShares}
-                  onChange={(e) => setNewShares(e.target.value)}
-                  placeholder="100"
-                  min="0.01"
-                  step="0.01"
-                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus"
-                />
+              <div className="space-y-1"><label className="text-xs text-muted-foreground">Shares</label>
+                <input type="number" value={newShares} onChange={(e) => setNewShares(e.target.value)} placeholder="100" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Avg Cost per Share ($)</label>
-                <input
-                  type="number"
-                  value={newCost}
-                  onChange={(e) => setNewCost(e.target.value)}
-                  placeholder="150.00"
-                  min="0.01"
-                  step="0.01"
-                  className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus"
-                />
+              <div className="space-y-1"><label className="text-xs text-muted-foreground">Avg Cost per Share ($)</label>
+                <input type="number" value={newCost} onChange={(e) => setNewCost(e.target.value)} placeholder="150.00" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
               </div>
               <div className="flex items-end">
-                <button
-                  onClick={handleAdd}
-                  disabled={addMutation.isPending}
-                  className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
+                <button onClick={handleAdd} disabled={addMutation.isPending} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors disabled:opacity-50">
                   {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add"}
                 </button>
               </div>
@@ -311,47 +369,28 @@ export default function Portfolio() {
           </div>
         )}
 
-        {/* Summary Cards */}
         {holdings.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Holdings</div>
-              <div className="text-2xl font-mono mt-1">{holdings.length}</div>
-            </div>
-            <div className="stat-card">
-              <div className="text-xs text-muted-foreground">Total Invested</div>
-              <div className="text-2xl font-mono mt-1">${totalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-            </div>
-            <div className="stat-card col-span-2">
-              <div className="text-xs text-muted-foreground">Model-Powered Projections</div>
-              <div className="text-sm text-muted-foreground mt-1">
-                Each holding is analyzed using our Enhanced-V2 regression model with momentum, volatility, and risk adjustments.
+            <div className="stat-card"><div className="text-xs text-muted-foreground">Holdings</div><div className="text-2xl font-mono mt-1">{holdings.length}</div></div>
+            <div className="stat-card"><div className="text-xs text-muted-foreground">Total Invested</div><div className="text-2xl font-mono mt-1">${(totals?.totalCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
+            <div className="stat-card"><div className="text-xs text-muted-foreground">Current Value</div><div className="text-2xl font-mono mt-1">${(totals?.currentValue ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
+            <div className="stat-card"><div className="text-xs text-muted-foreground">Total Gain/Loss</div>
+              <div className={`text-2xl font-mono mt-1 ${(totals?.gainLoss ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+                {(totals?.gainLoss ?? 0) >= 0 ? "+" : ""}${(totals?.gainLoss ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                <span className="text-xs ml-2">({((totals?.gainLossPct ?? 0) * 100).toFixed(1)}%)</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Holdings Table */}
         {isLoading ? (
-          <div className="chart-surface p-8 flex items-center justify-center">
-            <Loader2 className="w-5 h-5 animate-spin text-primary mr-2" />
-            <span className="text-sm text-muted-foreground">Loading portfolio…</span>
-          </div>
+          <div className="chart-surface p-8 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary mr-2" /><span className="text-sm text-muted-foreground">Loading portfolio…</span></div>
         ) : holdings.length === 0 ? (
           <div className="chart-surface p-12 text-center space-y-3">
             <Briefcase className="w-10 h-10 text-muted-foreground mx-auto" />
             <h3 className="text-lg font-bold">Your portfolio is empty</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Add your stock holdings to see projected performance powered by our regression model. 
-              Track gains, losses, and future projections all in one place.
-            </p>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Your First Holding
-            </button>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">Add your stock holdings to see projected performance powered by our regression model.</p>
+            <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono hover:bg-primary/90 transition-colors"><Plus className="w-4 h-4" />Add Your First Holding</button>
           </div>
         ) : (
           <div className="chart-surface overflow-x-auto">
@@ -367,14 +406,41 @@ export default function Portfolio() {
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">30d Proj</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">1Y Proj</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Ann. Return</th>
-                  <th className="text-center px-4 py-3 font-bold uppercase tracking-widest text-[10px]"></th>
+                  <th className="text-center px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {holdings.map((h) => (
-                  <HoldingRow key={h.id} holding={h} onDelete={(id) => deleteMutation.mutate(id)} />
+                  <HoldingRow
+                    key={h.id}
+                    holding={h}
+                    onDelete={(id) => deleteMutation.mutate(id)}
+                    onUpdate={(id, shares, avgCost) => updateMutation.mutate({ id, shares, avgCost })}
+                    onProjection={handleProjection}
+                  />
                 ))}
               </tbody>
+              {totals && (
+                <tfoot>
+                  <tr className="border-t-2 border-primary/40 bg-secondary/40 font-bold">
+                    <td className="px-4 py-3 text-[11px] uppercase tracking-widest text-primary">Total</td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3 text-right text-sm">${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
+                      {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">${totals.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className="px-4 py-3 text-right text-sm">${totals.projected1y.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className={`px-4 py-3 text-right text-sm ${totals.weightedReturn >= 0 ? "price-positive" : "price-negative"}`}>
+                      {totals.weightedReturn >= 0 ? "+" : ""}{(totals.weightedReturn * 100).toFixed(1)}%
+                    </td>
+                    <td className="px-4 py-3"></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}
@@ -383,6 +449,90 @@ export default function Portfolio() {
           Projections are based on the Enhanced-V2 regression model. Past performance does not guarantee future results. Not financial advice.
         </div>
       </main>
+
+      {analysisOpen && analysis && totals && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAnalysisOpen(false)}>
+          <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <h2 className="text-lg font-mono font-bold">Portfolio Analysis</h2>
+              </div>
+              <button onClick={() => setAnalysisOpen(false)} className="p-1 rounded hover:bg-accent"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-5 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="stat-card"><div className="text-[10px] uppercase text-muted-foreground">Weighted 1Y Return</div>
+                  <div className={`text-xl font-mono mt-1 ${totals.weightedReturn >= 0 ? "price-positive" : "price-negative"}`}>
+                    {totals.weightedReturn >= 0 ? "+" : ""}{(totals.weightedReturn * 100).toFixed(1)}%
+                  </div>
+                </div>
+                <div className="stat-card"><div className="text-[10px] uppercase text-muted-foreground">Model Confidence (R²)</div>
+                  <div className="text-xl font-mono mt-1">{(totals.weightedR2 * 100).toFixed(0)}%</div>
+                  <div className="text-[10px] text-muted-foreground capitalize">{analysis.modelConfidence}</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Best Historical Trend</h3>
+                <div className="p-3 rounded border border-border bg-secondary/30">
+                  <span className="font-mono font-bold text-primary">{analysis.bestPerformer.ticker}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{analysis.bestPerformer.companyName}</span>
+                  <div className="text-xs mt-1 price-positive">Annualized trend: +{(analysis.bestPerformer.annualReturn * 100).toFixed(1)}%</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Weakest Historical Trend</h3>
+                <div className="p-3 rounded border border-border bg-secondary/30">
+                  <span className="font-mono font-bold text-primary">{analysis.worstPerformer.ticker}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{analysis.worstPerformer.companyName}</span>
+                  <div className={`text-xs mt-1 ${analysis.worstPerformer.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
+                    Annualized trend: {analysis.worstPerformer.annualReturn >= 0 ? "+" : ""}{(analysis.worstPerformer.annualReturn * 100).toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Concentration ({analysis.concentrationRisk} risk)</h3>
+                <div className="space-y-1">
+                  {analysis.concentration.slice(0, 5).map(c => (
+                    <div key={c.ticker} className="flex items-center gap-2 text-xs">
+                      <span className="font-mono w-16">{c.ticker}</span>
+                      <div className="flex-1 bg-secondary rounded h-2 overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: `${c.pct * 100}%` }} />
+                      </div>
+                      <span className="font-mono w-12 text-right">{(c.pct * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
+                {analysis.concentrationRisk === "high" && (
+                  <p className="text-[11px] text-muted-foreground">Historically, portfolios with &gt;40% in a single name show larger drawdowns during single-stock shocks.</p>
+                )}
+              </div>
+
+              {analysis.laggards.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Negative Trend Holdings ({analysis.laggards.length})</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.laggards.map(l => (
+                      <span key={l.ticker} className="px-2 py-1 rounded bg-destructive/10 text-destructive font-mono text-[11px]">
+                        {l.ticker} {(l.annualReturn * 100).toFixed(1)}%
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-4 text-[10px] text-muted-foreground leading-relaxed">
+                <strong>Educational only.</strong> This analysis is based on the Enhanced-V2 linear regression model applied to each holding's 1-year price history.
+                It describes historical trend and dispersion — it is not a recommendation, forecast guarantee, or advice to buy, hold, or sell.
+                Consult a licensed financial advisor before making investment decisions.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
