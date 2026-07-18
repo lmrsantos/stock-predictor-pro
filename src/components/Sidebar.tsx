@@ -278,6 +278,15 @@ export function Sidebar({
       {/* Divider */}
       <div className="border-t border-border" />
 
+      {/* Global Sentiment */}
+      <div>
+        <label className="label-upper mb-3 block">Global Sentiment</label>
+        <GlobalSentiment />
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-border" />
+
       {/* Hot Stocks */}
       <div>
         <label className="label-upper mb-3 block">Hot Stocks</label>
