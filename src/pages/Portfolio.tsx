@@ -31,8 +31,10 @@ interface HoldingProjection {
   gainLoss: number;
   gainLossPct: number;
   projected30d: number;
+  projected30dPct: number;
   projected90d: number;
   projected1y: number;
+  projected1yPct: number;
   annualReturn: number;
   rSquared: number;
 }
@@ -90,6 +92,8 @@ function HoldingRow({
     const currentValue = holding.shares * currentPrice;
     const dailySlope = regression.slope;
     const project = (days: number) => holding.shares * (currentPrice + dailySlope * days);
+    const projected30d = project(30);
+    const projected1y = project(365);
     return {
       ticker: holding.ticker,
       companyName: holding.company_name || meta?.name || holding.ticker,
@@ -100,9 +104,11 @@ function HoldingRow({
       currentValue,
       gainLoss: currentValue - totalCost,
       gainLossPct: totalCost > 0 ? (currentValue - totalCost) / totalCost : 0,
-      projected30d: project(30),
+      projected30d,
+      projected30dPct: currentValue > 0 ? (projected30d - currentValue) / currentValue : 0,
       projected90d: project(90),
-      projected1y: project(365),
+      projected1y,
+      projected1yPct: currentValue > 0 ? (projected1y - currentValue) / currentValue : 0,
       annualReturn: currentPrice > 0 ? (dailySlope * 252) / currentPrice : 0,
       rSquared: regression.rSquared,
     };
@@ -182,8 +188,18 @@ function HoldingRow({
         {gl ? "+" : ""}${p.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         <div className="text-[10px]">{gl ? "+" : ""}{(p.gainLossPct * 100).toFixed(1)}%</div>
       </td>
-      <td className="px-4 py-3 text-right font-mono text-sm">${p.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-      <td className="px-4 py-3 text-right font-mono text-sm">${p.projected1y.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+      <td className="px-4 py-3 text-right font-mono text-sm">
+        ${p.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        <div className={`text-[10px] ${p.projected30dPct >= 0 ? "price-positive" : "price-negative"}`}>
+          {p.projected30dPct >= 0 ? "+" : ""}{(p.projected30dPct * 100).toFixed(1)}%
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right font-mono text-sm">
+        ${p.projected1y.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        <div className={`text-[10px] ${p.projected1yPct >= 0 ? "price-positive" : "price-negative"}`}>
+          {p.projected1yPct >= 0 ? "+" : ""}{(p.projected1yPct * 100).toFixed(1)}%
+        </div>
+      </td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${p.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
         {p.annualReturn >= 0 ? "+" : ""}{(p.annualReturn * 100).toFixed(1)}%
       </td>
@@ -319,7 +335,11 @@ export default function Portfolio() {
     return {
       totalCost, currentValue, gainLoss,
       gainLossPct: totalCost > 0 ? gainLoss / totalCost : 0,
-      projected30d, projected1y, weightedReturn, weightedR2,
+      projected30d,
+      projected30dPct: currentValue > 0 ? (projected30d - currentValue) / currentValue : 0,
+      projected1y,
+      projected1yPct: currentValue > 0 ? (projected1y - currentValue) / currentValue : 0,
+      weightedReturn, weightedR2,
       count: valid.length, allLoaded: valid.length === holdings.length,
     };
   }, [holdings, projections]);
@@ -476,8 +496,18 @@ export default function Portfolio() {
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm">${totals.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                    <td className="px-4 py-3 text-right text-sm">${totals.projected1y.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      ${totals.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <div className={`text-[10px] ${totals.projected30dPct >= 0 ? "price-positive" : "price-negative"}`}>
+                        {totals.projected30dPct >= 0 ? "+" : ""}{(totals.projected30dPct * 100).toFixed(1)}%
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      ${totals.projected1y.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <div className={`text-[10px] ${totals.projected1yPct >= 0 ? "price-positive" : "price-negative"}`}>
+                        {totals.projected1yPct >= 0 ? "+" : ""}{(totals.projected1yPct * 100).toFixed(1)}%
+                      </div>
+                    </td>
                     <td className={`px-4 py-3 text-right text-sm ${totals.weightedReturn >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.weightedReturn >= 0 ? "+" : ""}{(totals.weightedReturn * 100).toFixed(1)}%
                     </td>
