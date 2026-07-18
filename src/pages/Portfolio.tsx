@@ -37,6 +37,19 @@ interface HoldingProjection {
   rSquared: number;
 }
 
+function formatHeldFor(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  const start = new Date(dateStr);
+  if (isNaN(start.getTime())) return "—";
+  const now = new Date();
+  const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  if (days < 30) return `${days}d`;
+  if (days < 365) return `${Math.floor(days / 30)}mo`;
+  const years = Math.floor(days / 365);
+  const remMonths = Math.floor((days % 365) / 30);
+  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}y`;
+}
+
 function HoldingRow({
   holding,
   onDelete,
@@ -45,11 +58,12 @@ function HoldingRow({
 }: {
   holding: Holding;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, shares: number, avgCost: number) => void;
+  onUpdate: (id: string, shares: number, avgCost: number, purchaseDate: string | null) => void;
   onProjection: (id: string, p: HoldingProjection | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editShares, setEditShares] = useState(String(holding.shares));
+
   const [editCost, setEditCost] = useState(String(holding.avg_cost));
 
   const { data: meta } = useQuery({
