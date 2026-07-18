@@ -1,232 +1,115 @@
 // supabase/functions/quant-agent/index.ts
-// ─────────────────────────────────────────────────────────────────────────────
-// QuantAgent proxy — two responsibilities:
-//   1. "init" action: create Managed Agent + Environment + Session,
-//      return session_id to the browser
-//   2. "get_key" action: return a short-lived token so the browser
-//      can stream SSE events directly from Anthropic
-//
-// The actual conversation streaming happens browser → Anthropic directly.
-// This edge function only does the setup (no polling, no timeout risk).
-// ─────────────────────────────────────────────────────────────────────────────
+// Educational quant analyst chat via Lovable AI Gateway (Gemini).
+// Returns responses synchronously — no managed-agent streaming.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ANTHROPIC_BASE = "https://api.anthropic.com";
-const BETA_HEADER = "managed-agents-2026-04-01";
+function buildSystemPrompt(ctx: Record<string, any>): string {
+  const bt = ctx?.backtestResult;
+  return `You are QuantAgent, an educational quantitative analyst inside the QuantForecast platform.
 
-async function anthropicPost(path: string, body: unknown, apiKey: string) {
-  const res = await fetch(`${ANTHROPIC_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": BETA_HEADER,
-    },
-    body: JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${text}`);
-  return JSON.parse(text);
-}
+IMPORTANT — LEGAL / TONE:
+- You are NOT a financial advisor and never give personalized recommendations.
+- Frame everything as education: "historically", "the model suggests", "one interpretation is…".
+- Never say "you should buy/sell" or give dollar amounts. Use percentages and illustrative framing.
+- Always mention that past performance does not guarantee future results when relevant.
 
-function buildSystemPrompt(ctx: Record<string, unknown>): string {
-  const bt = ctx.backtestResult as Record<string, unknown> | undefined;
-  return `You are QuantAgent, a professional quantitative financial analyst in the QuantForecast platform. You have access to web search — use it to find current news, earnings, analyst ratings, and macro context for any stock you analyze.
+Current context:
+- Ticker: ${ctx?.ticker || "N/A"}
+- Price: ${ctx?.price ? "$" + ctx.price : "N/A"}
+${ctx?.annualReturn ? `- Regression annual return: ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
+${ctx?.rSquared ? `- R² (trend reliability): ${ctx.rSquared}` : ""}
+${bt ? `- Backtest signal: ${bt.signal} (${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate, regime: ${bt.regime}, projected ${bt.forecastPct}% over ${bt.forecastLabel})` : ""}
 
-Current stock context:
-- Ticker: ${ctx.ticker || "N/A"}
-- Price: ${ctx.price ? "$" + ctx.price : "N/A"}
-${ctx.annualReturn ? `- Regression Annual Return: ${(Number(ctx.annualReturn) * 100).toFixed(1)}%` : ""}
-${ctx.rSquared ? `- R² (trend reliability): ${ctx.rSquared}` : ""}
-${bt ? `
-Autoencoder Backtest Results:
-- Signal: ${bt.signal}
-- Confidence: ${bt.confidenceScore}/100
-- Walk-Forward Accuracy: ${bt.walkForwardAccuracy}%
-- Direction Hit Rate: ${bt.hitRate}%
-- Market Regime: ${bt.regime}
-- Projected Move: ${bt.forecastPct}% over ${bt.forecastLabel}` : ""}
-
-Guidelines:
-- Always search the web for current news before giving a forecast or recommendation
-- Be direct and specific — give actionable insights with clear reasoning
-- Combine the quantitative backtest data with current news for a complete picture
-- State position size recommendations when asked (e.g. full/half/quarter position)
-- You are NOT a licensed financial advisor — note this for specific recommendations`;
+Style: concise, direct, markdown-friendly. Explain the reasoning behind model outputs. If asked about news you don't have, say so and explain what to look for.`;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set in Supabase secrets");
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!apiKey) throw new Error("LOVABLE_API_KEY not set");
 
     const body = await req.json();
     const { action, context, ticker } = body;
     const currentTicker = ticker || context?.ticker || "UNKNOWN";
-    const userId = (req.headers.get("authorization") || "anon").slice(-12).replace(/[^a-zA-Z0-9]/g, "x");
 
-    // ── ACTION: init ──────────────────────────────────────────────────────────
-    // Creates Agent + Environment + Session, returns session_id to browser.
-    // Browser then streams directly to Anthropic using the session_id.
-
+    // ── init: return greeting, no remote session needed ─────────────────────
     if (action === "get_or_create_agent" || action === "create_session") {
-
-      // Check for cached agent
-      const { data: cachedAgent } = await supabase
-        .from("market_updates")
-        .select("content")
-        .eq("signal_type", "qa_managed_agent_id_v1")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let agentId = cachedAgent?.[0]?.content || null;
-
-      if (!agentId) {
-        // Create the Managed Agent (once per deployment)
-        const agent = await anthropicPost("/v1/agents", {
-          name: "QuantForecast Financial Analyst",
-          model: { id: "claude-sonnet-4-6" },
-          system: buildSystemPrompt(context || {}),
-          tools: [{ type: "agent_toolset_20260401" }], // includes web search
-        }, apiKey);
-
-        agentId = agent.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_agent_id_v1",
-          content: agentId,
-          ticker: null,
-        });
-      }
-
-      // Check for cached environment
-      const { data: cachedEnv } = await supabase
-        .from("market_updates")
-        .select("content")
-        .eq("signal_type", "qa_managed_env_id_v1")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let envId = cachedEnv?.[0]?.content || null;
-
-      if (!envId) {
-        const env = await anthropicPost("/v1/environments", {
-          name: "quantforecast-env",
-          config: { type: "cloud", networking: { type: "unrestricted" } },
-        }, apiKey);
-
-        envId = env.id;
-        await supabase.from("market_updates").insert({
-          signal_type: "qa_managed_env_id_v1",
-          content: envId,
-          ticker: null,
-        });
-      }
-
-      // Check for cached session (valid 2 hours)
-      const sessionKey = `qa_managed_session_${userId}_${currentTicker}`;
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-      const { data: cachedSession } = await supabase
-        .from("market_updates")
-        .select("content, created_at")
-        .eq("signal_type", sessionKey)
-        .gte("created_at", twoHoursAgo)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      let sessionId: string;
-      let isReturning = false;
-
-      if (cachedSession?.length) {
-        sessionId = JSON.parse(cachedSession[0].content).session_id;
-        isReturning = true;
-      } else {
-        // Create new session
-        const session = await anthropicPost("/v1/sessions", {
-          agent: agentId,
-          environment_id: envId,
-          title: `QuantForecast — ${currentTicker}`,
-        }, apiKey);
-
-        sessionId = session.id;
-        await supabase.from("market_updates").insert({
-          signal_type: sessionKey,
-          content: JSON.stringify({ session_id: sessionId }),
-          ticker: currentTicker,
-        });
-      }
-
-      // Build greeting
       const bt = context?.backtestResult;
-      const greeting = isReturning
-        ? `Welcome back. Resuming our analysis of ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. What would you like to explore?`
-        : bt
-        ? `Loaded backtest for ${currentTicker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. I'll search for current news to complement the model. What would you like to know?`
-        : `Ready to analyze ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. I'll combine the regression model with live web search for a complete picture. Ask me anything.`;
+      const greeting = bt
+        ? `Loaded backtest for ${currentTicker}: **${bt.signal}** signal, ${bt.confidenceScore}/100 confidence, ${bt.hitRate}% hit rate. Ask me to explain the model, walk through the regime, or discuss what typically drives moves like this. *For education only — not financial advice.*`
+        : `Ready to explore ${currentTicker}${context?.price ? ` at $${context.price}` : ""}. Ask about the regression trend, historical patterns, or how to interpret the model. *For education only — not financial advice.*`;
 
       return new Response(JSON.stringify({
-        agent_id: agentId,
-        environment_id: envId,
-        session_id: sessionId,
-        is_returning: isReturning,
-        recent_messages: [],
+        agent_id: "lovable-ai",
+        environment_id: "lovable-ai",
+        session_id: `sess_${crypto.randomUUID()}`,
+        is_returning: false,
         greeting,
-        // Return the API key so browser can stream directly
-        // (scoped — only used for this session's SSE stream)
-        anthropic_api_key: apiKey,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-
-    // ── ACTION: send_message ──────────────────────────────────────────────────
-    // Sends a user event to the Managed Agent session.
-    // Returns immediately — browser polls/streams for the response directly.
-
-    } else if (action === "send_message") {
-      const { session_id, message, context: ctx } = body;
-
-      // Send user message event to the session
-      const enriched = `${message}
-
-${ctx?.ticker ? `[Analyzing: ${ctx.ticker} at ${ctx.price ? "$" + ctx.price : "current price"}]` : ""}
-${ctx?.backtestResult ? `[Backtest: ${ctx.backtestResult.signal} signal, ${ctx.backtestResult.confidenceScore}/100 confidence, regime: ${ctx.backtestResult.regime}]` : ""}
-
-Please search the web for current news about this stock before responding.`;
-
-      await anthropicPost(`/v1/sessions/${session_id}/events`, {
-        events: [{
-          type: "user.message",
-          content: [{ type: "text", text: enriched }],
-        }],
-      }, apiKey);
-
-      // Return session_id and key — browser will stream the response
-      return new Response(JSON.stringify({
-        session_id,
-        streaming: true,
-        anthropic_api_key: apiKey,
-        message: "Event sent. Stream response from Anthropic directly.",
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-
-    } else {
-      throw new Error(`Unknown action: ${action}`);
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    // ── send_message: call Lovable AI and return the reply ──────────────────
+    if (action === "send_message") {
+      const { message, history } = body;
+      if (!message || typeof message !== "string") {
+        return new Response(JSON.stringify({ error: "Missing message" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const messages = [
+        { role: "system", content: buildSystemPrompt(context || {}) },
+        ...(Array.isArray(history) ? history.slice(-12).map((m: any) => ({
+          role: m.role === "agent" ? "assistant" : "user",
+          content: String(m.content || ""),
+        })) : []),
+        { role: "user", content: message },
+      ];
+
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages,
+        }),
+      });
+
+      if (res.status === 429) {
+        return new Response(JSON.stringify({ response: "I'm getting rate-limited right now — please try again in a moment." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (res.status === 402) {
+        return new Response(JSON.stringify({ response: "AI credits are exhausted for this workspace. Please add credits to keep chatting." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`AI gateway ${res.status}: ${t.slice(0, 300)}`);
+      }
+
+      const data = await res.json();
+      const reply = data?.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response — try rephrasing.";
+
+      return new Response(JSON.stringify({ response: reply }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    throw new Error(`Unknown action: ${action}`);
 
   } catch (error) {
     console.error("QuantAgent error:", error);
