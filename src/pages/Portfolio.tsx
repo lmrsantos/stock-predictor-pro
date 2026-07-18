@@ -161,7 +161,22 @@ function HoldingRow({
           />
         ) : `$${p.avgCost.toFixed(2)}`}
       </td>
+      <td className="px-4 py-3 text-right font-mono text-sm">
+        {editing ? (
+          <input
+            type="date" value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+            className="w-32 bg-secondary border border-border rounded px-2 py-1 text-right text-xs"
+          />
+        ) : (
+          <div>
+            <div>{holding.purchase_date ? new Date(holding.purchase_date).toLocaleDateString() : "—"}</div>
+            <div className="text-[10px] text-muted-foreground">{formatHeldFor(holding.purchase_date)}</div>
+          </div>
+        )}
+      </td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
+
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${gl ? "price-positive" : "price-negative"}`}>
         {gl ? "+" : ""}${p.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
