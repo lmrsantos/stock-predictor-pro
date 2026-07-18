@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,15 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next") ?? "";
+  // Only allow same-origin relative paths.
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const postAuthRedirect = window.location.origin + nextPath;
 
   useEffect(() => {
-    if (session) navigate("/");
-  }, [session, navigate]);
+    if (session) navigate(nextPath, { replace: true });
+  }, [session, navigate, nextPath]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,12 +36,12 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/");
+        navigate(nextPath, { replace: true });
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: postAuthRedirect },
         });
         if (error) throw error;
         setMessage("Check your email to verify your account before signing in.");
@@ -51,7 +56,7 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setError("");
     const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: postAuthRedirect,
     });
     if (error) setError(error.message || "Google sign-in failed");
   };
