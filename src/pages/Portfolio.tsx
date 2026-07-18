@@ -65,6 +65,8 @@ function HoldingRow({
   const [editShares, setEditShares] = useState(String(holding.shares));
 
   const [editCost, setEditCost] = useState(String(holding.avg_cost));
+  const [editDate, setEditDate] = useState(holding.purchase_date || "");
+
 
   const { data: meta } = useQuery({
     queryKey: ["portfolio-fetch", holding.ticker],
