@@ -451,7 +451,7 @@ export default function Portfolio() {
                     key={h.id}
                     holding={h}
                     onDelete={(id) => deleteMutation.mutate(id)}
-                    onUpdate={(id, shares, avgCost) => updateMutation.mutate({ id, shares, avgCost })}
+                    onUpdate={(id, shares, avgCost, purchaseDate) => updateMutation.mutate({ id, shares, avgCost, purchaseDate })}
                     onProjection={handleProjection}
                   />
                 ))}
