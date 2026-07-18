@@ -127,7 +127,7 @@ function HoldingRow({
     return (
       <tr className="border-b border-border/50">
         <td className="px-4 py-3 font-mono font-bold text-primary">{holding.ticker}</td>
-        <td colSpan={9} className="px-4 py-3 text-muted-foreground text-sm">
+        <td colSpan={11} className="px-4 py-3 text-muted-foreground text-sm">
           <Loader2 className="w-3 h-3 animate-spin inline mr-2" />Loading…
         </td>
       </tr>
