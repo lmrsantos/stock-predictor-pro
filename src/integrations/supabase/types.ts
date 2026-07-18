@@ -161,6 +161,7 @@ export type Database = {
           avg_cost: number
           company_name: string | null
           id: string
+          purchase_date: string | null
           shares: number
           ticker: string
           user_id: string
@@ -170,6 +171,7 @@ export type Database = {
           avg_cost?: number
           company_name?: string | null
           id?: string
+          purchase_date?: string | null
           shares?: number
           ticker: string
           user_id: string
@@ -179,6 +181,7 @@ export type Database = {
           avg_cost?: number
           company_name?: string | null
           id?: string
+          purchase_date?: string | null
           shares?: number
           ticker?: string
           user_id?: string
