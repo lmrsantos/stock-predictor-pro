@@ -16,7 +16,9 @@ interface Holding {
   shares: number;
   avg_cost: number;
   added_at: string;
+  purchase_date: string | null;
 }
+
 
 interface HoldingProjection {
   ticker: string;
@@ -35,6 +37,19 @@ interface HoldingProjection {
   rSquared: number;
 }
 
+function formatHeldFor(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  const start = new Date(dateStr);
+  if (isNaN(start.getTime())) return "—";
+  const now = new Date();
+  const days = Math.max(0, Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  if (days < 30) return `${days}d`;
+  if (days < 365) return `${Math.floor(days / 30)}mo`;
+  const years = Math.floor(days / 365);
+  const remMonths = Math.floor((days % 365) / 30);
+  return remMonths > 0 ? `${years}y ${remMonths}mo` : `${years}y`;
+}
+
 function HoldingRow({
   holding,
   onDelete,
@@ -43,12 +58,15 @@ function HoldingRow({
 }: {
   holding: Holding;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, shares: number, avgCost: number) => void;
+  onUpdate: (id: string, shares: number, avgCost: number, purchaseDate: string | null) => void;
   onProjection: (id: string, p: HoldingProjection | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editShares, setEditShares] = useState(String(holding.shares));
+
   const [editCost, setEditCost] = useState(String(holding.avg_cost));
+  const [editDate, setEditDate] = useState(holding.purchase_date || "");
+
 
   const { data: meta } = useQuery({
     queryKey: ["portfolio-fetch", holding.ticker],
@@ -101,7 +119,7 @@ function HoldingRow({
       toast.error("Enter valid values");
       return;
     }
-    onUpdate(holding.id, s, c);
+    onUpdate(holding.id, s, c, editDate || null);
     setEditing(false);
   };
 
@@ -109,7 +127,7 @@ function HoldingRow({
     return (
       <tr className="border-b border-border/50">
         <td className="px-4 py-3 font-mono font-bold text-primary">{holding.ticker}</td>
-        <td colSpan={9} className="px-4 py-3 text-muted-foreground text-sm">
+        <td colSpan={11} className="px-4 py-3 text-muted-foreground text-sm">
           <Loader2 className="w-3 h-3 animate-spin inline mr-2" />Loading…
         </td>
       </tr>
@@ -143,7 +161,22 @@ function HoldingRow({
           />
         ) : `$${p.avgCost.toFixed(2)}`}
       </td>
+      <td className="px-4 py-3 text-right font-mono text-sm">
+        {editing ? (
+          <input
+            type="date" value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+            className="w-32 bg-secondary border border-border rounded px-2 py-1 text-right text-xs"
+          />
+        ) : (
+          <div>
+            <div>{holding.purchase_date ? new Date(holding.purchase_date).toLocaleDateString() : "—"}</div>
+            <div className="text-[10px] text-muted-foreground">{formatHeldFor(holding.purchase_date)}</div>
+          </div>
+        )}
+      </td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
+
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${gl ? "price-positive" : "price-negative"}`}>
         {gl ? "+" : ""}${p.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -161,7 +194,7 @@ function HoldingRow({
               <button onClick={saveEdit} className="p-1 rounded hover:bg-primary/10 text-primary" title="Save">
                 <Check className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => { setEditing(false); setEditShares(String(holding.shares)); setEditCost(String(holding.avg_cost)); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel">
+              <button onClick={() => { setEditing(false); setEditShares(String(holding.shares)); setEditCost(String(holding.avg_cost)); setEditDate(holding.purchase_date || ""); }} className="p-1 rounded hover:bg-muted text-muted-foreground" title="Cancel">
                 <X className="w-3.5 h-3.5" />
               </button>
             </>
@@ -189,6 +222,8 @@ export default function Portfolio() {
   const [newTicker, setNewTicker] = useState("");
   const [newShares, setNewShares] = useState("");
   const [newCost, setNewCost] = useState("");
+  const [newDate, setNewDate] = useState("");
+
   const [showAdd, setShowAdd] = useState(false);
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
   const [analysisOpen, setAnalysisOpen] = useState(false);
@@ -204,15 +239,15 @@ export default function Portfolio() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async ({ ticker, shares, avgCost, companyName }: { ticker: string; shares: number; avgCost: number; companyName?: string }) => {
+    mutationFn: async ({ ticker, shares, avgCost, purchaseDate, companyName }: { ticker: string; shares: number; avgCost: number; purchaseDate: string | null; companyName?: string }) => {
       const { error } = await supabase.from("portfolio_holdings").insert({
-        user_id: user!.id, ticker: ticker.toUpperCase(), shares, avg_cost: avgCost, company_name: companyName || null,
-      });
+        user_id: user!.id, ticker: ticker.toUpperCase(), shares, avg_cost: avgCost, purchase_date: purchaseDate, company_name: companyName || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
-      setNewTicker(""); setNewShares(""); setNewCost(""); setShowAdd(false);
+      setNewTicker(""); setNewShares(""); setNewCost(""); setNewDate(""); setShowAdd(false);
       toast.success("Holding added to portfolio");
     },
     onError: (err: any) => {
@@ -222,9 +257,10 @@ export default function Portfolio() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, shares, avgCost }: { id: string; shares: number; avgCost: number }) => {
-      const { error } = await supabase.from("portfolio_holdings").update({ shares, avg_cost: avgCost }).eq("id", id);
+    mutationFn: async ({ id, shares, avgCost, purchaseDate }: { id: string; shares: number; avgCost: number; purchaseDate: string | null }) => {
+      const { error } = await supabase.from("portfolio_holdings").update({ shares, avg_cost: avgCost, purchase_date: purchaseDate } as any).eq("id", id);
       if (error) throw error;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
@@ -252,7 +288,7 @@ export default function Portfolio() {
       toast.error("Please fill in all fields with valid values");
       return;
     }
-    addMutation.mutate({ ticker, shares, avgCost });
+    addMutation.mutate({ ticker, shares, avgCost, purchaseDate: newDate || null });
   };
 
   const handleProjection = useCallback((id: string, p: HoldingProjection | null) => {
@@ -350,7 +386,7 @@ export default function Portfolio() {
         {showAdd && (
           <div className="chart-surface p-5 space-y-4">
             <h3 className="text-sm font-mono font-bold">Add New Holding</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-1"><label className="text-xs text-muted-foreground">Ticker</label>
                 <TickerSearch value={newTicker} onChange={setNewTicker} onSelect={(symbol) => setNewTicker(symbol)} />
               </div>
@@ -360,6 +396,10 @@ export default function Portfolio() {
               <div className="space-y-1"><label className="text-xs text-muted-foreground">Avg Cost per Share ($)</label>
                 <input type="number" value={newCost} onChange={(e) => setNewCost(e.target.value)} placeholder="150.00" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
               </div>
+              <div className="space-y-1"><label className="text-xs text-muted-foreground">Purchase Date</label>
+                <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} max={new Date().toISOString().split("T")[0]} className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
+              </div>
+
               <div className="flex items-end">
                 <button onClick={handleAdd} disabled={addMutation.isPending} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors disabled:opacity-50">
                   {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add"}
@@ -400,7 +440,9 @@ export default function Portfolio() {
                   <th className="text-left px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Ticker</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Shares</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Avg Cost</th>
+                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Purchased / Held</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Current</th>
+
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Value</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Gain/Loss</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">30d Proj</th>
@@ -415,7 +457,7 @@ export default function Portfolio() {
                     key={h.id}
                     holding={h}
                     onDelete={(id) => deleteMutation.mutate(id)}
-                    onUpdate={(id, shares, avgCost) => updateMutation.mutate({ id, shares, avgCost })}
+                    onUpdate={(id, shares, avgCost, purchaseDate) => updateMutation.mutate({ id, shares, avgCost, purchaseDate })}
                     onProjection={handleProjection}
                   />
                 ))}
@@ -427,6 +469,8 @@ export default function Portfolio() {
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+
                     <td className="px-4 py-3 text-right text-sm">${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                     <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
