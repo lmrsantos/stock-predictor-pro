@@ -16,7 +16,9 @@ interface Holding {
   shares: number;
   avg_cost: number;
   added_at: string;
+  purchase_date: string | null;
 }
+
 
 interface HoldingProjection {
   ticker: string;
