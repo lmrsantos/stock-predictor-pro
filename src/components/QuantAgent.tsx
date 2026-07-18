@@ -309,11 +309,15 @@ export function QuantAgent({ context }: QuantAgentProps) {
     try {
       // All communication goes through Supabase edge function (avoids CORS)
       // The edge function sends the message AND polls for the response
+      const history = messages
+        .filter(m => !m.thinking && m.id !== "greeting")
+        .map(m => ({ role: m.role, content: m.content }));
       const { data, error } = await supabase.functions.invoke("quant-agent", {
         body: {
           action: "send_message",
           session_id: sessionId,
           message: text.trim(),
+          history,
           context,
           ticker: context.ticker,
         },
