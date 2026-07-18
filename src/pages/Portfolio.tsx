@@ -119,7 +119,7 @@ function HoldingRow({
       toast.error("Enter valid values");
       return;
     }
-    onUpdate(holding.id, s, c);
+    onUpdate(holding.id, s, c, editDate || null);
     setEditing(false);
   };
 
