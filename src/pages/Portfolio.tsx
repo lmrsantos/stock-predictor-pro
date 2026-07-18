@@ -469,6 +469,8 @@ export default function Portfolio() {
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+
                     <td className="px-4 py-3 text-right text-sm">${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                     <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
