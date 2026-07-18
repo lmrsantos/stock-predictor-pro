@@ -128,4 +128,9 @@ export const metricInfo = {
     what: "The area to the right of the dashed vertical line shows projected future prices based on continuing the current trend.",
     howToRead: "This is a mathematical projection, not a prediction. The widening bands show increasing uncertainty over time. Example: a forecast showing $160 in 30 days with a 1σ band of $150–$170 means the model expects $160 but acknowledges it could reasonably be anywhere in that range. Always check R².",
   },
+  globalSentiment: {
+    title: "Global Sentiment",
+    what: "A quantitative gauge of current geopolitical tension derived from recent world events and news headlines.",
+    howToRead: "The score ranges from 0 (calm) to 100 (severe). Higher scores suggest elevated geopolitical risk that can increase market volatility. Use it as a risk-context indicator, not a trading signal. Scores above 60 are considered high; below 40 is low.",
+  },
 } as const;
