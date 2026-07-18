@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool } from "@lovable.dev/mcp-js";
-import { z } from "zod";
+
 
 export default defineTool({
   name: "get_geopolitical_sentiment",
@@ -29,7 +29,7 @@ export default defineTool({
     }
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: data as z.infer<typeof z.any>,
+      structuredContent: data as Record<string, unknown>,
     };
   },
 });

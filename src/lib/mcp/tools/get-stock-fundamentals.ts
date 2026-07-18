@@ -31,7 +31,7 @@ export default defineTool({
     }
     return {
       content: [{ type: "text", text: JSON.stringify(data) }],
-      structuredContent: data,
+      structuredContent: data as Record<string, unknown>,
     };
   },
 });
