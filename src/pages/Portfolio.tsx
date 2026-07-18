@@ -222,6 +222,8 @@ export default function Portfolio() {
   const [newTicker, setNewTicker] = useState("");
   const [newShares, setNewShares] = useState("");
   const [newCost, setNewCost] = useState("");
+  const [newDate, setNewDate] = useState("");
+
   const [showAdd, setShowAdd] = useState(false);
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
   const [analysisOpen, setAnalysisOpen] = useState(false);
