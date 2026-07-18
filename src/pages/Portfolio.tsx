@@ -237,15 +237,15 @@ export default function Portfolio() {
   });
 
   const addMutation = useMutation({
-    mutationFn: async ({ ticker, shares, avgCost, companyName }: { ticker: string; shares: number; avgCost: number; companyName?: string }) => {
+    mutationFn: async ({ ticker, shares, avgCost, purchaseDate, companyName }: { ticker: string; shares: number; avgCost: number; purchaseDate: string | null; companyName?: string }) => {
       const { error } = await supabase.from("portfolio_holdings").insert({
-        user_id: user!.id, ticker: ticker.toUpperCase(), shares, avg_cost: avgCost, company_name: companyName || null,
-      });
+        user_id: user!.id, ticker: ticker.toUpperCase(), shares, avg_cost: avgCost, purchase_date: purchaseDate, company_name: companyName || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
-      setNewTicker(""); setNewShares(""); setNewCost(""); setShowAdd(false);
+      setNewTicker(""); setNewShares(""); setNewCost(""); setNewDate(""); setShowAdd(false);
       toast.success("Holding added to portfolio");
     },
     onError: (err: any) => {
@@ -255,9 +255,10 @@ export default function Portfolio() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, shares, avgCost }: { id: string; shares: number; avgCost: number }) => {
-      const { error } = await supabase.from("portfolio_holdings").update({ shares, avg_cost: avgCost }).eq("id", id);
+    mutationFn: async ({ id, shares, avgCost, purchaseDate }: { id: string; shares: number; avgCost: number; purchaseDate: string | null }) => {
+      const { error } = await supabase.from("portfolio_holdings").update({ shares, avg_cost: avgCost, purchase_date: purchaseDate } as any).eq("id", id);
       if (error) throw error;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
