@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle } from "lucide-react";
 import { runLinkages, readCachedLinkages, type LinkagePayload, type RunProgress } from "@/lib/run-linkages";
 import type { LinkageResult } from "@/lib/cross-sector-linkages";
+import { InfoTooltip, metricInfo } from "@/components/InfoTooltip";
 import { toast } from "sonner";
 
 type SortKey = "validated" | "pAdjusted" | "rSquaredDelta" | "leader";
