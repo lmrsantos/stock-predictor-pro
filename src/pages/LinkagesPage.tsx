@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle, Lock, Sparkles, Crown } from "lucide-react";
 import { runLinkages, readCachedLinkages, type LinkagePayload, type RunProgress } from "@/lib/run-linkages";
 import type { LinkageResult } from "@/lib/cross-sector-linkages";
 import { InfoTooltip, metricInfo } from "@/components/InfoTooltip";
 import SectorLinkageGraph from "@/components/SectorLinkageGraph";
 import { SECTOR_MEMBERSHIP } from "@/config/sector-membership";
+import { useEntitlement } from "@/hooks/useEntitlement";
 import { toast } from "sonner";
 
 
