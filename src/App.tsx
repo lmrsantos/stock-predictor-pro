@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
+import Landing from "./pages/Landing.tsx";
 import Auth from "./pages/Auth.tsx";
 import Portfolio from "./pages/Portfolio.tsx";
 import SectorBacktestPage from "./pages/SectorBacktestPage.tsx";
@@ -31,7 +32,8 @@ const App = () => (
           <LinkageAutoRunner />
           <DisclaimerBar />
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/terminal" element={<Index />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/sector-backtest" element={<SectorBacktestPage />} />

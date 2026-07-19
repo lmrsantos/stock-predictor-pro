@@ -379,7 +379,7 @@ export default function Portfolio() {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <header className="border-b border-border px-6 py-4 flex items-center gap-4">
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
+          <Link to="/terminal" className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
           <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" /><h1 className="text-sm font-mono font-bold tracking-widest uppercase">Portfolio</h1></div>
         </header>
         <div className="max-w-md mx-auto mt-24 text-center space-y-4 px-6">
@@ -396,7 +396,7 @@ export default function Portfolio() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
+          <Link to="/terminal" className="text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
           <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" /><h1 className="text-sm font-mono font-bold tracking-widest uppercase">My Portfolio</h1></div>
         </div>
         <div className="flex items-center gap-2">

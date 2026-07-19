@@ -6,7 +6,7 @@ export default function SectorBacktestPage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="border-b border-border px-6 py-4 flex items-center gap-4">
-        <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+        <Link to="/terminal" className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div className="flex items-center gap-2">

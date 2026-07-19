@@ -4,7 +4,7 @@ export default function Terms() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-3xl mx-auto px-6 py-12 space-y-6 font-mono text-sm leading-relaxed">
-        <Link to="/" className="text-xs text-muted-foreground hover:text-foreground">← Back</Link>
+        <Link to="/terminal" className="text-xs text-muted-foreground hover:text-foreground">← Back</Link>
         <h1 className="text-2xl font-bold">Terms of Service</h1>
         <p className="text-muted-foreground text-xs">Last updated: {new Date().toLocaleDateString()}</p>
 
