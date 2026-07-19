@@ -122,9 +122,9 @@ export default function LinkagesPage() {
               />
             </div>
           )}
-
-
+          {payload && (
             <div className="rounded-lg border border-border bg-card overflow-hidden">
+
               <div className="p-3 flex items-center gap-3 border-b border-border">
                 <label className="text-xs font-mono flex items-center gap-1">
                   <input type="checkbox" checked={onlyValidated}
