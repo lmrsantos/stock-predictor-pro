@@ -180,6 +180,19 @@ function InlineMarkdown({ text }: { text: string }) {
 
 function MessageBubble({ msg }: { msg: Message }) {
   const isAgent = msg.role === "agent";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!msg.content) return;
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback: silently ignore
+    }
+  };
+
   return (
     <div className={`flex gap-2 ${isAgent ? "justify-start" : "justify-end"}`}>
       {isAgent && (
@@ -187,11 +200,24 @@ function MessageBubble({ msg }: { msg: Message }) {
           <span className="text-[10px]">🧠</span>
         </div>
       )}
-      <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs font-mono leading-relaxed ${
+      <div className={`relative group max-w-[85%] rounded-xl px-3 py-2 text-xs font-mono leading-relaxed ${
         isAgent
           ? "bg-zinc-800/80 text-zinc-200 border border-zinc-700/50"
           : "bg-sky-500/10 text-sky-300 border border-sky-500/20"
       }`}>
+        {isAgent && !msg.thinking && (
+          <button
+            onClick={handleCopy}
+            title={copied ? "Copied" : "Copy response"}
+            className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300"
+          >
+            {copied ? (
+              <Check className="w-3 h-3 text-emerald-400" />
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </button>
+        )}
         {msg.thinking ? (
           <div className="flex items-center gap-1.5 text-zinc-500">
             <div className="flex gap-1">
