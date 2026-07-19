@@ -479,7 +479,7 @@ export default function Portfolio() {
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Gain/Loss</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">30d Proj</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">1Y Proj</th>
-                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Ann. Return</th>
+                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">1Y Proj %</th>
                   <th className="text-center px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Actions</th>
                 </tr>
               </thead>
@@ -548,7 +548,7 @@ export default function Portfolio() {
             </div>
             <div className="p-5 space-y-5 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <div className="stat-card"><div className="text-[10px] uppercase text-muted-foreground">Weighted 1Y Return</div>
+                <div className="stat-card"><div className="text-[10px] uppercase text-muted-foreground">Weighted 1Y Projected Trend</div>
                   <div className={`text-xl font-mono mt-1 ${totals.weightedReturn >= 0 ? "price-positive" : "price-negative"}`}>
                     {totals.weightedReturn >= 0 ? "+" : ""}{(totals.weightedReturn * 100).toFixed(1)}%
                   </div>
@@ -560,21 +560,21 @@ export default function Portfolio() {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Best Historical Trend</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Best Projected Trend</h3>
                 <div className="p-3 rounded border border-border bg-secondary/30">
                   <span className="font-mono font-bold text-primary">{analysis.bestPerformer.ticker}</span>
                   <span className="text-xs text-muted-foreground ml-2">{analysis.bestPerformer.companyName}</span>
-                  <div className="text-xs mt-1 price-positive">Annualized trend: +{(analysis.bestPerformer.annualReturn * 100).toFixed(1)}%</div>
+                  <div className="text-xs mt-1 price-positive">Projected 1Y trend: +{(analysis.bestPerformer.annualReturn * 100).toFixed(1)}%</div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Weakest Historical Trend</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Weakest Projected Trend</h3>
                 <div className="p-3 rounded border border-border bg-secondary/30">
                   <span className="font-mono font-bold text-primary">{analysis.worstPerformer.ticker}</span>
                   <span className="text-xs text-muted-foreground ml-2">{analysis.worstPerformer.companyName}</span>
                   <div className={`text-xs mt-1 ${analysis.worstPerformer.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
-                    Annualized trend: {analysis.worstPerformer.annualReturn >= 0 ? "+" : ""}{(analysis.worstPerformer.annualReturn * 100).toFixed(1)}%
+                    Projected 1Y trend: {analysis.worstPerformer.annualReturn >= 0 ? "+" : ""}{(analysis.worstPerformer.annualReturn * 100).toFixed(1)}%
                   </div>
                 </div>
               </div>
