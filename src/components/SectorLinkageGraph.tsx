@@ -206,6 +206,7 @@ export default function SectorLinkageGraph({
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [mode, setMode] = useState<ViewMode>(initialMode);
+  const [expandedSectors, setExpandedSectors] = useState<Set<SectorName>>(new Set());
   const [selected, setSelected] = useState<
     | { kind: "sector"; sector: SectorName }
     | { kind: "ticker"; ticker: string; sector: SectorName }
@@ -217,6 +218,11 @@ export default function SectorLinkageGraph({
     () => (validatedOnly ? results.filter((r) => r.validated) : results),
     [results, validatedOnly],
   );
+
+  // Reset expansion when leaving ticker mode
+  useEffect(() => {
+    if (mode === "sector") setExpandedSectors(new Set());
+  }, [mode]);
 
   useEffect(() => {
     if (!containerRef.current) return;
