@@ -492,6 +492,9 @@ export default function SectorLinkageGraph({
           <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
           <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
           <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+          {mode === "ticker" && (
+            <div className="mt-1 italic">Click a sector to expand/collapse its tickers.</div>
+          )}
         </div>
         <div ref={containerRef} className="h-full w-full" />
       </div>
