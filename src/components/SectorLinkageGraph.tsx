@@ -469,6 +469,24 @@ export default function SectorLinkageGraph({
             By ticker
           </button>
         </div>
+        {mode === "ticker" && (
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md border bg-background p-1 text-xs">
+            <button
+              className="rounded px-2 py-1 hover:bg-muted"
+              onClick={() =>
+                setExpandedSectors(new Set(Object.keys(sectorMembership) as SectorName[]))
+              }
+            >
+              Expand all
+            </button>
+            <button
+              className="rounded px-2 py-1 hover:bg-muted"
+              onClick={() => setExpandedSectors(new Set())}
+            >
+              Collapse all
+            </button>
+          </div>
+        )}
         <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/90 p-2 text-xs text-muted-foreground">
           <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(142_60%_42%)] align-middle" /> leads positively</div>
           <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
