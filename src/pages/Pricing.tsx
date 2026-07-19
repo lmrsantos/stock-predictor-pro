@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, Crown, Activity, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { StripeEmbeddedCheckout } from "@/components/StripeEmbeddedCheckout";
@@ -40,6 +40,7 @@ const PLANS = [
       "All 3 Hot Stocks risk tiers",
       "Cycle Analysis",
       "Full Portfolio Insights",
+      "🔗 Cross-Sector Linkage Graph (read-only)",
       "50 QuantAgent chats / day",
       "CSV exports",
     ],
@@ -52,8 +53,10 @@ const PLANS = [
     priceMonthlyId: "elite_monthly",
     priceYearlyId: "elite_yearly",
     blurb: "For pros & funds",
+    badge: "Full Quant Suite",
     features: [
       "Everything in Pro",
+      "👑 Linkage Engine — live re-runs & CSV",
       "Unlimited Sector Backtests",
       "Custom forecast horizons",
       "Rebalance alerts",
