@@ -112,7 +112,7 @@ ${f.forward_pe != null ? `- Forward P/E: ${Number(f.forward_pe).toFixed(2)}` : "
 ${f.eps != null ? `- EPS: $${Number(f.eps).toFixed(2)}` : ""}
 ${f.market_cap != null ? `- Market Cap: $${(Number(f.market_cap) / 1e9).toFixed(1)}B` : ""}
 ${f.dividend_yield != null ? `- Dividend Yield: ${(Number(f.dividend_yield) * 100).toFixed(2)}%` : ""}
-${bt ? `- Backtest: **${bt.signal}** signal, confidence ${bt.confidenceScore}/100, hit rate ${bt.hitRate}%, walk-forward acc ${bt.walkForwardAccuracy}%, regime "${bt.regime}", projected ${bt.forecastPct}% over ${bt.forecastLabel}.` : ""}`;
+${bt ? `- Backtest: **${bt.signal}** signal, confidence ${bt.confidenceScore}/100, hit rate ${bt.hitRate}%, walk-forward acc ${bt.walkForwardAccuracy}%, regime "${bt.regime}", projected ${bt.forecastPct}% over ${bt.forecastLabel}.` : ""}${linkages}`;
 }
 
 serve(async (req) => {
@@ -151,8 +151,10 @@ serve(async (req) => {
         });
       }
 
+      const linkCache = await loadLinkages();
+      const linkageStr = linkageBlock(currentTicker, linkCache);
       const messages = [
-        { role: "system", content: buildSystemPrompt(context || {}) },
+        { role: "system", content: buildSystemPrompt(context || {}, linkageStr) },
         ...(Array.isArray(history) ? history.slice(-12).map((m: any) => ({
           role: m.role === "agent" ? "assistant" : "user",
           content: String(m.content || ""),
