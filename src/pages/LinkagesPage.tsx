@@ -4,7 +4,10 @@ import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle } from "lucide-re
 import { runLinkages, readCachedLinkages, type LinkagePayload, type RunProgress } from "@/lib/run-linkages";
 import type { LinkageResult } from "@/lib/cross-sector-linkages";
 import { InfoTooltip, metricInfo } from "@/components/InfoTooltip";
+import SectorLinkageGraph from "@/components/SectorLinkageGraph";
+import { SECTOR_MEMBERSHIP } from "@/config/sector-membership";
 import { toast } from "sonner";
+
 
 type SortKey = "validated" | "pAdjusted" | "rSquaredDelta" | "leader";
 
@@ -98,7 +101,30 @@ export default function LinkagesPage() {
           </div>
 
           {payload && (
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                  Linkage Graph
+                </h2>
+                <label className="text-xs font-mono flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={onlyValidated}
+                    onChange={(e) => setOnlyValidated(e.target.checked)}
+                  />
+                  Show validated linkages only
+                </label>
+              </div>
+              <SectorLinkageGraph
+                results={payload.results}
+                sectorMembership={SECTOR_MEMBERSHIP}
+                validatedOnly={onlyValidated}
+              />
+            </div>
+          )}
+          {payload && (
             <div className="rounded-lg border border-border bg-card overflow-hidden">
+
               <div className="p-3 flex items-center gap-3 border-b border-border">
                 <label className="text-xs font-mono flex items-center gap-1">
                   <input type="checkbox" checked={onlyValidated}
