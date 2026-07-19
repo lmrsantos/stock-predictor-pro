@@ -106,6 +106,27 @@ export default function Pricing() {
           <p className="text-muted-foreground">Start free. Upgrade when you need more.</p>
         </div>
 
+        <div className="mb-10 rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-background to-background p-6 flex flex-col md:flex-row items-start md:items-center gap-4">
+          <div className="p-3 rounded-full bg-primary/15 shrink-0">
+            <Activity className="w-6 h-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono uppercase tracking-widest">
+                <Crown className="w-3 h-3" /> Signature Tool
+              </span>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Included in Pro</span>
+            </div>
+            <h3 className="text-lg font-bold">Cross-Sector Linkage Engine</h3>
+            <p className="text-sm text-muted-foreground">
+              22 economically-motivated lead-lag pairs, BH-corrected & split-half validated. Powers Hot Stocks confidence tilts and QuantAgent macro reasoning.
+            </p>
+          </div>
+          <Link to="/linkages" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-mono flex items-center gap-2 shrink-0">
+            <Sparkles className="w-4 h-4" /> See it live
+          </Link>
+        </div>
+
         <div className="flex justify-center gap-2 mb-10">
           <button
             onClick={() => setCycle("monthly")}
