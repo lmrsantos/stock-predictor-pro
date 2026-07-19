@@ -13,6 +13,10 @@ import { toast } from "sonner";
 type SortKey = "validated" | "pAdjusted" | "rSquaredDelta" | "leader";
 
 export default function LinkagesPage() {
+  const { can, tier, isLoading: entLoading } = useEntitlement();
+  const canView = can("linkages_view");
+  const canRun = can("linkages_run");
+
   const [payload, setPayload] = useState<LinkagePayload | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<RunProgress | null>(null);
