@@ -380,14 +380,35 @@ export default function SectorLinkageGraph({
       ],
       layout:
         mode === "ticker"
-          ? { name: "cose", animate: false, nodeRepulsion: () => 12000, padding: 30 }
+          ? {
+              name: "cose",
+              animate: false,
+              padding: 40,
+              nodeRepulsion: () => 30000,
+              idealEdgeLength: () => 180,
+              nodeOverlap: 24,
+              gravity: 0.15,
+              componentSpacing: 120,
+              numIter: 1500,
+              randomize: false,
+            }
           : { name: "circle", padding: 40 },
       wheelSensitivity: 0.2,
+      minZoom: 0.3,
+      maxZoom: 2.5,
     });
 
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
       const sector = e.target.data("label") as SectorName;
       setSelected({ kind: "sector", sector });
+      if (mode === "ticker") {
+        setExpandedSectors((prev) => {
+          const next = new Set(prev);
+          if (next.has(sector)) next.delete(sector);
+          else next.add(sector);
+          return next;
+        });
+      }
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
       setSelected({
