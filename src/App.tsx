@@ -17,6 +17,7 @@ import Disclaimer from "./pages/Disclaimer.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import { DisclaimerBar } from "@/components/DisclaimerBar";
+import { LinkageAutoRunner } from "@/components/LinkageAutoRunner";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <LinkageAutoRunner />
           <DisclaimerBar />
           <Routes>
             <Route path="/" element={<Index />} />
