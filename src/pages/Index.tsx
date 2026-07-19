@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Sparkles, User } from "lucide-react";
+import { Sparkles, User, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
