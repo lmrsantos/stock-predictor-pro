@@ -206,6 +206,7 @@ export default function SectorLinkageGraph({
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [mode, setMode] = useState<ViewMode>(initialMode);
+  const [expandedSectors, setExpandedSectors] = useState<Set<SectorName>>(new Set());
   const [selected, setSelected] = useState<
     | { kind: "sector"; sector: SectorName }
     | { kind: "ticker"; ticker: string; sector: SectorName }
@@ -217,6 +218,11 @@ export default function SectorLinkageGraph({
     () => (validatedOnly ? results.filter((r) => r.validated) : results),
     [results, validatedOnly],
   );
+
+  // Reset expansion when leaving ticker mode
+  useEffect(() => {
+    if (mode === "sector") setExpandedSectors(new Set());
+  }, [mode]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -236,7 +242,7 @@ export default function SectorLinkageGraph({
       elements.push({
         data: { id: `sec:${s}`, label: s, kind: "sector" },
       });
-      if (mode === "ticker") {
+      if (mode === "ticker" && expandedSectors.has(s)) {
         for (const t of sectorMembership[s] ?? []) {
           elements.push({
             data: { id: `tic:${t}`, label: t, kind: "ticker", parent: `sec:${s}`, sector: s },
@@ -374,14 +380,35 @@ export default function SectorLinkageGraph({
       ],
       layout:
         mode === "ticker"
-          ? { name: "cose", animate: false, nodeRepulsion: () => 12000, padding: 30 }
+          ? {
+              name: "cose",
+              animate: false,
+              padding: 40,
+              nodeRepulsion: () => 30000,
+              idealEdgeLength: () => 180,
+              nodeOverlap: 24,
+              gravity: 0.15,
+              componentSpacing: 120,
+              numIter: 1500,
+              randomize: false,
+            }
           : { name: "circle", padding: 40 },
       wheelSensitivity: 0.2,
+      minZoom: 0.3,
+      maxZoom: 2.5,
     });
 
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
       const sector = e.target.data("label") as SectorName;
       setSelected({ kind: "sector", sector });
+      if (mode === "ticker") {
+        setExpandedSectors((prev) => {
+          const next = new Set(prev);
+          if (next.has(sector)) next.delete(sector);
+          else next.add(sector);
+          return next;
+        });
+      }
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
       setSelected({
@@ -400,7 +427,7 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, sectorMembership]);
+  }, [links, mode, sectorMembership, expandedSectors]);
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
@@ -442,11 +469,32 @@ export default function SectorLinkageGraph({
             By ticker
           </button>
         </div>
+        {mode === "ticker" && (
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md border bg-background p-1 text-xs">
+            <button
+              className="rounded px-2 py-1 hover:bg-muted"
+              onClick={() =>
+                setExpandedSectors(new Set(Object.keys(sectorMembership) as SectorName[]))
+              }
+            >
+              Expand all
+            </button>
+            <button
+              className="rounded px-2 py-1 hover:bg-muted"
+              onClick={() => setExpandedSectors(new Set())}
+            >
+              Collapse all
+            </button>
+          </div>
+        )}
         <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/90 p-2 text-xs text-muted-foreground">
           <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(142_60%_42%)] align-middle" /> leads positively</div>
           <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
           <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
           <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+          {mode === "ticker" && (
+            <div className="mt-1 italic">Click a sector to expand/collapse its tickers.</div>
+          )}
         </div>
         <div ref={containerRef} className="h-full w-full" />
       </div>
