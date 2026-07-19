@@ -32,7 +32,8 @@ const App = () => (
           <LinkageAutoRunner />
           <DisclaimerBar />
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/terminal" element={<Index />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/sector-backtest" element={<SectorBacktestPage />} />

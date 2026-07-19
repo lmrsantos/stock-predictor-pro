@@ -38,7 +38,7 @@ export default function Account() {
     <div className="min-h-screen bg-background text-foreground">
       <PaymentTestModeBanner />
       <div className="max-w-3xl mx-auto p-6 lg:p-10">
-        <Link to="/" className="text-sm text-muted-foreground flex items-center gap-1 mb-6">
+        <Link to="/terminal" className="text-sm text-muted-foreground flex items-center gap-1 mb-6">
           <ArrowLeft className="w-4 h-4" /> Back to terminal
         </Link>
         <h1 className="text-3xl font-bold mb-1">Account</h1>
@@ -69,7 +69,7 @@ export default function Account() {
           )}
         </div>
 
-        <button onClick={() => { signOut(); navigate("/"); }} className="text-sm text-muted-foreground underline">
+        <button onClick={() => { signOut(); navigate("/terminal"); }} className="text-sm text-muted-foreground underline">
           Sign out
         </button>
       </div>
