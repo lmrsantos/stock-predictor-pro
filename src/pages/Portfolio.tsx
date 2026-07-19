@@ -86,14 +86,26 @@ function HoldingRow({
 
   const projection = useMemo((): HoldingProjection | null => {
     if (!stockData?.length) return null;
+    // Use the same risk-adjusted forecast as the main chart (log-space,
+    // dampened, momentum, R² scaling, bias-corrected). Forecast a full year
+    // so we can pick the 30/90/365 trading-day horizons off the same curve.
     const regression = computeLinearRegression(stockData, 365);
     const currentPrice = stockData[stockData.length - 1].close;
     const totalCost = holding.shares * holding.avg_cost;
     const currentValue = holding.shares * currentPrice;
-    const dailySlope = regression.slope;
-    const project = (days: number) => holding.shares * (currentPrice + dailySlope * days);
-    const projected30d = project(30);
-    const projected1y = project(365);
+    const preds = regression.predictions;
+    // Predictions skip weekends, so index N ≈ N trading days ahead.
+    const priceAt = (tradingDays: number) => {
+      if (!preds.length) return currentPrice;
+      const idx = Math.min(Math.max(tradingDays - 1, 0), preds.length - 1);
+      return preds[idx].predicted;
+    };
+    // 30 calendar days ≈ 21 trading days; 90 ≈ 63; 365 ≈ 252.
+    const price30 = priceAt(21);
+    const price90 = priceAt(63);
+    const price1y = priceAt(252);
+    const projected30d = holding.shares * price30;
+    const projected1y = holding.shares * price1y;
     return {
       ticker: holding.ticker,
       companyName: holding.company_name || meta?.name || holding.ticker,
@@ -106,10 +118,10 @@ function HoldingRow({
       gainLossPct: totalCost > 0 ? (currentValue - totalCost) / totalCost : 0,
       projected30d,
       projected30dPct: currentValue > 0 ? (projected30d - currentValue) / currentValue : 0,
-      projected90d: project(90),
+      projected90d: holding.shares * price90,
       projected1y,
       projected1yPct: currentValue > 0 ? (projected1y - currentValue) / currentValue : 0,
-      annualReturn: currentPrice > 0 ? (dailySlope * 252) / currentPrice : 0,
+      annualReturn: currentPrice > 0 ? (price1y - currentPrice) / currentPrice : 0,
       rSquared: regression.rSquared,
     };
   }, [stockData, holding, meta]);
