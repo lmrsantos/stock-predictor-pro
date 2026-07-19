@@ -117,14 +117,38 @@ export default function LinkagesPage() {
                 <table className="w-full text-xs font-mono">
                   <thead className="bg-muted/50 text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 text-left">Leader → Follower</th>
-                      <th className="px-3 py-2 text-left">Channel</th>
-                      <th className="px-3 py-2 text-right">Lag</th>
-                      <th className="px-3 py-2 text-right">Coef</th>
-                      <th className="px-3 py-2 text-right">p (BH)</th>
-                      <th className="px-3 py-2 text-right">ΔR²</th>
-                      <th className="px-3 py-2 text-center">Halves</th>
-                      <th className="px-3 py-2 text-center">Validated</th>
+                      <th className="px-3 py-2 text-left">
+                        Leader → Follower
+                        <InfoTooltip {...metricInfo.linkagePair} />
+                      </th>
+                      <th className="px-3 py-2 text-left">
+                        Channel
+                        <InfoTooltip {...metricInfo.linkageChannel} />
+                      </th>
+                      <th className="px-3 py-2 text-right">
+                        Lag
+                        <InfoTooltip {...metricInfo.linkageLag} />
+                      </th>
+                      <th className="px-3 py-2 text-right">
+                        Coef
+                        <InfoTooltip {...metricInfo.linkageCoefficient} />
+                      </th>
+                      <th className="px-3 py-2 text-right">
+                        p (BH)
+                        <InfoTooltip {...metricInfo.linkagePValue} />
+                      </th>
+                      <th className="px-3 py-2 text-right">
+                        ΔR²
+                        <InfoTooltip {...metricInfo.linkageRSquaredDelta} />
+                      </th>
+                      <th className="px-3 py-2 text-center">
+                        Halves
+                        <InfoTooltip {...metricInfo.linkageHalves} />
+                      </th>
+                      <th className="px-3 py-2 text-center">
+                        Validated
+                        <InfoTooltip {...metricInfo.linkageValidated} />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
