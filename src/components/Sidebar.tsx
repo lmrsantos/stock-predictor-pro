@@ -9,7 +9,7 @@ import { HotStocks } from "./HotStocks";
 import { GlobalSentiment } from "./GlobalSentiment";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
-import { Briefcase, BarChart3, Sparkles, User } from "lucide-react";
+import { Briefcase, BarChart3, Sparkles, User, Activity } from "lucide-react";
 
 
 interface SidebarProps {
@@ -308,6 +308,13 @@ export function Sidebar({
         >
           <BarChart3 className="w-4 h-4" />
           Sector Backtest
+        </Link>
+        <Link
+          to="/linkages"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+        >
+          <Activity className="w-4 h-4" />
+          Cross-Sector Linkages
         </Link>
         <Link
           to="/portfolio"

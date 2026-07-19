@@ -1,0 +1,182 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle } from "lucide-react";
+import { runLinkages, readCachedLinkages, type LinkagePayload, type RunProgress } from "@/lib/run-linkages";
+import type { LinkageResult } from "@/lib/cross-sector-linkages";
+import { toast } from "sonner";
+
+type SortKey = "validated" | "pAdjusted" | "rSquaredDelta" | "leader";
+
+export default function LinkagesPage() {
+  const [payload, setPayload] = useState<LinkagePayload | null>(null);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<RunProgress | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("validated");
+  const [onlyValidated, setOnlyValidated] = useState(false);
+
+  useEffect(() => { setPayload(readCachedLinkages()); }, []);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setProgress({ stage: "sectors", message: "Starting…" });
+    try {
+      const p = await runLinkages((pg) => setProgress(pg));
+      setPayload(p);
+      toast.success(`Ran ${p.results.length} pair tests — ${p.results.filter(r => r.validated).length} validated`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRunning(false);
+      setProgress(null);
+    }
+  };
+
+  const rows: LinkageResult[] = (() => {
+    if (!payload) return [];
+    let r = [...payload.results];
+    if (onlyValidated) r = r.filter((x) => x.validated);
+    r.sort((a, b) => {
+      if (sortKey === "validated") {
+        if (a.validated !== b.validated) return a.validated ? -1 : 1;
+        return a.pAdjusted - b.pAdjusted;
+      }
+      if (sortKey === "pAdjusted") return a.pAdjusted - b.pAdjusted;
+      if (sortKey === "rSquaredDelta") return b.rSquaredDelta - a.rSquaredDelta;
+      return String(a.leader).localeCompare(String(b.leader));
+    });
+    return r;
+  })();
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <header className="border-b border-border px-6 py-4 flex items-center gap-4">
+        <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+        </Link>
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-primary" />
+          <h1 className="text-sm font-mono font-bold tracking-widest uppercase">Cross-Sector Linkages</h1>
+        </div>
+      </header>
+
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Granger-style lag regressions across a curated map of {" "}
+              <span className="text-foreground font-mono">22 directed pairs</span> {" "}
+              spanning the 13 sector composites and macro proxies (OIL, GOLD, US10Y, XLY/XLP risk-appetite spread).
+              Each pair is tested only if the economic channel is documented; results are BH-corrected and split-half validated.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRun}
+                disabled={running}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-mono disabled:opacity-50 flex items-center gap-2"
+              >
+                {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+                {running ? "Running…" : payload ? "Re-run tests" : "Run linkage tests"}
+              </button>
+              {payload && (
+                <span className="text-xs text-muted-foreground font-mono">
+                  Last run: {new Date(payload.updatedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+            {progress && (
+              <div className="text-xs font-mono text-muted-foreground">
+                {progress.stage.toUpperCase()} — {progress.message}
+                {progress.total ? ` (${progress.done}/${progress.total})` : ""}
+              </div>
+            )}
+            {payload && payload.sectorsFailed.length > 0 && (
+              <div className="text-xs text-yellow-500 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Failed sectors: {payload.sectorsFailed.join(", ")}
+              </div>
+            )}
+          </div>
+
+          {payload && (
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div className="p-3 flex items-center gap-3 border-b border-border">
+                <label className="text-xs font-mono flex items-center gap-1">
+                  <input type="checkbox" checked={onlyValidated}
+                    onChange={(e) => setOnlyValidated(e.target.checked)} />
+                  Validated only
+                </label>
+                <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}
+                  className="ml-auto bg-secondary border border-border rounded px-2 py-1 text-xs">
+                  <option value="validated">Sort: validated first</option>
+                  <option value="pAdjusted">Sort: BH p-value</option>
+                  <option value="rSquaredDelta">Sort: incremental R²</option>
+                  <option value="leader">Sort: leader</option>
+                </select>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-mono">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Leader → Follower</th>
+                      <th className="px-3 py-2 text-left">Channel</th>
+                      <th className="px-3 py-2 text-right">Lag</th>
+                      <th className="px-3 py-2 text-right">Coef</th>
+                      <th className="px-3 py-2 text-right">p (BH)</th>
+                      <th className="px-3 py-2 text-right">ΔR²</th>
+                      <th className="px-3 py-2 text-center">Halves</th>
+                      <th className="px-3 py-2 text-center">Validated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => {
+                      const halvesAgree =
+                        Math.sign(r.firstHalf.coefficient) === Math.sign(r.secondHalf.coefficient) &&
+                        Math.sign(r.firstHalf.coefficient) === r.sign;
+                      return (
+                        <tr key={i} className={`border-t border-border ${r.validated ? "bg-green-500/5" : ""}`}>
+                          <td className="px-3 py-2">
+                            <span className="text-foreground">{r.leader}</span>
+                            <span className="text-muted-foreground"> → </span>
+                            <span className="text-foreground">{r.follower}</span>
+                            {r.regimeSignFlip && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 text-[10px]">
+                                regime
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground max-w-[280px] truncate" title={r.channel}>
+                            {r.channel}
+                          </td>
+                          <td className="px-3 py-2 text-right">{r.bestLag}d</td>
+                          <td className={`px-3 py-2 text-right ${r.sign > 0 ? "text-green-500" : "text-red-500"}`}>
+                            {r.coefficient >= 0 ? "+" : ""}{r.coefficient.toFixed(3)}
+                          </td>
+                          <td className="px-3 py-2 text-right">{r.pAdjusted.toFixed(3)}</td>
+                          <td className="px-3 py-2 text-right">{r.rSquaredDelta.toFixed(4)}</td>
+                          <td className="px-3 py-2 text-center">
+                            {halvesAgree
+                              ? <Check className="w-3 h-3 text-green-500 inline" />
+                              : <X className="w-3 h-3 text-muted-foreground inline" />}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {r.validated
+                              ? <Check className="w-4 h-4 text-green-500 inline" />
+                              : <X className="w-4 h-4 text-muted-foreground inline" />}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {rows.length === 0 && (
+                      <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
+                        No rows.
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
