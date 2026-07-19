@@ -133,4 +133,44 @@ export const metricInfo = {
     what: "A quantitative gauge of current geopolitical tension derived from recent world events and news headlines.",
     howToRead: "The score ranges from 0 (calm) to 100 (severe). Higher scores suggest elevated geopolitical risk that can increase market volatility. Use it as a risk-context indicator, not a trading signal. Scores above 60 are considered high; below 40 is low.",
   },
+  linkagePair: {
+    title: "Leader → Follower",
+    what: "A directed pair showing which sector or macro factor (leader) is tested for predictive influence on another sector (follower).",
+    howToRead: "Read left-to-right. If the pair validates, the leader's recent price movement has historically been followed by the follower after the displayed lag. Example: Semiconductors → Software means chip-stock momentum often leads software-stock momentum.",
+  },
+  linkageChannel: {
+    title: "Channel",
+    what: "The economic or fundamental reason why the leader might influence the follower.",
+    howToRead: "Use it to judge whether the relationship is intuitive. 'Rates sensitivity' or 'supply-chain demand' are stronger narratives than purely statistical correlations. A clear channel makes the linkage more actionable.",
+  },
+  linkageLag: {
+    title: "Lag (days)",
+    what: "The number of trading days by which the leader leads the follower. We test lags from 1 to 20 days and pick the one with the strongest evidence.",
+    howToRead: "A lag of 5d means the follower tends to move about one trading week after the leader. Shorter lags (1-5d) are more useful for timing; longer lags (10-20d) are more about regime context.",
+  },
+  linkageCoefficient: {
+    title: "Coefficient",
+    what: "The regression slope of the follower on the lagged leader. It tells you the direction and rough magnitude of the relationship.",
+    howToRead: "Positive coefficient (+) means the leader and follower move in the same direction. Negative (-) means they move opposite. Larger absolute values mean a stronger relationship. Always check the p-value and validation status before trusting it.",
+  },
+  linkagePValue: {
+    title: "p (BH)",
+    what: "The Benjamini-Hochberg adjusted p-value from the lag regression. It measures how likely the observed relationship is due to random chance.",
+    howToRead: "Lower is better. Values below 0.05 are typically considered statistically significant. BH adjustment accounts for testing many lags/pairs at once, so it is stricter than a raw p-value.",
+  },
+  linkageRSquaredDelta: {
+    title: "ΔR²",
+    what: "The incremental explanatory power gained by adding the lagged leader to a baseline model of the follower alone.",
+    howToRead: "Higher means the leader adds more predictive information. ΔR² above 0.05 is meaningful; above 0.10 is strong. Pair it with p-value—high ΔR² with a high p-value is likely a false signal.",
+  },
+  linkageHalves: {
+    title: "Halves",
+    what: "Split-half validation: the regression is run separately on the first half and second half of the 1-year history, and we check whether the coefficient sign is consistent.",
+    howToRead: "A green check means both halves agree (same sign) and match the overall sign. A gray X means the relationship flips across periods, so it is less reliable even if the headline numbers look good.",
+  },
+  linkageValidated: {
+    title: "Validated",
+    what: "Whether the pair passes the full validation gate: BH-adjusted p < 0.05, both regression halves agree in sign, and the economic channel is documented.",
+    howToRead: "Green check = validated and used by QuantAgent and Hot Stocks. Gray X = not currently reliable. Only validated linkages are injected into the rest of the app's scoring and reasoning.",
+  },
 } as const;
