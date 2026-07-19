@@ -149,6 +149,11 @@ export default function Pricing() {
                 className={`rounded-2xl border p-6 flex flex-col ${p.highlight ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
               >
                 {p.highlight && <div className="text-xs font-mono uppercase text-primary mb-2">Most popular</div>}
+                {"badge" in p && p.badge && (
+                  <div className="inline-flex items-center gap-1 text-xs font-mono uppercase text-primary mb-2">
+                    <Crown className="w-3 h-3" /> {p.badge}
+                  </div>
+                )}
                 <h3 className="text-xl font-bold">{p.name}</h3>
                 <p className="text-sm text-muted-foreground mb-4">{p.blurb}</p>
                 <div className="mb-6">
