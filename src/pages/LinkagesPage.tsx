@@ -1,17 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle, Lock, Sparkles, Crown } from "lucide-react";
 import { runLinkages, readCachedLinkages, type LinkagePayload, type RunProgress } from "@/lib/run-linkages";
 import type { LinkageResult } from "@/lib/cross-sector-linkages";
 import { InfoTooltip, metricInfo } from "@/components/InfoTooltip";
 import SectorLinkageGraph from "@/components/SectorLinkageGraph";
 import { SECTOR_MEMBERSHIP } from "@/config/sector-membership";
+import { useEntitlement } from "@/hooks/useEntitlement";
 import { toast } from "sonner";
 
 
 type SortKey = "validated" | "pAdjusted" | "rSquaredDelta" | "leader";
 
 export default function LinkagesPage() {
+  const { can, tier, isLoading: entLoading } = useEntitlement();
+  const canView = can("linkages_view");
+  const canRun = can("linkages_run");
+
   const [payload, setPayload] = useState<LinkagePayload | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<RunProgress | null>(null);
@@ -51,6 +56,55 @@ export default function LinkagesPage() {
     return r;
   })();
 
+  if (!entLoading && !canView) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <header className="border-b border-border px-6 py-4 flex items-center gap-4">
+          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            <h1 className="text-sm font-mono font-bold tracking-widest uppercase">Cross-Sector Linkages</h1>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-2xl w-full rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/5 via-background to-background p-10 text-center space-y-6 relative overflow-hidden">
+            <div className="absolute top-4 right-4 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-mono uppercase tracking-widest">
+              <Crown className="w-3 h-3" /> Signature Tool
+            </div>
+            <div className="inline-flex p-4 rounded-full bg-primary/10">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Unlock the Cross-Sector Linkage Engine</h2>
+              <p className="text-muted-foreground max-w-lg mx-auto">
+                Granger-style lag regressions across a curated map of <span className="text-foreground font-mono">22 economically-motivated pairs</span> —
+                BH-corrected, split-half validated, and rendered as an interactive causal graph.
+                The same engine powers Hot Stocks confidence tilts and QuantAgent's macro reasoning.
+              </p>
+            </div>
+            <ul className="text-sm text-left max-w-md mx-auto space-y-2">
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" /> Interactive sector → ticker linkage graph</li>
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" /> Lead-lag coefficients with p-values & ΔR²</li>
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" /> Regime-flip detection across market halves</li>
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" /> Feeds every predictive engine in the terminal</li>
+            </ul>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-mono font-bold hover:opacity-90 transition-opacity"
+            >
+              <Crown className="w-4 h-4" /> Upgrade to Pro — $19/mo
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              Included in Pro (read-only) · Elite unlocks live re-runs & CSV export
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <header className="border-b border-border px-6 py-4 flex items-center gap-4">
@@ -60,6 +114,9 @@ export default function LinkagesPage() {
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
           <h1 className="text-sm font-mono font-bold tracking-widest uppercase">Cross-Sector Linkages</h1>
+          <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-mono uppercase tracking-widest">
+            <Crown className="w-3 h-3" /> Signature
+          </span>
         </div>
       </header>
 
@@ -72,21 +129,42 @@ export default function LinkagesPage() {
               spanning the 13 sector composites and macro proxies (OIL, GOLD, US10Y, XLY/XLP risk-appetite spread).
               Each pair is tested only if the economic channel is documented; results are BH-corrected and split-half validated.
             </p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleRun}
-                disabled={running}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-mono disabled:opacity-50 flex items-center gap-2"
-              >
-                {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-                {running ? "Running…" : payload ? "Re-run tests" : "Run linkage tests"}
-              </button>
+            <div className="flex items-center gap-3 flex-wrap">
+              {canRun ? (
+                <button
+                  onClick={handleRun}
+                  disabled={running}
+                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-mono disabled:opacity-50 flex items-center gap-2"
+                >
+                  {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
+                  {running ? "Running…" : payload ? "Re-run tests" : "Run linkage tests"}
+                </button>
+              ) : (
+                <Link
+                  to="/pricing"
+                  className="px-4 py-2 rounded-lg border border-primary/50 bg-primary/5 text-primary text-sm font-mono flex items-center gap-2 hover:bg-primary/10 transition-colors"
+                  title="Live re-runs are an Elite feature"
+                >
+                  <Lock className="w-4 h-4" /> Upgrade to Elite to re-run
+                </Link>
+              )}
               {payload && (
                 <span className="text-xs text-muted-foreground font-mono">
                   Last run: {new Date(payload.updatedAt).toLocaleString()}
                 </span>
               )}
+              {!canRun && (
+                <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                  {tier === "pro" ? "Pro: read-only view" : ""}
+                </span>
+              )}
             </div>
+            {progress && (
+              <div className="text-xs font-mono text-muted-foreground">
+                {progress.stage.toUpperCase()} — {progress.message}
+                {progress.total ? ` (${progress.done}/${progress.total})` : ""}
+              </div>
+            )}
             {progress && (
               <div className="text-xs font-mono text-muted-foreground">
                 {progress.stage.toUpperCase()} — {progress.message}
