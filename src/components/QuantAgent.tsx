@@ -16,6 +16,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Copy, Check } from "lucide-react";
 
 interface BacktestResult {
   signal: string;
