@@ -242,7 +242,7 @@ export default function SectorLinkageGraph({
       elements.push({
         data: { id: `sec:${s}`, label: s, kind: "sector" },
       });
-      if (mode === "ticker") {
+      if (mode === "ticker" && expandedSectors.has(s)) {
         for (const t of sectorMembership[s] ?? []) {
           elements.push({
             data: { id: `tic:${t}`, label: t, kind: "ticker", parent: `sec:${s}`, sector: s },
