@@ -3,13 +3,77 @@
 // Returns responses synchronously — no managed-agent streaming.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function buildSystemPrompt(ctx: Record<string, any>): string {
+// Mirror of primary sector membership from src/lib/sector-universes.ts.
+// Only the sectors we actually run linkage tests over.
+const SECTOR_OF: Record<string, string> = {};
+const SECTOR_UNIVERSES: Record<string, string[]> = {
+  "Semiconductors":         ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU","ASML","MRVL","NXPI","ADI","TXN","ON","MCHP","SWKS","QRVO","MPWR","ARM","SMCI","WOLF","STM","TER","ENTG","ALAB","CRDO","SITM","RMBS"],
+  "Software":               ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY","TEAM","DDOG","CRWD","SNOW","NET","ZS","MDB","HUBS","DOCU","OKTA","ZM","SHOP"],
+  "Mega-cap Tech":          ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
+  "Banks":                  ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW","COF","BK","STT","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
+  "Biotech & Pharma":       ["LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD","VRTX","REGN","MRNA","BIIB","ISRG","ZTS","CVS","UNH"],
+  "Energy":                 ["XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","PXD","HES","DVN","FANG","HAL","BKR","KMI","WMB","OKE"],
+  "Consumer Staples":       ["WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","K","HSY","SYY","CHD","CLX","MNST","STZ","TGT","KR"],
+  "Consumer Discretionary": ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG","ABNB","ORLY","AZO","DPZ","YUM","MAR","DRI","RCL","CCL"],
+  "Industrials & Defense":  ["CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD","ETN","EMR","ITW","PH","CSX","NSC","FDX","UPS","WM"],
+  "Utilities":              ["NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC","ED","ETR","ES","AWK","PCG","CEG","VST"],
+  "Real Estate":            ["AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC","SPG","AVB","EQR","ARE","EXR","VTR","WY"],
+  "Quantum Computing":      ["IONQ","RGTI","QBTS","QUBT","ARQQ"],
+  "Aerospace & Space":      ["LMT","RTX","NOC","GD","BA","HEI","TDG","RKLB","ASTS","LUNR","SPCE","PL"],
+};
+for (const [sector, syms] of Object.entries(SECTOR_UNIVERSES)) {
+  for (const s of syms) if (!SECTOR_OF[s]) SECTOR_OF[s] = sector;
+}
+
+interface ValidatedLinkage {
+  leader: string; follower: string; lag: number;
+  sign: 1 | -1; coef: number; pAdj: number; dRsq: number;
+  channel: string; regimeSignFlip: boolean;
+}
+
+async function loadLinkages(): Promise<{ asOf?: string; validated: ValidatedLinkage[] } | null> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const client = createClient(url, service);
+    const { data } = await client
+      .from("linkage_cache").select("payload, updated_at").eq("id", 1).maybeSingle();
+    if (!data?.payload) return null;
+    return data.payload as any;
+  } catch (e) {
+    console.warn("linkage load failed", e);
+    return null;
+  }
+}
+
+function linkageBlock(ticker: string, cache: { asOf?: string; validated: ValidatedLinkage[] } | null): string {
+  if (!cache || !cache.validated?.length) return "";
+  const sector = SECTOR_OF[ticker.toUpperCase()];
+  const relevant = cache.validated.filter(
+    (v) => v.leader === sector || v.follower === sector,
+  ).slice(0, 6);
+  if (relevant.length === 0) return "";
+  const lines = relevant.map((v) => {
+    const dir = v.sign > 0 ? "positive" : "inverse";
+    const flip = v.regimeSignFlip ? " (regime-dependent sign)" : "";
+    return `  • ${v.leader} → ${v.follower}: ${dir}, lag ${v.lag}d, coef ${v.coef}, ΔR² ${v.dRsq}${flip} — ${v.channel}`;
+  });
+  return `
+
+VALIDATED CROSS-SECTOR LINKAGES (as of ${cache.asOf?.slice(0,10) ?? "recent"}, ${ticker}'s sector: ${sector ?? "n/a"}):
+${lines.join("\n")}
+
+When discussing catalysts, risks, or what could move ${ticker}, reference these lead-lag relationships where relevant. They come from BH-corrected, split-half validated Granger-style regressions on the platform's sector composites.`;
+}
+
+function buildSystemPrompt(ctx: Record<string, any>, linkages: string): string {
   const bt = ctx?.backtestResult;
   const f = ctx?.fundamentals || {};
   return `You are QuantAgent — a sharp, senior-level quantitative analyst embedded in the QuantForecast platform. You think like a hedge-fund quant: rigorous, numerate, opinionated about *what the model says*, and unafraid to discuss macro regimes, sector dynamics, factor exposures, valuation, technicals, risk, and market microstructure.
@@ -48,7 +112,7 @@ ${f.forward_pe != null ? `- Forward P/E: ${Number(f.forward_pe).toFixed(2)}` : "
 ${f.eps != null ? `- EPS: $${Number(f.eps).toFixed(2)}` : ""}
 ${f.market_cap != null ? `- Market Cap: $${(Number(f.market_cap) / 1e9).toFixed(1)}B` : ""}
 ${f.dividend_yield != null ? `- Dividend Yield: ${(Number(f.dividend_yield) * 100).toFixed(2)}%` : ""}
-${bt ? `- Backtest: **${bt.signal}** signal, confidence ${bt.confidenceScore}/100, hit rate ${bt.hitRate}%, walk-forward acc ${bt.walkForwardAccuracy}%, regime "${bt.regime}", projected ${bt.forecastPct}% over ${bt.forecastLabel}.` : ""}`;
+${bt ? `- Backtest: **${bt.signal}** signal, confidence ${bt.confidenceScore}/100, hit rate ${bt.hitRate}%, walk-forward acc ${bt.walkForwardAccuracy}%, regime "${bt.regime}", projected ${bt.forecastPct}% over ${bt.forecastLabel}.` : ""}${linkages}`;
 }
 
 serve(async (req) => {
@@ -87,8 +151,10 @@ serve(async (req) => {
         });
       }
 
+      const linkCache = await loadLinkages();
+      const linkageStr = linkageBlock(currentTicker, linkCache);
       const messages = [
-        { role: "system", content: buildSystemPrompt(context || {}) },
+        { role: "system", content: buildSystemPrompt(context || {}, linkageStr) },
         ...(Array.isArray(history) ? history.slice(-12).map((m: any) => ({
           role: m.role === "agent" ? "assistant" : "user",
           content: String(m.content || ""),

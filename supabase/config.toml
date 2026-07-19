@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.track-usage]
 verify_jwt = false
+
+[functions.fetch-macro-series]
+verify_jwt = false
+
+[functions.cache-linkages]
+verify_jwt = false

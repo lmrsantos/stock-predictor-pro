@@ -131,6 +131,24 @@ export type Database = {
         }
         Relationships: []
       }
+      linkage_cache: {
+        Row: {
+          id: number
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       market_updates: {
         Row: {
           content: string

@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { readCachedLinkages } from "@/lib/run-linkages";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ interface HotStock {
   converged: boolean;
   riskTier: number;
   riskLabel: string;
+  linkageTilt?: number;      // e.g. 1.08 = +8% confidence boost from validated leader momentum
+  linkageNote?: string;      // hover explanation
 }
 
 interface SymbolData {
@@ -341,6 +344,52 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
       setScanStatus(`Training AE on top ${candidates.length} candidates...`);
 
+      // Compute per-sector linkage tilt from validated linkages (localStorage cache).
+      // Skip macro-led links (OIL/GOLD/US10Y/XLY_XLP_RATIO) — no data here.
+      const MACRO = new Set(["OIL","GOLD","US10Y","XLY_XLP_RATIO"]);
+      const linkCache = readCachedLinkages();
+      const sectorTilt: Record<string, { factor: number; note: string }> = {};
+      if (linkCache?.results?.length) {
+        // sector -> mean of last-5-day log returns across its symbols
+        const sectorRecentReturn: Record<string, number> = {};
+        const bySector: Record<string, number[]> = {};
+        for (const s of symbolData) {
+          const c = s.closes;
+          if (c.length < 6) continue;
+          let sum = 0, n = 0;
+          for (let i = c.length - 5; i < c.length; i++) {
+            if (c[i] > 0 && c[i-1] > 0) { sum += Math.log(c[i]/c[i-1]); n++; }
+          }
+          if (n === 0) continue;
+          (bySector[s.sector] ??= []).push(sum);
+        }
+        for (const [sec, arr] of Object.entries(bySector)) {
+          sectorRecentReturn[sec] = arr.reduce((a,b)=>a+b,0) / arr.length;
+        }
+        const validated = linkCache.results.filter(r => r.validated && !MACRO.has(String(r.leader)));
+        // sector -> array of {contribution, note-piece}
+        const followers = new Set(validated.map(v => v.follower));
+        for (const follower of followers) {
+          let raw = 0;
+          const pieces: string[] = [];
+          for (const v of validated.filter(x => x.follower === follower)) {
+            const lr = sectorRecentReturn[v.leader as string];
+            if (lr == null) continue;
+            const contrib = v.sign * lr * Math.abs(v.coefficient);
+            raw += contrib;
+            pieces.push(`${v.leader} 5d ${(lr*100).toFixed(1)}%`);
+          }
+          // scale raw to [-0.15, +0.15]; typical raw is ~0.005 -> tanh scaling
+          const factor = 1 + Math.max(-0.15, Math.min(0.15, Math.tanh(raw * 20) * 0.15));
+          if (Math.abs(factor - 1) > 0.005) {
+            sectorTilt[follower] = {
+              factor,
+              note: `${pieces.join(", ")} → ${((factor-1)*100).toFixed(1)}% conf tilt`,
+            };
+          }
+        }
+      }
+
       // Step 3: Full 200-epoch AE on each candidate (browser — no limits)
       const buySignals: HotStock[] = [];
 
@@ -354,12 +403,12 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         const scored = scoreStock(c.closes, c.riskTier);
         console.log(`${c.symbol}: ${scored?.signal} conf=${scored?.confidence} hit=${scored?.hitRate} fPct=${scored?.forecastPct}`);
         if (!scored) continue;
-        // Include BUY signals AND strong WAIT signals (top momentum)
         if (scored.signal !== "BUY" && scored.signal !== "WAIT") continue;
         if (scored.signal === "WAIT" && scored.confidence < 20) continue;
-        // Tag signal strength for UI
-        const effectiveSignal = scored.signal;
-        if (effectiveSignal !== "BUY") continue; // strict BUY only for now
+        if (scored.signal !== "BUY") continue; // strict BUY only for now
+
+        const tilt = sectorTilt[c.sector];
+        const tiltedConfidence = tilt ? Math.min(100, scored.confidence * tilt.factor) : scored.confidence;
 
         buySignals.push({
           symbol:              c.symbol,
@@ -367,7 +416,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           dayChange:           0,
           sector:              c.sector,
           signal:              scored.signal,
-          confidence:          scored.confidence,
+          confidence:          Math.round(tiltedConfidence * 10) / 10,
           forecastPct:         scored.forecastPct,
           forecastDays:        scored.forecastDays,
           forecastLabel:       scored.forecastLabel,
@@ -380,6 +429,8 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           breakout:            c.qs!.breakout && scored.converged,
           sectorHot:           c.sectorBias >= 1.5,
           thematicHot:         c.thematicBias >= 1.5,
+          linkageTilt:         tilt?.factor,
+          linkageNote:         tilt?.note,
         });
 
         // Show results progressively as they come in
