@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Sparkles, User, TrendingUp, Briefcase } from "lucide-react";
+import { Sparkles, User, TrendingUp, Briefcase, Table2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -312,6 +312,20 @@ const Index = () => {
               isLoading={isLoading}
               slopePositive={regression ? regression.slope >= 0 : true}
             />
+            <div className="flex justify-end -mt-2">
+              <button
+                onClick={() => setShowTable(!showTable)}
+                title={showTable ? "Hide data table" : "Show data table"}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
+                  showTable
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                <Table2 className="w-3.5 h-3.5" />
+                {showTable ? "Hide data table" : "Data table"}
+              </button>
+            </div>
             {showTable && regression && (
               <div ref={tableRef}>
                 <DataTable
