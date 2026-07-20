@@ -399,6 +399,34 @@ const Index = () => {
         ticker={ticker}
         onResult={setBacktestResult}
       />
+
+      <Dialog open={hotStocksOpen} onOpenChange={setHotStocksOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <span className="text-xl">🔥</span>
+              Hot Stocks
+            </DialogTitle>
+          </DialogHeader>
+          <HotStocks onSelectTicker={(symbol) => {
+            setSearchInput(symbol);
+            setTicker(symbol);
+            setHotStocksOpen(false);
+          }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sentimentOpen} onOpenChange={setSentimentOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Globe className="w-5 h-5" />
+              Global Sentiment
+            </DialogTitle>
+          </DialogHeader>
+          <GlobalSentiment />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
