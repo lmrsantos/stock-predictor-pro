@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Sparkles, User, TrendingUp } from "lucide-react";
+import { Sparkles, User, TrendingUp, Briefcase } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -212,6 +212,13 @@ const Index = () => {
           </span>
         </Link>
         <div className="flex items-center gap-2">
+          <Link
+            to="/portfolio"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <Briefcase className="w-4 h-4" />
+            My Portfolio
+          </Link>
           <Link
             to="/pricing"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity"

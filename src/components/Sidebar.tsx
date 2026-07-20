@@ -300,9 +300,9 @@ export function Sidebar({
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Products (aligned with landing page) */}
+      {/* More Tools */}
       <div className="space-y-2">
-        <label className="label-upper">Products</label>
+        <label className="label-upper">More Tools</label>
         <Link
           to="/sector-backtest"
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
@@ -316,13 +316,6 @@ export function Sidebar({
         >
           <Activity className="w-4 h-4" />
           Linkage Engine
-        </Link>
-        <Link
-          to="/portfolio"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <Briefcase className="w-4 h-4" />
-          Portfolio Insights
         </Link>
       </div>
 
