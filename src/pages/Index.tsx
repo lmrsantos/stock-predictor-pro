@@ -317,11 +317,15 @@ const Index = () => {
       </div>
 
 
+      {/* Macro indicators + regime */}
+      <MacroIndicatorStrip />
+
       {/* Top ticker bar */}
       <MarketTicker currentTicker={ticker} onSelectTicker={(symbol) => {
         setSearchInput(symbol);
         setTicker(symbol);
       }} />
+
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
 
