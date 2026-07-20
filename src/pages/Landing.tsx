@@ -494,7 +494,7 @@ function MockTerminal() {
       <div className="col-span-3 rounded-lg bg-white/[0.03] border border-white/5 p-4">
         <div className="flex items-baseline justify-between mb-3">
           <div>
-            <div className="text-xs text-white/50 font-mono">^DJI · Dow Jones</div>
+            <div className="text-xs text-white/50 font-mono">^GSPC · S&amp;P 500</div>
             <div className="text-2xl font-bold">44,910.65</div>
           </div>
           <div className="text-emerald-300 text-sm font-mono">+128.42 (+0.29%)</div>
