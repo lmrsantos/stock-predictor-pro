@@ -502,7 +502,13 @@ export default function Portfolio() {
                   <HoldingRow
                     key={h.id}
                     holding={h}
-                    onDelete={(id) => deleteMutation.mutate(id)}
+                    onDelete={(id) => {
+                      const h2 = holdings.find((x) => x.id === id);
+                      const label = h2 ? `${h2.ticker} (${h2.shares} shares)` : "this holding";
+                      if (window.confirm(`Remove ${label} from your portfolio? This cannot be undone.`)) {
+                        deleteMutation.mutate(id);
+                      }
+                    }}
                     onUpdate={(id, shares, avgCost, purchaseDate) => updateMutation.mutate({ id, shares, avgCost, purchaseDate })}
                     onProjection={handleProjection}
                     intraday={intraday.perHolding[h.ticker.toUpperCase()]}
@@ -512,25 +518,34 @@ export default function Portfolio() {
               {totals && (
                 <tfoot>
                   <tr className="border-t-2 border-primary/40 bg-secondary/40 font-bold">
-                    <td className="px-4 py-3 text-[11px] uppercase tracking-widest text-primary">Total</td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-3"></td>
-                    <td className="px-4 py-2 border-l border-border/40">
-                      <div className="flex justify-end">
+                    <td colSpan={5} className="px-4 py-2 align-middle">
+                      <div className="flex items-center gap-4">
+                        <span className="text-[11px] uppercase tracking-widest text-primary">Total</span>
                         <PortfolioIntradaySparkline
                           holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
                           currentValue={totals.currentValue}
                         />
                       </div>
                     </td>
+                    <td className="pl-3 pr-4 py-3 text-right text-sm border-l border-border/40">
+                      {intraday.ready ? (
+                        <>
+                          <span className={intraday.change >= 0 ? "price-positive" : "price-negative"}>
+                            {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
+                          <div className={`text-[10px] ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                            {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right text-sm">
                       ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       {intraday.ready && (
-                        <div className={`text-[10px] ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
-                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}{" "}
-                          {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
+                        <div className="text-[10px] text-muted-foreground">
+                          prev ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </div>
                       )}
                     </td>
