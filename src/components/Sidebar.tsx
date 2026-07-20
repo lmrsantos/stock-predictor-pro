@@ -304,13 +304,6 @@ export function Sidebar({
       <div className="space-y-2">
         <label className="label-upper">More Tools</label>
         <Link
-          to="/sector-backtest"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <BarChart3 className="w-4 h-4" />
-          Sector Backtest
-        </Link>
-        <Link
           to="/linkages"
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
         >
