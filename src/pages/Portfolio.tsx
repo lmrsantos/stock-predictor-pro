@@ -544,9 +544,13 @@ export default function Portfolio() {
                             {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                             {" "}({intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%)
                           </div>
-                          <div className="text-[10px] text-muted-foreground font-normal mt-0.5 uppercase tracking-wider">
-                            Day open ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                            ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                           </div>
+                          <div className="text-[9px] text-muted-foreground font-normal uppercase tracking-wider">
+                            Day open
+                          </div>
+
                         </>
                       )}
                     </td>
