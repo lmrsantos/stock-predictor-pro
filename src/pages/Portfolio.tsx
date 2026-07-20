@@ -8,7 +8,7 @@ import { computeLinearRegression } from "@/lib/regression";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { PortfolioIntradaySparkline, usePortfolioIntraday } from "@/components/PortfolioIntradaySparkline";
+import { usePortfolioIntraday } from "@/components/PortfolioIntradaySparkline";
 
 interface Holding {
   id: string;
