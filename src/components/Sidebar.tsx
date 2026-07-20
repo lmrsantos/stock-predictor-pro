@@ -204,9 +204,10 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Model Stats */}
+      {/* Regression Forecasts — model stats */}
       <div className="space-y-3">
-        <label className="label-upper">Model Statistics</label>
+        <label className="label-upper">Regression Forecasts</label>
+
 
         {isLoading ? (
           <div className="space-y-3">
@@ -299,9 +300,9 @@ export function Sidebar({
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Navigation Links */}
+      {/* Products (aligned with landing page) */}
       <div className="space-y-2">
-        <label className="label-upper">Tools</label>
+        <label className="label-upper">Products</label>
         <Link
           to="/sector-backtest"
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
@@ -314,14 +315,14 @@ export function Sidebar({
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
         >
           <Activity className="w-4 h-4" />
-          Cross-Sector Linkages
+          Linkage Engine
         </Link>
         <Link
           to="/portfolio"
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
         >
           <Briefcase className="w-4 h-4" />
-          My Portfolio
+          Portfolio Insights
         </Link>
       </div>
 

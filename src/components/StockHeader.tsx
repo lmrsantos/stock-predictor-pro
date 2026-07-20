@@ -172,7 +172,7 @@ export function StockHeader({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <span className="text-xl">🔥</span>
-              QuantPulse™ Hot Stocks
+              Hot Stocks
             </DialogTitle>
           </DialogHeader>
           <HotStocks onSelectTicker={(symbol) => {
