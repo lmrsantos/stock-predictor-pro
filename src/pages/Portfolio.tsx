@@ -543,6 +543,7 @@ export default function Portfolio() {
                             currentValue={totals.currentValue}
                             width={70}
                             height={24}
+                            compact
                           />
                         )}
                         <span>${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
