@@ -18,7 +18,14 @@
 
 import { useEffect, useRef, useState, useMemo } from "react";
 import cytoscape, { Core, EventObject } from "cytoscape";
+import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
+
+// Register the compound-aware layout once.
+if (!(cytoscape as any).__fcoseRegistered) {
+  cytoscape.use(fcose);
+  (cytoscape as any).__fcoseRegistered = true;
+}
 
 // ---------------------------------------------------------------------------
 // Event catalog: what moves each sector
@@ -286,35 +293,43 @@ export default function SectorLinkageGraph({
           selector: "node[kind='sector']",
           style: {
             shape: "round-rectangle",
-            "background-color": "hsl(var(--card))",
+            "background-color": mode === "ticker" ? "hsl(var(--muted) / 0.35)" : "hsl(var(--card))",
+            "background-opacity": mode === "ticker" ? 0.55 : 1,
             "border-width": 1.5,
-            "border-color": "hsl(var(--border))",
+            "border-color": "hsl(var(--primary) / 0.55)",
             label: "data(label)",
             color: "hsl(var(--foreground))",
             "font-size": mode === "ticker" ? 13 : 12,
-            "font-weight": mode === "ticker" ? 600 : 500,
+            "font-weight": 600,
             "text-valign": mode === "ticker" ? "top" : "center",
             "text-halign": "center",
+            "text-margin-y": mode === "ticker" ? -6 : 0,
             "text-wrap": "wrap",
-            "text-max-width": "110px",
-            width: mode === "ticker" ? "label" : 130,
-            height: mode === "ticker" ? "label" : 48,
-            padding: mode === "ticker" ? "24px" : "8px",
+            "text-max-width": "140px",
+            "text-outline-color": "hsl(var(--background))",
+            "text-outline-width": mode === "ticker" ? 2 : 0,
+            // In ticker mode, expanded sector nodes are compound parents —
+            // Cytoscape must auto-size them to fit their children.
+            ...(mode === "ticker"
+              ? { "min-width": 90, "min-height": 40, padding: "28px" }
+              : { width: 130, height: 48, padding: "8px" }),
           },
         },
         {
           selector: "node[kind='ticker']",
           style: {
-            shape: "ellipse",
-            "background-color": "hsl(var(--muted))",
+            shape: "round-rectangle",
+            "background-color": "hsl(var(--card))",
             "border-width": 1,
             "border-color": "hsl(var(--border))",
             label: "data(label)",
             color: "hsl(var(--foreground))",
-            "font-size": 9,
+            "font-size": 10,
+            "font-weight": 500,
             "text-valign": "center",
-            width: 44,
-            height: 26,
+            "text-halign": "center",
+            width: 48,
+            height: 22,
           },
         },
         {
@@ -380,23 +395,37 @@ export default function SectorLinkageGraph({
       ],
       layout:
         mode === "ticker"
-          ? {
-              name: "cose",
+          ? ({
+              name: "fcose",
+              quality: "default",
               animate: false,
-              padding: 40,
-              nodeRepulsion: () => 30000,
-              idealEdgeLength: () => 180,
-              nodeOverlap: 24,
-              gravity: 0.15,
-              componentSpacing: 120,
-              numIter: 1500,
-              randomize: false,
-            }
-          : { name: "circle", padding: 40 },
+              fit: true,
+              padding: 50,
+              nodeRepulsion: () => 6000,
+              idealEdgeLength: () => 120,
+              edgeElasticity: () => 0.45,
+              gravity: 0.25,
+              gravityRangeCompound: 1.5,
+              gravityCompound: 1.0,
+              nestingFactor: 0.1,
+              numIter: 2500,
+              tile: true,
+              tilingPaddingVertical: 10,
+              tilingPaddingHorizontal: 10,
+              randomize: true,
+            } as any)
+          : { name: "circle", padding: 40, fit: true },
       wheelSensitivity: 0.2,
-      minZoom: 0.3,
+      minZoom: 0.15,
       maxZoom: 2.5,
     });
+
+    // Ensure the graph is always framed inside the viewport after (re)layout,
+    // especially after Expand all / Collapse all in ticker mode.
+    cy.one("layoutstop", () => {
+      cy.fit(undefined, 40);
+    });
+
 
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
       const sector = e.target.data("label") as SectorName;
