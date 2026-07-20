@@ -204,9 +204,10 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Model Stats */}
+      {/* Regression Forecasts — model stats */}
       <div className="space-y-3">
-        <label className="label-upper">Model Statistics</label>
+        <label className="label-upper">Regression Forecasts</label>
+
 
         {isLoading ? (
           <div className="space-y-3">
