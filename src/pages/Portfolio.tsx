@@ -538,8 +538,11 @@ export default function Portfolio() {
                     <td className="px-4 py-3 text-right text-sm">
                       ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       {intraday.ready && (
-                        <div className="text-[10px] text-muted-foreground">
-                          prev ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        <div className="text-[10px] text-muted-foreground font-normal mt-0.5">
+                          <span className="uppercase tracking-wider">Day open</span>{" "}
+                          <span className="font-mono">
+                            ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
                         </div>
                       )}
                     </td>
