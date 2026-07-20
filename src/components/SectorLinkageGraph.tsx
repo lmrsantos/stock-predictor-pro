@@ -20,6 +20,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import cytoscape, { Core, EventObject } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
+import { CURATED_SECTOR_UNIVERSES } from "@/lib/sector-universes";
 
 // Register the compound-aware layout once.
 if (!(cytoscape as any).__fcoseRegistered) {
@@ -226,15 +227,22 @@ export default function SectorLinkageGraph({
     [results, validatedOnly],
   );
 
+  const membership = useMemo(
+    () => Object.keys(sectorMembership ?? {}).length > 0
+      ? sectorMembership
+      : (CURATED_SECTOR_UNIVERSES as Record<SectorName, string[]>),
+    [sectorMembership],
+  );
+
   const sectorsInPlay = useMemo(() => {
     const sectors = new Set<SectorName>();
     for (const l of links) {
       sectors.add(l.follower);
       if (!MACRO_NODES.includes(l.leader)) sectors.add(l.leader as SectorName);
     }
-    for (const s of Object.keys(sectorMembership) as SectorName[]) sectors.add(s);
+    for (const s of Object.keys(membership) as SectorName[]) sectors.add(s);
     return Array.from(sectors);
-  }, [links, sectorMembership]);
+  }, [links, membership]);
 
   const linksBySector = useMemo(() => {
     const map = new Map<SectorName, { incoming: LinkageResult[]; outgoing: LinkageResult[] }>();
@@ -453,7 +461,7 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, sectorMembership, sectorsInPlay]);
+  }, [links, mode, membership, sectorsInPlay]);
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
@@ -513,7 +521,7 @@ export default function SectorLinkageGraph({
           <div className="absolute inset-0 overflow-y-auto px-4 pb-28 pt-16">
             <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
               {sectorsInPlay.map((sector) => {
-                const tickers = sectorMembership[sector] ?? [];
+                const tickers = membership[sector] ?? [];
                 const sectorLinks = linksBySector.get(sector);
                 return (
                   <button
@@ -581,7 +589,7 @@ export default function SectorLinkageGraph({
           <div className="mb-3 rounded-md border bg-muted/30 p-2">
             <div className="mb-1 text-xs font-medium">Ticker members</div>
             <div className="flex flex-wrap gap-1">
-              {(sectorMembership[panelSector] ?? []).map((ticker) => (
+              {(membership[panelSector] ?? []).map((ticker) => (
                 <span key={ticker} className="rounded border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground">
                   {ticker}
                 </span>
