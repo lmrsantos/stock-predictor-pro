@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.fetch-macro-indicators]
 verify_jwt = false
+
+[functions.fetch-intraday]
+verify_jwt = false
