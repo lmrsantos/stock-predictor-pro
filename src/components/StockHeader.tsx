@@ -5,6 +5,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { HotStocks } from "./HotStocks";
+import { GlobalSentiment } from "./GlobalSentiment";
 import {
   Dialog,
   DialogContent,
