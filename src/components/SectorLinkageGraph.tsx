@@ -309,10 +309,6 @@ export default function SectorLinkageGraph({
             "text-max-width": "160px",
             "text-outline-color": "hsl(var(--background))",
             "text-outline-width": mode === "ticker" ? 3 : 2,
-            "text-shadow-blur": 4,
-            "text-shadow-color": "hsl(var(--background) / 0.75)",
-            "text-shadow-offset-x": 0,
-            "text-shadow-offset-y": 1,
             // In ticker mode, expanded sector nodes are compound parents —
             // Cytoscape must auto-size them to fit their children.
             ...(mode === "ticker"
@@ -338,8 +334,6 @@ export default function SectorLinkageGraph({
             padding: "4px",
             "text-outline-color": "hsl(var(--background))",
             "text-outline-width": 2,
-            "text-shadow-blur": 3,
-            "text-shadow-color": "hsl(var(--background) / 0.6)",
           },
         },
         {
@@ -361,8 +355,6 @@ export default function SectorLinkageGraph({
             height: 56,
             "text-outline-color": "hsl(var(--background))",
             "text-outline-width": 2,
-            "text-shadow-blur": 3,
-            "text-shadow-color": "hsl(var(--background) / 0.6)",
           },
         },
         {
@@ -378,7 +370,6 @@ export default function SectorLinkageGraph({
             "text-background-color": "hsl(var(--background))",
             "text-background-opacity": 0.92,
             "text-background-padding": "3px",
-            "text-background-shape": "roundrectangle",
             width: (ele: cytoscape.EdgeSingular) =>
               Math.max(1.5, Math.min(6, (ele.data("strength") as number) * 400)),
           },
