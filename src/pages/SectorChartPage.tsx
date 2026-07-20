@@ -198,8 +198,8 @@ export default function SectorChartPage() {
               <h3 className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                 Members in composite
                 <InfoTooltip
-                  what="The curated tickers that were combined (equal-weight, normalized to 100) to build this sector's composite line."
-                  how="Each ticker's price series is rebased to 100 at the start of the period, then averaged day-by-day. This is the exact same math the Linkage Engine uses, so what you see here is what the linkages are reasoning over."
+                  title="Members in composite" what="The curated tickers that were combined (equal-weight, normalized to 100) to build this sector's composite line."
+                  howToRead="Each ticker's price series is rebased to 100 at the start of the period, then averaged day-by-day. This is the exact same math the Linkage Engine uses, so what you see here is what the linkages are reasoning over."
                 />
               </h3>
               <span className="text-xs text-muted-foreground">
@@ -231,7 +231,7 @@ function StatCard({ label, value, positive, tooltip }: { label: string; value: s
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
         {label}
-        <InfoTooltip what={label} how={tooltip} />
+        <InfoTooltip title={label} what={label} howToRead={tooltip} />
       </div>
       <div className={`mt-1 text-xl font-mono font-semibold flex items-center gap-1.5 ${positive ? "text-accent-success" : "text-accent-danger"}`}>
         {positive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
