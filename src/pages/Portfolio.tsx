@@ -158,7 +158,7 @@ function HoldingRow({
   return (
     <tr className="border-b border-border/50 hover:bg-accent/30 transition-colors">
       <td className="px-4 py-3">
-        <Link to={`/?ticker=${p.ticker}`} className="font-mono font-bold text-primary hover:underline">{p.ticker}</Link>
+        <Link to={`/terminal?ticker=${p.ticker}`} className="font-mono font-bold text-primary hover:underline">{p.ticker}</Link>
         <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">{p.companyName}</div>
       </td>
       <td className="px-4 py-3 text-right font-mono text-sm">
