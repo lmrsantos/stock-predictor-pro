@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.cache-linkages]
 verify_jwt = false
+
+[functions.fetch-macro-indicators]
+verify_jwt = false
