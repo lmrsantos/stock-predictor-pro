@@ -519,42 +519,38 @@ export default function Portfolio() {
                 <tfoot>
                   <tr className="border-t-2 border-primary/40 bg-secondary/40 font-bold">
                     <td colSpan={5} className="px-4 py-3 align-middle">
-                      <div className="flex items-center gap-4">
-                        <span className="text-[11px] uppercase tracking-widest text-primary">Total</span>
-                        {intraday.ready && (
+                      <span className="text-[11px] uppercase tracking-widest text-primary">Total</span>
+                    </td>
+                    <td className="pl-3 pr-4 py-2 text-right border-l border-border/40">
+                      {intraday.ready ? (
+                        <div className="flex justify-end">
                           <PortfolioIntradaySparkline
                             holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
                             currentValue={totals.currentValue}
-                            width={160}
+                            width={140}
                             height={34}
                             compact
                           />
-                        )}
-                      </div>
-                    </td>
-                    <td className="pl-3 pr-4 py-3 text-right text-sm border-l border-border/40">
-                      {intraday.ready ? (
-                        <span className="font-mono">
-                          ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </span>
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">—</span>
-                      )}
-                      {intraday.ready && (
-                        <div className="text-[10px] text-muted-foreground font-normal mt-0.5 uppercase tracking-wider">
-                          Day open
-                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       <span>${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                       {intraday.ready && (
-                        <div className={`text-[10px] font-normal mt-0.5 ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
-                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                          {" "}({intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%)
-                        </div>
+                        <>
+                          <div className={`text-[10px] font-normal mt-0.5 ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                            {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            {" "}({intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%)
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-normal mt-0.5 uppercase tracking-wider">
+                            Day open ${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </div>
+                        </>
                       )}
                     </td>
+
                     <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
