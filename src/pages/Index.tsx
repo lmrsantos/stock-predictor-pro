@@ -25,6 +25,7 @@ import {
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
+import { RegressionStatsBar } from "@/components/RegressionStatsBar";
 import type { BacktestResult } from "@/lib/backtest";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
