@@ -148,7 +148,7 @@ function HoldingRow({
     return (
       <tr className="border-b border-border/50">
         <td className="px-4 py-3 font-mono font-bold text-primary">{holding.ticker}</td>
-        <td colSpan={12} className="px-4 py-3 text-muted-foreground text-sm">
+        <td colSpan={10} className="px-4 py-3 text-muted-foreground text-sm">
           <Loader2 className="w-3 h-3 animate-spin inline mr-2" />Loading…
         </td>
       </tr>
@@ -197,7 +197,7 @@ function HoldingRow({
         )}
       </td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
-      <td className={`px-4 py-3 text-right font-mono text-sm ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+      <td className={`px-4 py-3 text-right font-mono text-sm border-l border-border/40 ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
         {intraday ? (
           <>
             {(intraday.change >= 0 ? "+" : "-")}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -209,13 +209,12 @@ function HoldingRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${gl ? "price-positive" : "price-negative"}`}>
         {gl ? "+" : ""}${p.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         <div className="text-[10px]">{gl ? "+" : ""}{(p.gainLossPct * 100).toFixed(1)}%</div>
       </td>
-      <td className="px-4 py-3 text-right font-mono text-sm">
+      <td className="px-4 py-3 text-right font-mono text-sm border-l border-border/40">
         ${p.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         <div className={`text-[10px] ${p.projected30dPct >= 0 ? "price-positive" : "price-negative"}`}>
           {p.projected30dPct >= 0 ? "+" : ""}{(p.projected30dPct * 100).toFixed(1)}%
@@ -226,9 +225,6 @@ function HoldingRow({
         <div className={`text-[10px] ${p.projected1yPct >= 0 ? "price-positive" : "price-negative"}`}>
           {p.projected1yPct >= 0 ? "+" : ""}{(p.projected1yPct * 100).toFixed(1)}%
         </div>
-      </td>
-      <td className={`px-4 py-3 text-right font-mono text-sm ${p.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
-        {p.annualReturn >= 0 ? "+" : ""}{(p.annualReturn * 100).toFixed(1)}%
       </td>
       <td className="px-4 py-3 text-center">
         <div className="flex items-center justify-center gap-1">
@@ -493,13 +489,11 @@ export default function Portfolio() {
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Avg Cost</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Purchased / Held</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Current</th>
-                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Intraday G/L</th>
-
+                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">Intraday G/L</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Value</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Gain/Loss</th>
-                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">30d Proj</th>
+                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">30d Proj</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">1Y Proj</th>
-                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">1Y Proj %</th>
                   <th className="text-center px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Actions</th>
                 </tr>
               </thead>
@@ -523,7 +517,7 @@ export default function Portfolio() {
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 border-l border-border/40">
                       <div className="flex justify-end">
                         <PortfolioIntradaySparkline
                           holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
@@ -531,7 +525,6 @@ export default function Portfolio() {
                         />
                       </div>
                     </td>
-
                     <td className="px-4 py-3 text-right text-sm">
                       ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       {intraday.ready && (
@@ -545,7 +538,7 @@ export default function Portfolio() {
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm">
+                    <td className="px-4 py-3 text-right text-sm border-l border-border/40">
                       ${totals.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className={`text-[10px] ${totals.projected30dPct >= 0 ? "price-positive" : "price-negative"}`}>
                         {totals.projected30dPct >= 0 ? "+" : ""}{(totals.projected30dPct * 100).toFixed(1)}%
@@ -556,9 +549,6 @@ export default function Portfolio() {
                       <div className={`text-[10px] ${totals.projected1yPct >= 0 ? "price-positive" : "price-negative"}`}>
                         {totals.projected1yPct >= 0 ? "+" : ""}{(totals.projected1yPct * 100).toFixed(1)}%
                       </div>
-                    </td>
-                    <td className={`px-4 py-3 text-right text-sm ${totals.weightedReturn >= 0 ? "price-positive" : "price-negative"}`}>
-                      {totals.weightedReturn >= 0 ? "+" : ""}{(totals.weightedReturn * 100).toFixed(1)}%
                     </td>
                     <td className="px-4 py-3"></td>
                   </tr>
