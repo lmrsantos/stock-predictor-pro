@@ -18,7 +18,7 @@ function Cell({
   label: string;
   value: React.ReactNode;
   valueClass?: string;
-  tooltip?: { title: string; description: string; example?: string };
+  tooltip?: React.ComponentProps<typeof InfoTooltip>;
   sub?: React.ReactNode;
 }) {
   return (
