@@ -58,11 +58,13 @@ function HoldingRow({
   onDelete,
   onUpdate,
   onProjection,
+  intraday,
 }: {
   holding: Holding;
   onDelete: (id: string) => void;
   onUpdate: (id: string, shares: number, avgCost: number, purchaseDate: string | null) => void;
   onProjection: (id: string, p: HoldingProjection | null) => void;
+  intraday?: { baseline: number; latest: number; change: number; changePct: number };
 }) {
   const [editing, setEditing] = useState(false);
   const [editShares, setEditShares] = useState(String(holding.shares));
@@ -146,7 +148,7 @@ function HoldingRow({
     return (
       <tr className="border-b border-border/50">
         <td className="px-4 py-3 font-mono font-bold text-primary">{holding.ticker}</td>
-        <td colSpan={11} className="px-4 py-3 text-muted-foreground text-sm">
+        <td colSpan={12} className="px-4 py-3 text-muted-foreground text-sm">
           <Loader2 className="w-3 h-3 animate-spin inline mr-2" />Loading…
         </td>
       </tr>
@@ -195,6 +197,18 @@ function HoldingRow({
         )}
       </td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
+      <td className={`px-4 py-3 text-right font-mono text-sm ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+        {intraday ? (
+          <>
+            {(intraday.change >= 0 ? "+" : "-")}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            <div className="text-[10px]">
+              {(intraday.changePct >= 0 ? "+" : "")}{intraday.changePct.toFixed(2)}%
+            </div>
+          </>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
 
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${gl ? "price-positive" : "price-negative"}`}>
@@ -479,6 +493,7 @@ export default function Portfolio() {
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Avg Cost</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Purchased / Held</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Current</th>
+                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Intraday G/L</th>
 
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Value</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Gain/Loss</th>
@@ -496,6 +511,7 @@ export default function Portfolio() {
                     onDelete={(id) => deleteMutation.mutate(id)}
                     onUpdate={(id, shares, avgCost, purchaseDate) => updateMutation.mutate({ id, shares, avgCost, purchaseDate })}
                     onProjection={handleProjection}
+                    intraday={intraday.perHolding[h.ticker.toUpperCase()]}
                   />
                 ))}
               </tbody>
@@ -503,7 +519,11 @@ export default function Portfolio() {
                 <tfoot>
                   <tr className="border-t-2 border-primary/40 bg-secondary/40 font-bold">
                     <td className="px-4 py-3 text-[11px] uppercase tracking-widest text-primary">Total</td>
-                    <td colSpan={4} className="px-4 py-2">
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-2">
                       <div className="flex justify-end">
                         <PortfolioIntradaySparkline
                           holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
@@ -511,7 +531,6 @@ export default function Portfolio() {
                         />
                       </div>
                     </td>
-
 
                     <td className="px-4 py-3 text-right text-sm">
                       ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}

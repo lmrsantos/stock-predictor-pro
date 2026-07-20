@@ -210,22 +210,37 @@ export function usePortfolioIntraday(holdings: Holding[]) {
   }, [tickersKey]);
 
   return useMemo(() => {
-    if (!series) return { baseline: 0, latest: 0, change: 0, changePct: 0, ready: false };
+    if (!series) {
+      return {
+        baseline: 0,
+        latest: 0,
+        change: 0,
+        changePct: 0,
+        ready: false,
+        perHolding: {} as Record<string, { baseline: number; latest: number; change: number; changePct: number }>,
+      };
+    }
     const shareMap = new Map<string, number>();
     for (const h of holdings) shareMap.set(h.ticker.toUpperCase(), h.shares);
     let base = 0;
     let last = 0;
+    const perHolding: Record<string, { baseline: number; latest: number; change: number; changePct: number }> = {};
     for (const t of tickers) {
       const s = series[t];
       const prev = s?.prevClose ?? s?.points[0]?.c ?? 0;
       const lastC = s?.points.length ? s.points[s.points.length - 1].c : prev;
       const shares = shareMap.get(t) ?? 0;
-      base += shares * prev;
-      last += shares * lastC;
+      const hBase = shares * prev;
+      const hLast = shares * lastC;
+      const hChange = hLast - hBase;
+      const hChangePct = hBase > 0 ? (hChange / hBase) * 100 : 0;
+      perHolding[t] = { baseline: hBase, latest: hLast, change: hChange, changePct: hChangePct };
+      base += hBase;
+      last += hLast;
     }
     const change = last - base;
     const changePct = base > 0 ? (change / base) * 100 : 0;
-    return { baseline: base, latest: last, change, changePct, ready: true };
+    return { baseline: base, latest: last, change, changePct, ready: true, perHolding };
   }, [series, holdings, tickers]);
 }
 
