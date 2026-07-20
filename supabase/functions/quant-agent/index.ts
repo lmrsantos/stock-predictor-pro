@@ -122,7 +122,30 @@ ${f.forward_pe != null ? `- Forward P/E: ${Number(f.forward_pe).toFixed(2)}` : "
 ${f.eps != null ? `- EPS: $${Number(f.eps).toFixed(2)}` : ""}
 ${f.market_cap != null ? `- Market Cap: $${(Number(f.market_cap) / 1e9).toFixed(1)}B` : ""}
 ${f.dividend_yield != null ? `- Dividend Yield: ${(Number(f.dividend_yield) * 100).toFixed(2)}%` : ""}
-${bt ? `- Backtest: **${bt.signal}** signal, confidence ${bt.confidenceScore}/100, hit rate ${bt.hitRate}%, walk-forward acc ${bt.walkForwardAccuracy}%, regime "${bt.regime}", projected ${bt.forecastPct}% over ${bt.forecastLabel}.` : ""}${linkages}`;
+${bt ? `- Backtest: **${bt.signal}** signal, confidence ${bt.confidenceScore}/100, hit rate ${bt.hitRate}%, walk-forward acc ${bt.walkForwardAccuracy}%, regime "${bt.regime}", projected ${bt.forecastPct}% over ${bt.forecastLabel}.` : ""}${macroBlock(ctx?.macroIndicators)}${linkages}`;
+}
+
+function macroBlock(m: any): string {
+  if (!m || typeof m !== "object") return "";
+  const fmt = (k: string, label: string, suffix = "") => {
+    const v = m[k]?.value;
+    if (v == null) return null;
+    const d30 = m[k]?.change_30d;
+    const d30Str = d30 != null ? ` (30d ${d30 >= 0 ? "+" : ""}${Number(d30).toFixed(1)}%)` : "";
+    return `  • ${label}: ${Number(v).toFixed(2)}${suffix}${d30Str}`;
+  };
+  const rows = [
+    fmt("cpi_yoy", "CPI YoY", "%"),
+    fmt("fed_funds", "Fed Funds", "%"),
+    fmt("us10y", "US 10Y", "%"),
+    fmt("curve_10y2y", "10Y–2Y spread"),
+    fmt("vix", "VIX"),
+    fmt("wti", "WTI", " $"),
+    fmt("gold", "Gold", " $"),
+    fmt("cape_proxy", "S&P 500 PE (trailing)"),
+  ].filter(Boolean);
+  if (!rows.length) return "";
+  return `\n\nLIVE MACRO INDICATORS (same numbers the user sees on screen):\n${rows.join("\n")}`;
 }
 
 serve(async (req) => {
