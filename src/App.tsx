@@ -9,6 +9,7 @@ import Landing from "./pages/Landing.tsx";
 import Auth from "./pages/Auth.tsx";
 import Portfolio from "./pages/Portfolio.tsx";
 import SectorBacktestPage from "./pages/SectorBacktestPage.tsx";
+import SectorChartPage from "./pages/SectorChartPage.tsx";
 import LinkagesPage from "./pages/LinkagesPage.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import Account from "./pages/Account.tsx";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/sector-backtest" element={<SectorBacktestPage />} />
+            <Route path="/sectors" element={<SectorChartPage />} />
             <Route path="/linkages" element={<LinkagesPage />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/account" element={<Account />} />
