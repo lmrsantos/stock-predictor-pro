@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Sparkles, User, TrendingUp, Briefcase, Table2 } from "lucide-react";
+import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +14,14 @@ import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { PortfolioAdvisor } from "@/components/PortfolioAdvisor";
+import { HotStocks } from "@/components/HotStocks";
+import { GlobalSentiment } from "@/components/GlobalSentiment";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
