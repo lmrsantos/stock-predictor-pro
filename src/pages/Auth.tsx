@@ -19,7 +19,7 @@ const Auth = () => {
   const [searchParams] = useSearchParams();
   const rawNext = searchParams.get("next") ?? "";
   // Only allow same-origin relative paths.
-  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/terminal";
   const postAuthRedirect = window.location.origin + nextPath;
 
   useEffect(() => {
