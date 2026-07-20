@@ -362,7 +362,7 @@ const Index = () => {
               slopePositive={regression ? regression.slope >= 0 : true}
             />
 
-            <div className="flex justify-end -mt-2">
+            <div className="flex justify-start -mt-2">
               <button
                 onClick={() => setShowTable(!showTable)}
                 title={showTable ? "Hide data table" : "Show data table"}
