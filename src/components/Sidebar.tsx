@@ -6,7 +6,7 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
-import { GlobalSentiment } from "./GlobalSentiment";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Briefcase, BarChart3, Sparkles, User, Activity } from "lucide-react";
@@ -279,14 +279,6 @@ export function Sidebar({
       {/* Divider */}
       <div className="border-t border-border" />
 
-      {/* Global Sentiment */}
-      <div>
-        <label className="label-upper mb-3 block">Global Sentiment</label>
-        <GlobalSentiment />
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-border" />
 
       {/* Hot Stocks */}
       <div>

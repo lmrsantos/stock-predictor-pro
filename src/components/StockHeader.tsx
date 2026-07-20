@@ -5,6 +5,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { HotStocks } from "./HotStocks";
+import { GlobalSentiment } from "./GlobalSentiment";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ export function StockHeader({
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
+  const [sentimentOpen, setSentimentOpen] = useState(false);
 
   return (
     <>
@@ -132,13 +134,11 @@ export function StockHeader({
             Hot Stocks
           </button>
           <button
-            onClick={() => {
-              const el = document.getElementById("investment-simulator");
-              el?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
+            onClick={() => setSentimentOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
           >
-            💰 Simulator
+            <Globe className="w-4 h-4" />
+            Global Sentiment
           </button>
           {onViewChange && (
             <button
@@ -168,6 +168,18 @@ export function StockHeader({
             onSelectTicker(symbol);
             setHotStocksOpen(false);
           }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sentimentOpen} onOpenChange={setSentimentOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Globe className="w-5 h-5" />
+              Global Sentiment
+            </DialogTitle>
+          </DialogHeader>
+          <GlobalSentiment />
         </DialogContent>
       </Dialog>
     </>
