@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Sparkles, User, TrendingUp, Briefcase, Table2 } from "lucide-react";
+import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +14,14 @@ import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { PortfolioAdvisor } from "@/components/PortfolioAdvisor";
+import { HotStocks } from "@/components/HotStocks";
+import { GlobalSentiment } from "@/components/GlobalSentiment";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
@@ -33,6 +41,8 @@ const Index = () => {
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [activeView, setActiveView] = useState<"chart" | "advisor">("chart");
+  const [hotStocksOpen, setHotStocksOpen] = useState(false);
+  const [sentimentOpen, setSentimentOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
@@ -212,6 +222,48 @@ const Index = () => {
           </span>
         </Link>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowBacktest(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <FlaskConical className="w-4 h-4" />
+            Symbol Backtest
+          </button>
+          <Link
+            to="/sector-backtest"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Sector Backtest
+          </Link>
+          <button
+            onClick={() => setHotStocksOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <span className="text-sm">🔥</span>
+            Hot Stocks
+          </button>
+          <button
+            onClick={() => setSentimentOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            Global Sentiment
+          </button>
+          <button
+            onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeView === "advisor"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-accent"
+            }`}
+          >
+            <span className="text-sm">💼</span>
+            Portfolio Insights
+          </button>
+
+          <div className="w-px h-6 bg-border mx-2" />
+
           <Link
             to="/portfolio"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
@@ -284,17 +336,8 @@ const Index = () => {
           change={priceChange}
           changePct={priceChangePct}
           isLoading={isLoading}
-          showTable={showTable}
-          onToggleTable={() => setShowTable(!showTable)}
-          onSelectTicker={(symbol) => {
-            setSearchInput(symbol);
-            setTicker(symbol);
-          }}
           website={website}
           irWebsite={irWebsite}
-          onRunBacktest={() => setShowBacktest(true)}
-          activeView={activeView}
-          onViewChange={setActiveView}
         />
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
@@ -347,6 +390,34 @@ const Index = () => {
         ticker={ticker}
         onResult={setBacktestResult}
       />
+
+      <Dialog open={hotStocksOpen} onOpenChange={setHotStocksOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <span className="text-xl">🔥</span>
+              Hot Stocks
+            </DialogTitle>
+          </DialogHeader>
+          <HotStocks onSelectTicker={(symbol) => {
+            setSearchInput(symbol);
+            setTicker(symbol);
+            setHotStocksOpen(false);
+          }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sentimentOpen} onOpenChange={setSentimentOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Globe className="w-5 h-5" />
+              Global Sentiment
+            </DialogTitle>
+          </DialogHeader>
+          <GlobalSentiment />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
