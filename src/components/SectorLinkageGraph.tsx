@@ -395,20 +395,25 @@ export default function SectorLinkageGraph({
       ],
       layout:
         mode === "ticker"
-          ? {
-              name: "cose",
+          ? ({
+              name: "fcose",
+              quality: "default",
               animate: false,
-              padding: 60,
               fit: true,
-              nodeRepulsion: () => 12000,
-              idealEdgeLength: () => 140,
-              nodeOverlap: 30,
-              gravity: 0.35,
-              componentSpacing: 80,
+              padding: 50,
+              nodeRepulsion: () => 6000,
+              idealEdgeLength: () => 120,
+              edgeElasticity: () => 0.45,
+              gravity: 0.25,
+              gravityRangeCompound: 1.5,
+              gravityCompound: 1.0,
+              nestingFactor: 0.1,
               numIter: 2500,
-              nestingFactor: 1.2,
+              tile: true,
+              tilingPaddingVertical: 10,
+              tilingPaddingHorizontal: 10,
               randomize: true,
-            }
+            } as any)
           : { name: "circle", padding: 40, fit: true },
       wheelSensitivity: 0.2,
       minZoom: 0.15,
