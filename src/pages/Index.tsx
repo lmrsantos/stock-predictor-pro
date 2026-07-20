@@ -10,6 +10,7 @@ import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
 import { MarketTicker } from "@/components/MarketTicker";
+import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
@@ -126,6 +127,16 @@ const Index = () => {
     staleTime: 30 * 60 * 1000,
   });
 
+  // Step 3.7: Fetch macro indicators (shared with MacroIndicatorStrip via same key)
+  const { data: macroIndicators } = useQuery({
+    queryKey: ["macro-indicators"],
+    queryFn: async () => {
+      const { data: cache } = await supabase.from("macro_indicators").select("*");
+      return cache ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
   const analystRating = meta?.analystRating || null;
   const website = meta?.website || null;
@@ -205,6 +216,17 @@ const Index = () => {
         : 0,
       forecastLabel: `${forecastDays} days`,
     } : undefined,
+    macroIndicators: macroIndicators && macroIndicators.length
+      ? (macroIndicators as any[]).reduce<Record<string, any>>((acc, r) => {
+          acc[r.indicator_key] = {
+            value: r.value,
+            previous_value: r.previous_value,
+            change_30d: r.change_30d,
+            as_of_date: r.as_of_date,
+          };
+          return acc;
+        }, {})
+      : undefined,
   };
 
   return (
@@ -316,11 +338,15 @@ const Index = () => {
       </div>
 
 
+      {/* Macro indicators + regime */}
+      <MacroIndicatorStrip />
+
       {/* Top ticker bar */}
       <MarketTicker currentTicker={ticker} onSelectTicker={(symbol) => {
         setSearchInput(symbol);
         setTicker(symbol);
       }} />
+
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
 
