@@ -480,7 +480,7 @@ function MockTerminal() {
   return (
     <div className="grid grid-cols-4 gap-3 p-4 bg-[#07071a] rounded-xl min-h-[320px]">
       <div className="col-span-1 space-y-2">
-        {["^DJI", "AAPL", "NVDA", "TSLA", "MSFT", "GOOGL"].map((t, i) => (
+        {["^GSPC", "AAPL", "NVDA", "TSLA", "MSFT", "GOOGL"].map((t, i) => (
           <div
             key={t}
             className={`text-xs font-mono px-2 py-1.5 rounded ${
