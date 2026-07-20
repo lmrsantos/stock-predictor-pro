@@ -222,6 +222,48 @@ const Index = () => {
           </span>
         </Link>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowBacktest(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <FlaskConical className="w-4 h-4" />
+            Symbol Backtest
+          </button>
+          <Link
+            to="/sector-backtest"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Sector Backtest
+          </Link>
+          <button
+            onClick={() => setHotStocksOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <span className="text-sm">🔥</span>
+            Hot Stocks
+          </button>
+          <button
+            onClick={() => setSentimentOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <Globe className="w-4 h-4" />
+            Global Sentiment
+          </button>
+          <button
+            onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeView === "advisor"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-accent"
+            }`}
+          >
+            <span className="text-sm">💼</span>
+            Portfolio Insights
+          </button>
+
+          <div className="w-px h-6 bg-border mx-2" />
+
           <Link
             to="/portfolio"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
