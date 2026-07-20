@@ -251,6 +251,17 @@ const Index = () => {
             <Globe className="w-4 h-4" />
             Global Sentiment
           </button>
+          <Link
+            to="/linkages"
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(139,92,246,0.35)]"
+          >
+            <Network className="w-4 h-4" />
+            Linkage Engine
+            <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400"></span>
+            </span>
+          </Link>
           <button
             onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
