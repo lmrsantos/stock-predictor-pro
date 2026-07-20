@@ -511,6 +511,7 @@ export default function Portfolio() {
                     onDelete={(id) => deleteMutation.mutate(id)}
                     onUpdate={(id, shares, avgCost, purchaseDate) => updateMutation.mutate({ id, shares, avgCost, purchaseDate })}
                     onProjection={handleProjection}
+                    intraday={intraday.perHolding[h.ticker.toUpperCase()]}
                   />
                 ))}
               </tbody>
