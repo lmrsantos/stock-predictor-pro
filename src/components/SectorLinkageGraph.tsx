@@ -17,6 +17,7 @@
 // Data in: LinkageResult[] from cross-sector-linkages.ts (validated or all).
 
 import { useEffect, useRef, useState, useMemo } from "react";
+
 import cytoscape, { Core, EventObject } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
