@@ -150,13 +150,10 @@ export function PortfolioIntradaySparkline({
     <div className="flex items-center gap-3">
       <div className="flex flex-col items-end leading-tight font-mono">
         <span className="text-sm">
-          {(latest / (baseline || 1)).toFixed(4)}
+          ${baseline.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         </span>
-        <span
-          className={`text-[10px] ${positive ? "price-positive" : "price-negative"}`}
-        >
-          {positive ? "+" : ""}${Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 0 })}{" "}
-          {positive ? "+" : ""}{changePct.toFixed(2)}%
+        <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
+          Day open
         </span>
       </div>
       <svg
@@ -183,3 +180,52 @@ export function PortfolioIntradaySparkline({
     </div>
   );
 }
+
+/**
+ * Hook variant exposing intraday baseline + change values for callers
+ * that want to render them elsewhere (e.g. under the Total cell).
+ */
+export function usePortfolioIntraday(holdings: Holding[]) {
+  const [series, setSeries] = useState<Record<string, IntradaySeries> | null>(null);
+  const tickers = useMemo(
+    () => Array.from(new Set(holdings.map((h) => h.ticker.toUpperCase()))),
+    [holdings],
+  );
+  const tickersKey = tickers.join(",");
+
+  useEffect(() => {
+    if (!tickers.length) return;
+    let cancelled = false;
+    supabase.functions
+      .invoke("fetch-intraday", { body: { tickers } })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data?.series) setSeries(null);
+        else setSeries(data.series as Record<string, IntradaySeries>);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickersKey]);
+
+  return useMemo(() => {
+    if (!series) return { baseline: 0, latest: 0, change: 0, changePct: 0, ready: false };
+    const shareMap = new Map<string, number>();
+    for (const h of holdings) shareMap.set(h.ticker.toUpperCase(), h.shares);
+    let base = 0;
+    let last = 0;
+    for (const t of tickers) {
+      const s = series[t];
+      const prev = s?.prevClose ?? s?.points[0]?.c ?? 0;
+      const lastC = s?.points.length ? s.points[s.points.length - 1].c : prev;
+      const shares = shareMap.get(t) ?? 0;
+      base += shares * prev;
+      last += shares * lastC;
+    }
+    const change = last - base;
+    const changePct = base > 0 ? (change / base) * 100 : 0;
+    return { baseline: base, latest: last, change, changePct, ready: true };
+  }, [series, holdings, tickers]);
+}
+
