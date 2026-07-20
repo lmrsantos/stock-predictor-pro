@@ -25,6 +25,7 @@ import {
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { BacktestModal } from "@/components/BacktestModal";
+import { RegressionStatsBar } from "@/components/RegressionStatsBar";
 import type { BacktestResult } from "@/lib/backtest";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
@@ -350,11 +351,17 @@ const Index = () => {
           <PortfolioAdvisor />
         ) : (
           <>
+            <RegressionStatsBar
+              regression={regression}
+              lastPrice={lastPrice}
+              isLoading={isLoading}
+            />
             <RegressionChart
               data={chartData}
               isLoading={isLoading}
               slopePositive={regression ? regression.slope >= 0 : true}
             />
+
             <div className="flex justify-end -mt-2">
               <button
                 onClick={() => setShowTable(!showTable)}

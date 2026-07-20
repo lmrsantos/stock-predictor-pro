@@ -204,66 +204,6 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Regression Forecasts — model stats */}
-      <div className="space-y-3">
-        <label className="label-upper">Regression Forecasts</label>
-
-
-        {isLoading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="stat-card animate-pulse">
-                <div className="h-3 w-20 bg-muted rounded mb-2" />
-                <div className="h-6 w-16 bg-muted rounded" />
-              </div>
-            ))}
-          </div>
-        ) : regression ? (
-          <>
-            <div className="stat-card">
-              <div className="text-xs text-muted-foreground flex items-center">
-                R² (Fit Quality)
-                <InfoTooltip {...metricInfo.rSquared} />
-              </div>
-              <div className="text-xl font-mono mt-1">{regression.rSquared.toFixed(4)}</div>
-              <div className="text-[10px] text-muted-foreground mt-1">
-                {regression.rSquared > 0.7 ? "Strong" : regression.rSquared > 0.4 ? "Moderate" : "Weak"} linear trend
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="text-xs text-muted-foreground flex items-center">
-                Slope ($/day)
-                <InfoTooltip {...metricInfo.slope} />
-              </div>
-              <div className={`text-xl font-mono mt-1 ${regression.slope >= 0 ? "price-positive" : "price-negative"}`}>
-                {regression.slope >= 0 ? "+$" : "-$"}{Math.abs(regression.slope).toFixed(4)}
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="text-xs text-muted-foreground flex items-center">
-                Std Deviation (σ)
-                <InfoTooltip {...metricInfo.stdDeviation} />
-              </div>
-              <div className="text-xl font-mono mt-1">${formatPrice(regression.standardDeviation)}</div>
-            </div>
-
-            {annualReturn !== null && (
-              <div className="stat-card">
-                <div className="text-xs text-muted-foreground flex items-center">
-                  Implied Annual Return
-                  <InfoTooltip {...metricInfo.annualReturn} />
-                </div>
-                <div className={`text-xl font-mono mt-1 ${annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
-                  {annualReturn >= 0 ? "+" : ""}{(annualReturn * 100).toFixed(1)}%
-                </div>
-              </div>
-            )}
-          </>
-        ) : null}
-      </div>
-
       {/* Divider */}
       <div className="border-t border-border" />
 
