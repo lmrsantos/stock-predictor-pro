@@ -6,7 +6,7 @@ import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
 import { HotStocks } from "./HotStocks";
-import { GlobalSentiment } from "./GlobalSentiment";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Briefcase, BarChart3, Sparkles, User, Activity } from "lucide-react";
