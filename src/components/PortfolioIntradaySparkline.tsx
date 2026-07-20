@@ -32,6 +32,7 @@ export function PortfolioIntradaySparkline({
   currentValue,
   width = 120,
   height = 36,
+  compact = false,
 }: Props) {
   const [series, setSeries] = useState<Record<string, IntradaySeries> | null>(null);
   const [loading, setLoading] = useState(false);
