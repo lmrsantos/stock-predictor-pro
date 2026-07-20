@@ -518,7 +518,11 @@ export default function Portfolio() {
                 <tfoot>
                   <tr className="border-t-2 border-primary/40 bg-secondary/40 font-bold">
                     <td className="px-4 py-3 text-[11px] uppercase tracking-widest text-primary">Total</td>
-                    <td colSpan={4} className="px-4 py-2">
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-3"></td>
+                    <td className="px-4 py-2">
                       <div className="flex justify-end">
                         <PortfolioIntradaySparkline
                           holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
@@ -526,7 +530,6 @@ export default function Portfolio() {
                         />
                       </div>
                     </td>
-
 
                     <td className="px-4 py-3 text-right text-sm">
                       ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
