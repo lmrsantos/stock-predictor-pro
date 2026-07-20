@@ -18,7 +18,14 @@
 
 import { useEffect, useRef, useState, useMemo } from "react";
 import cytoscape, { Core, EventObject } from "cytoscape";
+import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
+
+// Register the compound-aware layout once.
+if (!(cytoscape as any).__fcoseRegistered) {
+  cytoscape.use(fcose);
+  (cytoscape as any).__fcoseRegistered = true;
+}
 
 // ---------------------------------------------------------------------------
 // Event catalog: what moves each sector
