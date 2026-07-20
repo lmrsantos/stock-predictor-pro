@@ -517,7 +517,7 @@ export default function Portfolio() {
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
                     <td className="px-4 py-3"></td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 border-l border-border/40">
                       <div className="flex justify-end">
                         <PortfolioIntradaySparkline
                           holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
@@ -525,7 +525,6 @@ export default function Portfolio() {
                         />
                       </div>
                     </td>
-
                     <td className="px-4 py-3 text-right text-sm">
                       ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       {intraday.ready && (
@@ -539,7 +538,7 @@ export default function Portfolio() {
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm">
+                    <td className="px-4 py-3 text-right text-sm border-l border-border/40">
                       ${totals.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className={`text-[10px] ${totals.projected30dPct >= 0 ? "price-positive" : "price-negative"}`}>
                         {totals.projected30dPct >= 0 ? "+" : ""}{(totals.projected30dPct * 100).toFixed(1)}%
@@ -550,9 +549,6 @@ export default function Portfolio() {
                       <div className={`text-[10px] ${totals.projected1yPct >= 0 ? "price-positive" : "price-negative"}`}>
                         {totals.projected1yPct >= 0 ? "+" : ""}{(totals.projected1yPct * 100).toFixed(1)}%
                       </div>
-                    </td>
-                    <td className={`px-4 py-3 text-right text-sm ${totals.weightedReturn >= 0 ? "price-positive" : "price-negative"}`}>
-                      {totals.weightedReturn >= 0 ? "+" : ""}{(totals.weightedReturn * 100).toFixed(1)}%
                     </td>
                     <td className="px-4 py-3"></td>
                   </tr>
