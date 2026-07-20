@@ -513,7 +513,15 @@ export default function Portfolio() {
                     </td>
 
 
-                    <td className="px-4 py-3 text-right text-sm">${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {intraday.ready && (
+                        <div className={`text-[10px] ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}{" "}
+                          {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
+                        </div>
+                      )}
+                    </td>
                     <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
