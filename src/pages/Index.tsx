@@ -127,6 +127,16 @@ const Index = () => {
     staleTime: 30 * 60 * 1000,
   });
 
+  // Step 3.7: Fetch macro indicators (shared with MacroIndicatorStrip via same key)
+  const { data: macroIndicators } = useQuery({
+    queryKey: ["macro-indicators"],
+    queryFn: async () => {
+      const { data: cache } = await supabase.from("macro_indicators").select("*");
+      return cache ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
   const analystRating = meta?.analystRating || null;
   const website = meta?.website || null;
