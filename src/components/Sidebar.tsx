@@ -221,17 +221,6 @@ export function Sidebar({
 
 
 
-      {/* More Tools */}
-      <div className="space-y-2">
-        <label className="label-upper">More Tools</label>
-        <Link
-          to="/linkages"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-mono hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-        >
-          <Activity className="w-4 h-4" />
-          Linkage Engine
-        </Link>
-      </div>
 
 
     </aside>
