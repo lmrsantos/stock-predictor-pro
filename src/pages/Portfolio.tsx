@@ -527,7 +527,7 @@ export default function Portfolio() {
                           <span className={intraday.change >= 0 ? "price-positive" : "price-negative"}>
                             {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                           </span>
-                          <div className={`text-[10px] ${intraday.change >= 0 ? "price-positive" : "price-negative"}>
+                          <div className={`text-[10px] ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
                             {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
                           </div>
                         </>
