@@ -216,6 +216,17 @@ const Index = () => {
         : 0,
       forecastLabel: `${forecastDays} days`,
     } : undefined,
+    macroIndicators: macroIndicators && macroIndicators.length
+      ? (macroIndicators as any[]).reduce<Record<string, any>>((acc, r) => {
+          acc[r.indicator_key] = {
+            value: r.value,
+            previous_value: r.previous_value,
+            change_30d: r.change_30d,
+            as_of_date: r.as_of_date,
+          };
+          return acc;
+        }, {})
+      : undefined,
   };
 
   return (
