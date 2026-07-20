@@ -504,8 +504,13 @@ export default function SectorLinkageGraph({
           </button>
         </div>
         {mode === "ticker" && (
-          <div className="absolute right-3 top-3 z-10 rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
-            Ticker membership view
+          <div className="absolute right-3 top-3 z-10 rounded-md border bg-background/95 px-3 py-2 text-xs text-muted-foreground">
+            <div className="font-medium text-foreground mb-1">Ticker view legend</div>
+            <div><span className="mr-1 inline-block w-4 text-center text-foreground">←</span> sector leads this sector</div>
+            <div><span className="mr-1 inline-block w-4 text-center text-foreground">→</span> this sector leads another</div>
+            <div><span className="mr-1 inline-block w-4 text-center text-foreground">▲</span> event pushes sector up</div>
+            <div><span className="mr-1 inline-block w-4 text-center text-foreground">▼</span> event pushes sector down</div>
+            <div><span className="mr-1 inline-block w-4 text-center text-foreground">◆</span> mixed / conditional effect</div>
           </div>
         )}
         {mode === "sector" && (
