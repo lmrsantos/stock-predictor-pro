@@ -391,20 +391,29 @@ export default function SectorLinkageGraph({
           ? {
               name: "cose",
               animate: false,
-              padding: 40,
-              nodeRepulsion: () => 30000,
-              idealEdgeLength: () => 180,
-              nodeOverlap: 24,
-              gravity: 0.15,
-              componentSpacing: 120,
-              numIter: 1500,
-              randomize: false,
+              padding: 60,
+              fit: true,
+              nodeRepulsion: () => 12000,
+              idealEdgeLength: () => 140,
+              nodeOverlap: 30,
+              gravity: 0.35,
+              componentSpacing: 80,
+              numIter: 2500,
+              nestingFactor: 1.2,
+              randomize: true,
             }
-          : { name: "circle", padding: 40 },
+          : { name: "circle", padding: 40, fit: true },
       wheelSensitivity: 0.2,
-      minZoom: 0.3,
+      minZoom: 0.15,
       maxZoom: 2.5,
     });
+
+    // Ensure the graph is always framed inside the viewport after (re)layout,
+    // especially after Expand all / Collapse all in ticker mode.
+    cy.one("layoutstop", () => {
+      cy.fit(undefined, 40);
+    });
+
 
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
       const sector = e.target.data("label") as SectorName;
