@@ -17,6 +17,7 @@ interface Props {
   currentValue: number;
   width?: number;
   height?: number;
+  compact?: boolean;
 }
 
 /**
@@ -31,6 +32,7 @@ export function PortfolioIntradaySparkline({
   currentValue,
   width = 120,
   height = 36,
+  compact = false,
 }: Props) {
   const [series, setSeries] = useState<Record<string, IntradaySeries> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -148,14 +150,16 @@ export function PortfolioIntradaySparkline({
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex flex-col items-end leading-tight font-mono">
-        <span className="text-sm">
-          ${baseline.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-        </span>
-        <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
-          Day open
-        </span>
-      </div>
+      {!compact && (
+        <div className="flex flex-col items-end leading-tight font-mono">
+          <span className="text-sm">
+            ${baseline.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wider">
+            Day open
+          </span>
+        </div>
+      )}
       <svg
         width={width}
         height={height}

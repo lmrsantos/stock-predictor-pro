@@ -8,7 +8,7 @@ import { computeLinearRegression } from "@/lib/regression";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { usePortfolioIntraday } from "@/components/PortfolioIntradaySparkline";
+import { PortfolioIntradaySparkline, usePortfolioIntraday } from "@/components/PortfolioIntradaySparkline";
 
 interface Holding {
   id: string;
@@ -536,7 +536,18 @@ export default function Portfolio() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
-                      ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      <div className="flex items-center justify-end gap-2">
+                        {intraday.ready && (
+                          <PortfolioIntradaySparkline
+                            holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
+                            currentValue={totals.currentValue}
+                            width={70}
+                            height={24}
+                            compact
+                          />
+                        )}
+                        <span>${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      </div>
                       {intraday.ready && (
                         <div className={`text-[10px] font-normal mt-0.5 ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
                           {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
