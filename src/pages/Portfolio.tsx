@@ -488,8 +488,8 @@ export default function Portfolio() {
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Shares</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Avg Cost</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Purchased / Held</th>
-                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Current</th>
-                  <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">Intraday G/L</th>
+                  <th className="text-right pl-4 pr-2 py-3 font-bold uppercase tracking-widest text-[10px]">Current</th>
+                  <th className="text-right pl-3 pr-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">Intraday G/L</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Value</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Gain/Loss</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">30d Proj</th>
