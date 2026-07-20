@@ -277,7 +277,7 @@ export function computeLinearRegression(
 }
 
 export function formatPrice(price: number): string {
-  return price.toFixed(2);
+  return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatPercent(value: number): string {
