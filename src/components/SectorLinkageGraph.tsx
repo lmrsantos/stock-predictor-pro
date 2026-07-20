@@ -518,7 +518,7 @@ export default function SectorLinkageGraph({
           )}
         </div>
         {mode === "ticker" ? (
-          <div className="absolute inset-0 overflow-y-auto px-4 pb-28 pt-16">
+          <div key="ticker-cards" className="absolute inset-0 overflow-y-auto px-4 pb-28 pt-16">
             <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
               {sectorsInPlay.map((sector) => {
                 const tickers = membership[sector] ?? [];
@@ -571,7 +571,7 @@ export default function SectorLinkageGraph({
             </div>
           </div>
         ) : (
-          <div ref={containerRef} className="h-full w-full" />
+          <div key="sector-cytoscape" ref={containerRef} className="h-full w-full" />
         )}
       </div>
 
