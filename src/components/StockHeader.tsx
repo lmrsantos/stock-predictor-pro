@@ -170,6 +170,18 @@ export function StockHeader({
           }} />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={sentimentOpen} onOpenChange={setSentimentOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Globe className="w-5 h-5" />
+              Global Sentiment
+            </DialogTitle>
+          </DialogHeader>
+          <GlobalSentiment />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
