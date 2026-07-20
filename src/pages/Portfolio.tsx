@@ -197,7 +197,7 @@ function HoldingRow({
         )}
       </td>
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
-      <td className={`px-4 py-3 text-right font-mono text-sm ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+      <td className={`px-4 py-3 text-right font-mono text-sm border-l border-border/40 ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
         {intraday ? (
           <>
             {(intraday.change >= 0 ? "+" : "-")}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -209,13 +209,12 @@ function HoldingRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-
       <td className="px-4 py-3 text-right font-mono text-sm">${p.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
       <td className={`px-4 py-3 text-right font-mono text-sm ${gl ? "price-positive" : "price-negative"}`}>
         {gl ? "+" : ""}${p.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         <div className="text-[10px]">{gl ? "+" : ""}{(p.gainLossPct * 100).toFixed(1)}%</div>
       </td>
-      <td className="px-4 py-3 text-right font-mono text-sm">
+      <td className="px-4 py-3 text-right font-mono text-sm border-l border-border/40">
         ${p.projected30d.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         <div className={`text-[10px] ${p.projected30dPct >= 0 ? "price-positive" : "price-negative"}`}>
           {p.projected30dPct >= 0 ? "+" : ""}{(p.projected30dPct * 100).toFixed(1)}%
@@ -226,9 +225,6 @@ function HoldingRow({
         <div className={`text-[10px] ${p.projected1yPct >= 0 ? "price-positive" : "price-negative"}`}>
           {p.projected1yPct >= 0 ? "+" : ""}{(p.projected1yPct * 100).toFixed(1)}%
         </div>
-      </td>
-      <td className={`px-4 py-3 text-right font-mono text-sm ${p.annualReturn >= 0 ? "price-positive" : "price-negative"}`}>
-        {p.annualReturn >= 0 ? "+" : ""}{(p.annualReturn * 100).toFixed(1)}%
       </td>
       <td className="px-4 py-3 text-center">
         <div className="flex items-center justify-center gap-1">
