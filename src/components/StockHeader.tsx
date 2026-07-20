@@ -48,6 +48,7 @@ export function StockHeader({
 }: StockHeaderProps) {
   const isPositive = change >= 0;
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
+  const [sentimentOpen, setSentimentOpen] = useState(false);
 
   return (
     <>
