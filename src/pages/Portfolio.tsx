@@ -196,8 +196,8 @@ function HoldingRow({
           </div>
         )}
       </td>
-      <td className="px-4 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
-      <td className={`px-4 py-3 text-right font-mono text-sm border-l border-border/40 ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+      <td className="pl-4 pr-2 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
+      <td className={`pl-3 pr-4 py-3 text-right font-mono text-sm border-l border-border/40 ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
         {intraday ? (
           <>
             {(intraday.change >= 0 ? "+" : "-")}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
