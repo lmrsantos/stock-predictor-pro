@@ -372,6 +372,10 @@ export default function Portfolio() {
     return { bestPerformer, worstPerformer, topHolding, concentration, concentrationRisk, laggards, modelConfidence };
   }, [totals, holdings, projections]);
 
+  const intraday = usePortfolioIntraday(
+    useMemo(() => holdings.map((h) => ({ ticker: h.ticker, shares: h.shares })), [holdings]),
+  );
+
   if (authLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
