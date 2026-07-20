@@ -6,8 +6,7 @@
 //
 // Two views:
 //   "sector" — sectors + macro drivers as nodes, linkages as edges
-//   "ticker" — compound layout: sector containers with member tickers inside,
-//              sector-level edges retained between containers
+//   "ticker" — readable sector cards with member tickers and relationship chips
 //
 // Clicking a node opens an event panel: which market / government /
 // geopolitical / company events historically move that sector, with direction.
@@ -21,6 +20,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import cytoscape, { Core, EventObject } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
+import { CURATED_SECTOR_UNIVERSES } from "@/lib/sector-universes";
 
 // Register the compound-aware layout once.
 if (!(cytoscape as any).__fcoseRegistered) {
@@ -227,36 +227,61 @@ export default function SectorLinkageGraph({
     [results, validatedOnly],
   );
 
+  const membership = useMemo(
+    () => Object.keys(sectorMembership ?? {}).length > 0
+      ? sectorMembership
+      : (CURATED_SECTOR_UNIVERSES as Record<SectorName, string[]>),
+    [sectorMembership],
+  );
+
+  const sectorsInPlay = useMemo(() => {
+    const sectors = new Set<SectorName>();
+    for (const l of links) {
+      sectors.add(l.follower);
+      if (!MACRO_NODES.includes(l.leader)) sectors.add(l.leader as SectorName);
+    }
+    for (const s of Object.keys(membership) as SectorName[]) sectors.add(s);
+    return Array.from(sectors);
+  }, [links, membership]);
+
+  const linksBySector = useMemo(() => {
+    const map = new Map<SectorName, { incoming: LinkageResult[]; outgoing: LinkageResult[] }>();
+    for (const sector of sectorsInPlay) map.set(sector, { incoming: [], outgoing: [] });
+    for (const link of links) {
+      map.get(link.follower)?.incoming.push(link);
+      if (!MACRO_NODES.includes(link.leader)) {
+        map.get(link.leader as SectorName)?.outgoing.push(link);
+      }
+    }
+    return map;
+  }, [links, sectorsInPlay]);
+
   // Reset expansion when leaving ticker mode
   useEffect(() => {
     if (mode === "sector") setExpandedSectors(new Set());
   }, [mode]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const sectorsInPlay = new Set<SectorName>();
-    for (const l of links) {
-      sectorsInPlay.add(l.follower);
-      if (!MACRO_NODES.includes(l.leader)) sectorsInPlay.add(l.leader as SectorName);
+    if (mode === "ticker") {
+      cyRef.current?.destroy();
+      cyRef.current = null;
+      return;
     }
-    // Always show all sectors so isolated ones are visible too
-    for (const s of Object.keys(sectorMembership) as SectorName[]) sectorsInPlay.add(s);
+
+    if (!containerRef.current) return;
 
     const elements: cytoscape.ElementDefinition[] = [];
 
     // --- Nodes ---
     for (const s of sectorsInPlay) {
       elements.push({
-        data: { id: `sec:${s}`, label: s, kind: "sector" },
+        data: {
+          id: `sec:${s}`,
+          label: s,
+          sector: s,
+          kind: "sector",
+        },
       });
-      if (mode === "ticker" && expandedSectors.has(s)) {
-        for (const t of sectorMembership[s] ?? []) {
-          elements.push({
-            data: { id: `tic:${t}`, label: t, kind: "ticker", parent: `sec:${s}`, sector: s },
-          });
-        }
-      }
     }
     const macroUsed = new Set(
       links.map((l) => l.leader).filter((l) => MACRO_NODES.includes(l)),
@@ -294,24 +319,25 @@ export default function SectorLinkageGraph({
           selector: "node[kind='sector']",
           style: {
             shape: "round-rectangle",
-            "background-color": mode === "ticker" ? "hsl(240 30% 10%)" : "hsl(var(--card))",
-            "background-opacity": mode === "ticker" ? 0.85 : 1,
-            "border-width": mode === "ticker" ? 2 : 1.5,
+            "background-color": "hsl(var(--card))",
+            "background-opacity": 1,
+            "border-width": 1.5,
             "border-color": "hsl(263 70% 65%)",
             label: "data(label)",
             color: "hsl(0 0% 98%)",
-            "font-size": mode === "ticker" ? 17 : 14,
+            "font-size": 14,
             "font-weight": 600,
-            "text-valign": mode === "ticker" ? "top" : "center",
+            "text-valign": "center",
             "text-halign": "center",
-            "text-margin-y": mode === "ticker" ? -14 : 0,
+            "text-margin-y": 0,
             "text-wrap": "wrap",
             "text-max-width": "200px",
             "text-outline-color": "hsl(240 40% 6%)",
-            "text-outline-width": mode === "ticker" ? 4 : 3,
-            ...(mode === "ticker"
-              ? { "min-width": 200, "min-height": 90, padding: "48px" }
-              : { width: 170, height: 62, padding: "12px" }),
+            "text-outline-width": 2,
+            "line-height": 1.25,
+            width: 170,
+            height: 62,
+            padding: "12px",
           },
         },
         {
@@ -401,27 +427,7 @@ export default function SectorLinkageGraph({
         },
       ],
       layout:
-        mode === "ticker"
-          ? ({
-              name: "fcose",
-              quality: "default",
-              animate: false,
-              fit: true,
-              padding: 80,
-              nodeRepulsion: () => 22000,
-              idealEdgeLength: () => 240,
-              edgeElasticity: () => 0.3,
-              gravity: 0.15,
-              gravityRangeCompound: 2.4,
-              gravityCompound: 1.4,
-              nestingFactor: 0.06,
-              numIter: 3000,
-              tile: true,
-              tilingPaddingVertical: 28,
-              tilingPaddingHorizontal: 28,
-              randomize: true,
-            } as any)
-          : { name: "circle", padding: 60, fit: true },
+        { name: "circle", padding: 60, fit: true },
       wheelSensitivity: 0.2,
       minZoom: 0.15,
       maxZoom: 2.5,
@@ -435,16 +441,8 @@ export default function SectorLinkageGraph({
 
 
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
-      const sector = e.target.data("label") as SectorName;
+      const sector = e.target.data("sector") as SectorName;
       setSelected({ kind: "sector", sector });
-      if (mode === "ticker") {
-        setExpandedSectors((prev) => {
-          const next = new Set(prev);
-          if (next.has(sector)) next.delete(sector);
-          else next.add(sector);
-          return next;
-        });
-      }
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
       setSelected({
@@ -463,7 +461,7 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, sectorMembership, expandedSectors]);
+  }, [links, mode, membership, sectorsInPlay]);
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
@@ -490,7 +488,7 @@ export default function SectorLinkageGraph({
   return (
     <div className="flex h-[640px] w-full gap-3">
       {/* Graph */}
-      <div className="relative flex-1 rounded-lg border bg-card">
+      <div className={`relative flex-1 rounded-lg border bg-card ${mode === "ticker" ? "overflow-hidden" : ""}`}>
         <div className="absolute left-3 top-3 z-10 flex gap-1 rounded-md border bg-background p-1 text-sm">
           <button
             className={`rounded px-3 py-1 ${mode === "sector" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
@@ -506,33 +504,74 @@ export default function SectorLinkageGraph({
           </button>
         </div>
         {mode === "ticker" && (
-          <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-md border bg-background p-1 text-xs">
-            <button
-              className="rounded px-2 py-1 hover:bg-muted"
-              onClick={() =>
-                setExpandedSectors(new Set(Object.keys(sectorMembership) as SectorName[]))
-              }
-            >
-              Expand all
-            </button>
-            <button
-              className="rounded px-2 py-1 hover:bg-muted"
-              onClick={() => setExpandedSectors(new Set())}
-            >
-              Collapse all
-            </button>
+          <div className="absolute right-3 top-3 z-10 rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+            Ticker membership view
           </div>
         )}
-        <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/90 p-2 text-xs text-muted-foreground">
-          <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(142_60%_42%)] align-middle" /> leads positively</div>
-          <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
-          <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
-          <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
-          {mode === "ticker" && (
-            <div className="mt-1 italic">Click a sector to expand/collapse its tickers.</div>
-          )}
-        </div>
-        <div ref={containerRef} className="h-full w-full" />
+        {mode === "sector" && (
+          <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/90 p-2 text-xs text-muted-foreground">
+            <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(142_60%_42%)] align-middle" /> leads positively</div>
+            <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
+            <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
+            <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+          </div>
+        )}
+        {mode === "ticker" ? (
+          <div key="ticker-cards" className="absolute inset-0 overflow-y-auto px-4 pb-28 pt-16">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+              {sectorsInPlay.map((sector) => {
+                const tickers = membership[sector] ?? [];
+                const sectorLinks = linksBySector.get(sector);
+                return (
+                  <button
+                    key={sector}
+                    type="button"
+                    onClick={() => setSelected({ kind: "sector", sector })}
+                    className="min-h-36 rounded-lg border bg-background/70 p-3 text-left shadow-sm transition hover:border-primary/60 hover:bg-muted/30"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">{sector}</div>
+                        <div className="text-xs text-muted-foreground">{tickers.length} tickers</div>
+                      </div>
+                      <div className="rounded border bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {sectorLinks?.incoming.length ?? 0} in · {sectorLinks?.outgoing.length ?? 0} out
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {tickers.map((ticker) => (
+                        <span
+                          key={`${sector}:${ticker}`}
+                          className="rounded-md border bg-card px-2 py-1 text-xs font-medium text-foreground"
+                        >
+                          {ticker}
+                        </span>
+                      ))}
+                    </div>
+
+                    {!!sectorLinks && (sectorLinks.incoming.length > 0 || sectorLinks.outgoing.length > 0) && (
+                      <div className="mt-3 space-y-1 border-t pt-2 text-xs text-muted-foreground">
+                        {sectorLinks.incoming.slice(0, 2).map((link) => (
+                          <div key={`in:${link.leader}:${link.follower}:${link.bestLag}`} className="truncate">
+                            ← {String(link.leader)} leads {link.bestLag}d
+                          </div>
+                        ))}
+                        {sectorLinks.outgoing.slice(0, 2).map((link) => (
+                          <div key={`out:${link.leader}:${link.follower}:${link.bestLag}`} className="truncate">
+                            → {link.follower} after {link.bestLag}d
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div key="sector-cytoscape" ref={containerRef} className="h-full w-full" />
+        )}
       </div>
 
       {/* Detail panel */}
@@ -543,6 +582,19 @@ export default function SectorLinkageGraph({
             lead-lag detail. Arrows point from leader to follower — the sector
             at the arrow's tail tends to move first.
           </p>
+        )}
+
+        {panelSector && mode === "ticker" && (
+          <div className="mb-3 rounded-md border bg-muted/30 p-2">
+            <div className="mb-1 text-xs font-medium">Ticker members</div>
+            <div className="flex flex-wrap gap-1">
+              {(membership[panelSector] ?? []).map((ticker) => (
+                <span key={ticker} className="rounded border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                  {ticker}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
 
         {selected?.kind === "edge" && (
