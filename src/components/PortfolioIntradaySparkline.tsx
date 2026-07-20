@@ -17,6 +17,7 @@ interface Props {
   currentValue: number;
   width?: number;
   height?: number;
+  compact?: boolean;
 }
 
 /**
