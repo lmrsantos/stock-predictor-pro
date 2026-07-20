@@ -8,7 +8,7 @@ import { computeLinearRegression } from "@/lib/regression";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { PortfolioIntradaySparkline } from "@/components/PortfolioIntradaySparkline";
+import { PortfolioIntradaySparkline, usePortfolioIntraday } from "@/components/PortfolioIntradaySparkline";
 
 interface Holding {
   id: string;
@@ -372,6 +372,10 @@ export default function Portfolio() {
     return { bestPerformer, worstPerformer, topHolding, concentration, concentrationRisk, laggards, modelConfidence };
   }, [totals, holdings, projections]);
 
+  const intraday = usePortfolioIntraday(
+    useMemo(() => holdings.map((h) => ({ ticker: h.ticker, shares: h.shares })), [holdings]),
+  );
+
   if (authLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
@@ -509,7 +513,15 @@ export default function Portfolio() {
                     </td>
 
 
-                    <td className="px-4 py-3 text-right text-sm">${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      ${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      {intraday.ready && (
+                        <div className={`text-[10px] ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}{" "}
+                          {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
+                        </div>
+                      )}
+                    </td>
                     <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       <div className="text-[10px]">{totals.gainLoss >= 0 ? "+" : ""}{(totals.gainLossPct * 100).toFixed(1)}%</div>
