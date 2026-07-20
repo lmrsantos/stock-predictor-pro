@@ -149,6 +149,39 @@ export type Database = {
         }
         Relationships: []
       }
+      macro_indicators: {
+        Row: {
+          as_of_date: string | null
+          change_30d: number | null
+          created_at: string
+          id: string
+          indicator_key: string
+          previous_value: number | null
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          as_of_date?: string | null
+          change_30d?: number | null
+          created_at?: string
+          id?: string
+          indicator_key: string
+          previous_value?: number | null
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          as_of_date?: string | null
+          change_30d?: number | null
+          created_at?: string
+          id?: string
+          indicator_key?: string
+          previous_value?: number | null
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       market_updates: {
         Row: {
           content: string
