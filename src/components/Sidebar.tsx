@@ -5,7 +5,7 @@ import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import { TickerSearch } from "./TickerSearch";
 import { InvestmentSimulator } from "./InvestmentSimulator";
-import { HotStocks } from "./HotStocks";
+
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -280,17 +280,6 @@ export function Sidebar({
       <div className="border-t border-border" />
 
 
-      {/* Hot Stocks */}
-      <div>
-        <label className="label-upper mb-3 block">Hot Stocks</label>
-        <HotStocks onSelectTicker={(symbol) => {
-          onSearchInputChange(symbol);
-          onSearch(symbol);
-        }} />
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-border" />
 
       {/* More Tools */}
       <div className="space-y-2">
