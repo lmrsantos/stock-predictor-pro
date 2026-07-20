@@ -336,17 +336,8 @@ const Index = () => {
           change={priceChange}
           changePct={priceChangePct}
           isLoading={isLoading}
-          showTable={showTable}
-          onToggleTable={() => setShowTable(!showTable)}
-          onSelectTicker={(symbol) => {
-            setSearchInput(symbol);
-            setTicker(symbol);
-          }}
           website={website}
           irWebsite={irWebsite}
-          onRunBacktest={() => setShowBacktest(true)}
-          activeView={activeView}
-          onViewChange={setActiveView}
         />
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
