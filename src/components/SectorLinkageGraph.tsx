@@ -508,15 +508,14 @@ export default function SectorLinkageGraph({
             Ticker membership view
           </div>
         )}
-        <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/90 p-2 text-xs text-muted-foreground">
-          <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(142_60%_42%)] align-middle" /> leads positively</div>
-          <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
-          <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
-          <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
-          {mode === "ticker" && (
-            <div className="mt-1 italic">Click a sector card to inspect its event drivers.</div>
-          )}
-        </div>
+        {mode === "sector" && (
+          <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/90 p-2 text-xs text-muted-foreground">
+            <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(142_60%_42%)] align-middle" /> leads positively</div>
+            <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
+            <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
+            <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+          </div>
+        )}
         {mode === "ticker" ? (
           <div key="ticker-cards" className="absolute inset-0 overflow-y-auto px-4 pb-28 pt-16">
             <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
