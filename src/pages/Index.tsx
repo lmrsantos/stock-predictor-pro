@@ -351,11 +351,17 @@ const Index = () => {
           <PortfolioAdvisor />
         ) : (
           <>
+            <RegressionStatsBar
+              regression={regression}
+              lastPrice={lastPrice}
+              isLoading={isLoading}
+            />
             <RegressionChart
               data={chartData}
               isLoading={isLoading}
               slopePositive={regression ? regression.slope >= 0 : true}
             />
+
             <div className="flex justify-end -mt-2">
               <button
                 onClick={() => setShowTable(!showTable)}
