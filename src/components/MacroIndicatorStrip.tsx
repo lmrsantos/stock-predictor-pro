@@ -27,19 +27,19 @@ const TILE_ORDER: { key: string; label: string; fmt: (v: number) => string; delt
 
 const toneClasses: Record<RegimeTone, { pill: string; border: string; dot: string }> = {
   "risk-on": {
-    pill: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+    pill: "bg-emerald-500/10 text-emerald-700 border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300",
     border: "border-l-emerald-500/70",
-    dot: "bg-emerald-400",
+    dot: "bg-emerald-500 dark:bg-emerald-400",
   },
   "caution": {
-    pill: "bg-amber-500/15 text-amber-300 border-amber-500/40",
+    pill: "bg-amber-500/10 text-amber-700 border-amber-500/50 dark:bg-amber-500/15 dark:text-amber-300",
     border: "border-l-amber-500/70",
-    dot: "bg-amber-400",
+    dot: "bg-amber-500 dark:bg-amber-400",
   },
   "risk-off": {
-    pill: "bg-rose-500/15 text-rose-300 border-rose-500/40",
+    pill: "bg-rose-500/10 text-rose-700 border-rose-500/40 dark:bg-rose-500/15 dark:text-rose-300",
     border: "border-l-rose-500/70",
-    dot: "bg-rose-400",
+    dot: "bg-rose-500 dark:bg-rose-400",
   },
 };
 
