@@ -1,6 +1,8 @@
 import { StockDataPoint, RegressionResult, PredictionPoint, FitPoint } from "./types";
 
-export const SHORT_TERM_PROJECTION_LOOKBACK_DAYS = 84;
+// ~3.5 months of trading days — the sweet spot between 3mo and 4mo windows,
+// both of which backtested with materially lower 30d projection error than 1y.
+export const SHORT_TERM_PROJECTION_LOOKBACK_DAYS = 73;
 
 export function getShortTermProjectionWindow(data: StockDataPoint[]): StockDataPoint[] {
   return data.slice(-SHORT_TERM_PROJECTION_LOOKBACK_DAYS);
