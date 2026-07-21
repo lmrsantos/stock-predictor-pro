@@ -64,7 +64,7 @@ function HoldingRow({
   onDelete: (id: string) => void;
   onUpdate: (id: string, shares: number, avgCost: number, purchaseDate: string | null) => void;
   onProjection: (id: string, p: HoldingProjection | null) => void;
-  intraday?: { baseline: number; latest: number; change: number; changePct: number };
+  intraday?: { baseline: number; latest: number; change: number; changePct: number; points: number[] };
 }) {
   const [editing, setEditing] = useState(false);
   const [editShares, setEditShares] = useState(String(holding.shares));
