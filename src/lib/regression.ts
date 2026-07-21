@@ -132,8 +132,12 @@ export function computeLinearRegression(
   const ys = data.map((d) => d.close);
   const logYs = ys.map(y => Math.log(y));
 
-  // Exponential weights — recent data weighted higher
-  const decay = 0.008;
+  // Exponential weights — recent data weighted higher.
+  // Stage 1 upgrade: half-life ~45 trading days (was ~87d) so the last ~2 months
+  // dominate the slope. Handles regime shifts (breakouts, earnings gaps) instead
+  // of averaging them out against year-old prices.
+  // decay = ln(2) / halfLife  →  ln(2)/45 ≈ 0.0154
+  const decay = 0.0154;
   const weights = xs.map((_, i) => Math.exp(decay * (i - n + 1)));
   const totalW = weights.reduce((a, b) => a + b, 0);
 

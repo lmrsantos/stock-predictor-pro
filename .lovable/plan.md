@@ -1,85 +1,61 @@
-# Cross-Sector Linkages Integration Plan
+# Better 30-Day Projection — Staged Upgrade
 
-Three surfaces, one shared computation. Runs the linkage test suite (validated Granger-style leader→follower pairs from `src/lib/cross-sector-linkages.ts`) once and reuses the output.
+Goal: make the 30d projection meaningful for the portfolio (and reuse it in the backtest modal). Ship in three stages so we can measure each lever independently against the existing Backtest 30d tool.
 
-## 1. Shared linkage computation + cache
+## Stage 1 — Fix the inputs (EWMA weighting)
 
-**New file `src/lib/run-linkages.ts`** — orchestrator:
-- Fetches all 13 curated sectors via existing `sector-backtest` edge function (parallel batched).
-- Builds sector composites + macro proxies:
-  - OIL → USO close series
-  - GOLD → GLD
-  - US10Y → ^TNX (or IEF as fallback)
-  - XLY_XLP_RATIO → Consumer Discretionary composite − Consumer Staples composite
-- Calls `runLinkageTests()`, returns `LinkageResult[]`.
-- Caches full result in `localStorage` (`qf.linkages.v1`) with 24h TTL.
-- Also POSTs a compact summary to a new edge function `cache-linkages` so QuantAgent (server-side) can read it.
+Replace the equal-weight OLS in `src/lib/regression.ts` (Enhanced-V2) with an **exponentially-weighted** regression.
 
-**New table `public.linkage_cache`** (single-row):
-```
-id (int PK, default 1), payload jsonb, updated_at timestamptz
-```
-RLS: `SELECT` for `anon` + `authenticated`; `INSERT/UPDATE` for `authenticated` only. Service role full.
+- Weight each daily close by `w_i = λ^(N-i)` with a half-life of ~45 trading days (λ ≈ 0.9847). Recent prices dominate; year-old prices contribute ~10%.
+- Same slope/intercept output shape — no downstream changes needed.
+- Applies automatically to: main chart projection, `Portfolio.tsx` 30d proj columns, `PortfolioBacktest.tsx`, and Sector Chart trendlines.
 
-**New edge function `cache-linkages`**: accepts POST `{ payload }` from authenticated browser, upserts row 1. GET returns current payload. No JWT required for GET.
+Expected impact: the biggest single win. Handles regime shifts (earnings pop, breakout, breakdown) without changing the UI.
 
-## 2. Linkages diagnostic panel (new page)
+## Stage 2 — Honest projection bands (drift + volatility)
 
-**Route `/linkages`** → `src/pages/LinkagesPage.tsx`:
-- Header + "Run linkage tests" button.
-- Progress bar while fetching 13 sectors + macro (shows current sector).
-- Result table (sortable): Leader → Follower | Channel | Best Lag | Coef | Sign | p (BH-adjusted) | Split-half agree | ΔR² | Validated ✓/✗.
-- Validated rows highlighted green; regime-sign-flip rows tagged.
-- "Last updated" timestamp; reuses 24h cache if present.
-- Sidebar link "Linkages" under existing analysis tools.
+Add a **log-return** model alongside the trend line:
 
-## 3. QuantAgent context injection
+- Compute daily log returns from EWMA-weighted history.
+- Extract `μ` (drift) and `σ` (volatility).
+- Project 30d forward as a distribution: `P20 / P50 / P80` price cones.
 
-`supabase/functions/quant-agent/index.ts`:
-- On each `send_message`, fetch `linkage_cache` row (service-role client, single query).
-- Filter validated linkages where `follower === ticker's primary sector` OR `leader === primary sector`.
-- Append a "VALIDATED CROSS-SECTOR LINKAGES" section to the system prompt listing up to 6 relevant pairs with channel, lag, sign, coef. Prompt instructs QuantAgent to reference them when discussing catalysts/risks.
-- Silently skip if cache is empty or stale (>7d).
+UI changes:
+- Portfolio page: 30d Proj column shows `P50` value with a small `±` range chip (P20–P80).
+- Backtest modal: draw the cone as a shaded band and check whether the actual price landed inside it (a "calibration hit" metric, not just point error).
+- Main chart: optional toggle to show the 30d cone at the right edge.
 
-Add `primarySectorOf` lookup using `src/lib/sector-universes.ts`'s map (mirror it into the edge function since edge functions can't import from `src/`).
+Why this matters: a single-point 30d forecast is misleading. A cone that says "there's an 80% chance we land between $180–$215" is defensible and matches how real forecasts are presented (and it's consistent with our disclaimer stance).
 
-## 4. Hot Stocks scoring tilt
+## Stage 3 — Ensemble with momentum + macro regime
 
-`src/components/HotStocks.tsx`:
-- After fetching `symbolData`, also load linkages from localStorage cache (do NOT trigger a fresh run — user must have visited /linkages once, or we fall back to no tilt).
-- Compute "leader momentum" for each validated leader = last-5-day mean log return of that leader's composite/macro series (derive composites from `symbolData` closes; macro series unavailable in Hot Stocks context → skip macro-led links there).
-- For each candidate ticker with primary sector `S`, sum `sign × leader_momentum × |coef|` across validated linkages where `follower === S`. Normalize to a tilt factor `t ∈ [0.85, 1.15]`.
-- Multiply `confidence *= t` before the BUY threshold check. Tag stock with `linkageTilt` for UI hover ("Semis leader momentum +2.1% → +8% conf boost").
+Blend three signals into the final 30d projection:
 
-## Technical notes
+1. **EWMA trend** (Stage 1) — long-horizon direction.
+2. **Short-momentum slope** — 20d and 60d OLS slopes, weighted average.
+3. **Macro regime bias** — pull the current regime from `MacroIndicatorStrip` cache: Risk-on tilts the drift up, Risk-off tilts it down, Caution leaves it neutral. Small bias (e.g. ±0.1σ/day), not a hard override.
 
-- Macro fetch: extend `sector-backtest` edge function to accept `source: "macro"` with symbols param, OR add a tiny new `fetch-macro-series` function returning USO/GLD/^TNX 1y closes via Yahoo. Prefer the latter to keep sector-backtest single-purpose.
-- `runLinkageTests` on ~13 sectors × ~22 pairs × 10 lags is fast (<1s browser).
-- Total fetch cost: 13 sector calls (each returns ~10-30 tickers of 1y daily) + 1 macro call. Batch with `Promise.all`, throttle to 4 concurrent.
-- No AE changes — tilt is a post-hoc confidence multiplier, keeping the AE pipeline intact.
+Blend weights start at 50% trend / 30% momentum / 20% macro, exposed as constants so we can tune after backtesting.
 
-## Files touched
+Backtest modal gains a **model comparison** view: for the same as-of date, show projection error for (a) old linear, (b) Stage 1 EWMA, (c) Stage 3 ensemble — so we can see the lift.
 
-New:
-- `src/lib/run-linkages.ts`
-- `src/pages/LinkagesPage.tsx`
-- `supabase/functions/cache-linkages/index.ts`
-- `supabase/functions/fetch-macro-series/index.ts`
-- migration: `linkage_cache` table + RLS + GRANTs
+## Technical Details
 
-Modified:
-- `src/App.tsx` — add `/linkages` route
-- `src/components/Sidebar.tsx` — nav link
-- `src/components/HotStocks.tsx` — apply linkage tilt post-AE
-- `supabase/functions/quant-agent/index.ts` — inject linkage context
+**Files touched:**
+- `src/lib/regression.ts` — add `ewmaRegression()`, `logReturnBands()`, `ensembleProjection()`; keep old functions available for the backtest comparison view.
+- `src/pages/Portfolio.tsx` — swap 30d call sites, add `±` range chip in the 30d Proj column.
+- `src/components/PortfolioBacktest.tsx` — draw cone band, add hit-rate metric, add model comparison toggle.
+- `src/pages/Index.tsx` main chart — optional cone toggle at the right edge.
+- New: `src/lib/macro-regime.ts` — thin reader that pulls the current regime label from the existing `fetch-macro-indicators` cache (no new edge function).
 
-## Build order
+**Math (all client-side, cheap):**
+- EWMA slope: weighted least squares, closed form.
+- Log-return drift/vol: `μ = mean(log(P_t/P_{t-1}))`, `σ = std(...)`, both EWMA-weighted.
+- 30d cone: `P_0 · exp(30μ ± z · σ · √30)` for z ∈ {−0.84, 0, +0.84} → P20/P50/P80.
+- Ensemble: `slope_final = 0.5·slope_ewma + 0.3·slope_momentum + 0.2·macro_bias·σ`.
 
-1. Migration + `cache-linkages` + `fetch-macro-series` edge functions.
-2. `run-linkages.ts` orchestrator.
-3. Linkages page + route + nav.
-4. QuantAgent context injection.
-5. Hot Stocks tilt.
-6. Manual verification: run /linkages once, check QuantAgent references a linkage on a Semis ticker, check Hot Stocks tilt appears in console log.
+**No backend changes.** All three stages run in the browser on data we already fetch.
 
-Approve to proceed.
+## Rollout
+
+Stage 1 lands first and I'll pause so you can eyeball the numbers in Backtest 30d. If projection error drops meaningfully, we continue with Stages 2 and 3.
