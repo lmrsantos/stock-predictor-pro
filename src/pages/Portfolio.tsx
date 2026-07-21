@@ -518,8 +518,18 @@ export default function Portfolio() {
               {totals && (
                 <tfoot>
                   <tr className="border-t-2 border-primary/40 bg-secondary/40 font-bold">
-                    <td colSpan={5} className="px-4 py-3 align-middle">
+                    <td colSpan={4} className="px-4 py-3 align-middle">
                       <span className="text-[11px] uppercase tracking-widest text-primary">Total</span>
+                    </td>
+                    <td className="pl-4 pr-2 py-3 text-right text-sm align-bottom">
+                      {intraday.ready && (
+                        <>
+                          <span>${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                          <div className="text-[9px] text-muted-foreground font-normal uppercase tracking-wider">
+                            Day open
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td className="pl-3 pr-4 py-2 text-right border-l border-border/40">
                       {intraday.ready ? (
@@ -539,22 +549,13 @@ export default function Portfolio() {
                     <td className="px-4 py-3 text-right text-sm">
                       <span>${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                       {intraday.ready && (
-                        <>
-                          <div className={`text-[10px] font-normal mt-0.5 ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
-                            {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                            {" "}({intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%)
-                          </div>
-                          <div className="mt-1">
-                            <span>${(totals.currentValue - intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                          </div>
-                          <div className="text-[9px] text-muted-foreground font-normal uppercase tracking-wider">
-                            Day open
-                          </div>
-
-
-                        </>
+                        <div className={`text-[10px] font-normal mt-0.5 ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          {" "}({intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%)
+                        </div>
                       )}
                     </td>
+
 
                     <td className={`px-4 py-3 text-right text-sm ${totals.gainLoss >= 0 ? "price-positive" : "price-negative"}`}>
                       {totals.gainLoss >= 0 ? "+" : ""}${totals.gainLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}
