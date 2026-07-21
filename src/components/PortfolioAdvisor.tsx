@@ -607,7 +607,7 @@ Search for any relevant current market news before responding.`;
               <button
                 key={q}
                 onClick={() => { setChatMsg(q); }}
-                className="text-[9px] font-mono px-2 py-1 rounded border border-border text-muted-foreground hover:border-zinc-500 hover:text-foreground transition-all"
+                className="text-[9px] font-mono px-2 py-1 rounded border border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground transition-all"
               >
                 {q}
               </button>

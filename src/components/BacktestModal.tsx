@@ -194,7 +194,7 @@ function ForecastChart({ result }: { result: ForecastResult }) {
       <div className="flex justify-end mt-2">
         <button
           onClick={() => setShowData(!showData)}
-          className="text-[10px] font-mono px-3 py-1 rounded border border-border text-muted-foreground hover:border-zinc-500 transition-all"
+          className="text-[10px] font-mono px-3 py-1 rounded border border-border text-muted-foreground hover:border-foreground/40 transition-all"
         >
           {showData ? "Hide Data" : "Show Data"}
         </button>
@@ -572,7 +572,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
             <div className="flex gap-2">
               {([3, 6] as const).map(m => (
                 <button key={m} onClick={() => setLookback(m)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-sky-500/10 border-sky-500/50 text-sky-400" : "border-border text-muted-foreground hover:border-zinc-500"}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-sky-500/10 border-sky-500/50 text-sky-400" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
                   {m} Months
                 </button>
               ))}
