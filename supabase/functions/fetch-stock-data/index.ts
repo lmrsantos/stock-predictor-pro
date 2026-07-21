@@ -113,14 +113,25 @@ serve(async (req) => {
 
     if (!chartRes.ok) {
       const text = await chartRes.text();
-      throw new Error(`Yahoo Finance chart returned ${chartRes.status}: ${text}`);
+      const status = chartRes.status === 404 ? 404 : 502;
+      const msg = chartRes.status === 404
+        ? `No data found for "${cleanTicker}". The symbol may be delisted or invalid.`
+        : `Yahoo Finance chart returned ${chartRes.status}`;
+      console.warn(`fetch-stock-data ${cleanTicker}: ${chartRes.status} ${text.slice(0, 200)}`);
+      return new Response(JSON.stringify({ error: msg, code: "SYMBOL_NOT_FOUND" }), {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const chartJson = await chartRes.json();
     const chartResult = chartJson.chart?.result?.[0];
 
     if (!chartResult) {
-      throw new Error(`No data found for ticker "${cleanTicker}"`);
+      return new Response(JSON.stringify({
+        error: `No data found for "${cleanTicker}". The symbol may be delisted or invalid.`,
+        code: "SYMBOL_NOT_FOUND",
+      }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const timestamps: number[] = chartResult.timestamp || [];
