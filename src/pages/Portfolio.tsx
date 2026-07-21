@@ -569,12 +569,6 @@ export default function Portfolio() {
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
                       <span>${totals.currentValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                      {intraday.ready && (
-                        <div className={`text-[10px] font-normal mt-0.5 ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
-                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                          {" "}({intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%)
-                        </div>
-                      )}
                     </td>
 
 
