@@ -289,7 +289,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
                     onClick={() => toggleSectorPick(s)}
                     className={`text-[10px] font-mono px-2 py-1 rounded border ${
                       on
-                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
                         : "bg-background border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
