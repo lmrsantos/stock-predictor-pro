@@ -6,6 +6,9 @@ import {
   runSectorBacktest, SectorBacktestRow,
 } from "@/lib/sector-backtest";
 import { InfoTooltip } from "./InfoTooltip";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
+} from "recharts";
 
 interface Props {
   isOpen?: boolean;
@@ -19,6 +22,19 @@ type SortKey =
   | "forecastPct" | "rSquared" | "confidenceScore"
   | "predictedTodayErrorPct";
 
+type Mode = "single" | "compare";
+
+interface SectorAggregate {
+  sector: string;
+  count: number;
+  avgForecastPct: number;
+  medianForecastPct: number;
+  avgConfidence: number;
+  avgAnnReturn: number;
+  bullish: number; // % of tickers with forecastPct > 0
+  rows: SectorBacktestRow[];
+}
+
 const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 const fmtPrice = (v: number) =>
   `$${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -30,19 +46,44 @@ const colorConf = (v: number) =>
 const colorErr = (v: number) =>
   v <= 1 ? "text-emerald-400" : v <= 3 ? "text-amber-400" : "text-red-400";
 
+function median(nums: number[]): number {
+  if (!nums.length) return 0;
+  const s = [...nums].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+function aggregate(sector: string, rows: SectorBacktestRow[]): SectorAggregate {
+  const fp = rows.map(r => r.forecastPct);
+  return {
+    sector,
+    count: rows.length,
+    avgForecastPct: rows.length ? fp.reduce((a, b) => a + b, 0) / rows.length : 0,
+    medianForecastPct: median(fp),
+    avgConfidence: rows.length ? rows.reduce((a, r) => a + r.confidenceScore, 0) / rows.length : 0,
+    avgAnnReturn: rows.length ? rows.reduce((a, r) => a + r.annualizedReturn, 0) / rows.length : 0,
+    bullish: rows.length ? (rows.filter(r => r.forecastPct > 0).length / rows.length) * 100 : 0,
+    rows,
+  };
+}
+
 export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false }: Props) {
   const navigate = useNavigate();
+  const [mode, setMode]       = useState<Mode>("single");
   const [sector, setSector]   = useState<string>("Semiconductors");
+  const [selectedSectors, setSelectedSectors] = useState<string[]>(["Semiconductors", "Software", "Banks", "Energy"]);
   const [source, setSource]   = useState<"curated" | "yahoo">("curated");
   const [maxTickers, setMax]  = useState<number>(30);
   const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number; current: string }>({ done: 0, total: 0, current: "" });
+  const [progress, setProgress] = useState<{ done: number; total: number; current: string; sectorLabel?: string }>({ done: 0, total: 0, current: "" });
   const [rows, setRows]       = useState<SectorBacktestRow[]>([]);
   const [failed, setFailed]   = useState<string[]>([]);
   const [error, setError]     = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("confidenceScore");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [meta, setMeta]       = useState<{ sector: string; source: string } | null>(null);
+  const [aggregates, setAggregates] = useState<SectorAggregate[]>([]);
+  const [compareMetric, setCompareMetric] = useState<"avgForecastPct" | "medianForecastPct" | "avgConfidence" | "avgAnnReturn" | "bullish">("avgForecastPct");
 
   const sectorOptions = source === "yahoo" ? YAHOO_SECTORS : CURATED_SECTORS;
 
@@ -66,18 +107,53 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
     else { setSortKey(k); setSortDir("desc"); }
   }
 
+  function toggleSectorPick(s: string) {
+    setSelectedSectors(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  }
+
   async function handleRun() {
     setRunning(true);
-    setRows([]); setFailed([]); setError(null);
+    setRows([]); setFailed([]); setError(null); setAggregates([]);
     setProgress({ done: 0, total: 0, current: "" });
     try {
-      const out = await runSectorBacktest(sector, source, {
-        maxTickers,
-        onProgress: (p) => setProgress({ done: p.done, total: p.total, current: p.currentTicker }),
-      });
-      setRows(out.rows);
-      setFailed(out.failed);
-      setMeta({ sector: out.sector, source: out.source });
+      if (mode === "single") {
+        const out = await runSectorBacktest(sector, source, {
+          maxTickers,
+          onProgress: (p) => setProgress({ done: p.done, total: p.total, current: p.currentTicker }),
+        });
+        setRows(out.rows);
+        setFailed(out.failed);
+        setMeta({ sector: out.sector, source: out.source });
+      } else {
+        if (selectedSectors.length === 0) {
+          setError("Pick at least one sector to compare.");
+          setRunning(false);
+          return;
+        }
+        const aggs: SectorAggregate[] = [];
+        const allFailed: string[] = [];
+        for (let i = 0; i < selectedSectors.length; i++) {
+          const s = selectedSectors[i];
+          setProgress({ done: i, total: selectedSectors.length, current: s, sectorLabel: s });
+          try {
+            const out = await runSectorBacktest(s, source, {
+              maxTickers,
+              onProgress: (p) => setProgress({
+                done: i, total: selectedSectors.length,
+                current: `${s} · ${p.currentTicker}`, sectorLabel: s,
+              }),
+            });
+            aggs.push(aggregate(out.sector, out.rows));
+            allFailed.push(...out.failed);
+          } catch (e) {
+            console.warn(`sector ${s} failed`, e);
+          }
+        }
+        setProgress({ done: selectedSectors.length, total: selectedSectors.length, current: "" });
+        setAggregates(aggs);
+        setFailed(allFailed);
+        setMeta({ sector: `${aggs.length} sectors`, source });
+      }
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -98,6 +174,29 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
 
   const pctDone = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
+  const metricLabel: Record<typeof compareMetric, string> = {
+    avgForecastPct: "Avg 30d forecast %",
+    medianForecastPct: "Median 30d forecast %",
+    avgConfidence: "Avg confidence",
+    avgAnnReturn: "Avg annualized return %",
+    bullish: "% bullish tickers",
+  };
+
+  const chartData = useMemo(() => {
+    const arr = aggregates.map(a => ({
+      sector: a.sector,
+      value:
+        compareMetric === "avgAnnReturn" ? a.avgAnnReturn * 100 :
+        compareMetric === "avgForecastPct" ? a.avgForecastPct :
+        compareMetric === "medianForecastPct" ? a.medianForecastPct :
+        compareMetric === "avgConfidence" ? a.avgConfidence :
+        a.bullish,
+      count: a.count,
+    }));
+    arr.sort((x, y) => y.value - x.value);
+    return arr;
+  }, [aggregates, compareMetric]);
+
   const header = (
     <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
       <div>
@@ -106,7 +205,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
           <InfoTooltip
             title="Sector Backtest"
             what="Runs the calibration-by-hindsight backtest model across every ticker in a sector and ranks them by confidence."
-            howToRead="The model fits 5 trend windows (10–40 days) and picks the one that best predicted today's price from 6 months ago. The same model then projects the next 30 days. Higher confidence = lower error + higher R² + better ensemble agreement + stable regime."
+            howToRead="Single mode shows every ticker in one sector. Compare mode aggregates the model output across multiple sectors so you can see which sectors are collectively more bullish, more confident, or higher-return."
           />
         </h2>
         <p className="text-[11px] text-zinc-500 font-mono mt-1">
@@ -126,6 +225,22 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
   const body = (
     <>
       {header}
+
+      {/* Mode switch */}
+      <div className="px-6 pt-4">
+        <div className="inline-flex rounded border border-zinc-800 bg-zinc-900 p-0.5 text-[10px] font-mono uppercase tracking-widest">
+          {(["single", "compare"] as Mode[]).map(m => (
+            <button
+              key={m}
+              onClick={() => !running && setMode(m)}
+              className={`px-3 py-1.5 rounded ${mode === m ? "bg-emerald-500/20 text-emerald-300" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              {m === "single" ? "Single sector" : "Compare sectors"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Controls */}
       <div className="px-6 py-4 border-b border-zinc-800 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="flex flex-col gap-1">
@@ -137,6 +252,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
               setSource(s);
               const opts = s === "yahoo" ? YAHOO_SECTORS : CURATED_SECTORS;
               if (!opts.includes(sector as any)) setSector(opts[0]);
+              setSelectedSectors(prev => prev.filter(x => (opts as readonly string[]).includes(x)));
             }}
             disabled={running}
             className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200"
@@ -146,20 +262,47 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Sector</label>
-          <select
-            value={sector}
-            onChange={e => setSector(e.target.value)}
-            disabled={running}
-            className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200"
-          >
-            {sectorOptions.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
+        {mode === "single" ? (
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Sector</label>
+            <select
+              value={sector}
+              onChange={e => setSector(e.target.value)}
+              disabled={running}
+              className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200"
+            >
+              {sectorOptions.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 md:col-span-2">
+            <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+              Sectors ({selectedSectors.length} selected)
+            </label>
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-auto p-1.5 bg-zinc-900 border border-zinc-800 rounded">
+              {sectorOptions.map(s => {
+                const on = selectedSectors.includes(s);
+                return (
+                  <button
+                    key={s}
+                    disabled={running}
+                    onClick={() => toggleSectorPick(s)}
+                    className={`text-[10px] font-mono px-2 py-1 rounded border ${
+                      on
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                        : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Max Tickers</label>
+          <label className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Max Tickers / sector</label>
           <select
             value={maxTickers}
             onChange={e => setMax(Number(e.target.value))}
@@ -173,10 +316,10 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
         <div className="flex items-end">
           <button
             onClick={handleRun}
-            disabled={running}
+            disabled={running || (mode === "compare" && selectedSectors.length === 0)}
             className="w-full px-4 py-2 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-mono uppercase tracking-widest"
           >
-            {running ? "Running…" : "Run Backtest"}
+            {running ? "Running…" : mode === "single" ? "Run Backtest" : "Run Comparison"}
           </button>
         </div>
       </div>
@@ -205,13 +348,109 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
 
       {/* Results */}
       <div className="flex-1 overflow-auto">
-        {sortedRows.length === 0 && !running && !error && (
+        {mode === "compare" && aggregates.length > 0 && (
+          <div className="p-6 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Metric</span>
+              <select
+                value={compareMetric}
+                onChange={e => setCompareMetric(e.target.value as any)}
+                className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200"
+              >
+                <option value="avgForecastPct">Avg 30d forecast %</option>
+                <option value="medianForecastPct">Median 30d forecast %</option>
+                <option value="avgConfidence">Avg confidence</option>
+                <option value="avgAnnReturn">Avg annualized return %</option>
+                <option value="bullish">% bullish tickers</option>
+              </select>
+            </div>
+
+            <div className="h-[360px] bg-zinc-900/40 border border-zinc-800 rounded p-3">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 60 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                  <XAxis
+                    dataKey="sector"
+                    tick={{ fill: "#a1a1aa", fontSize: 10, fontFamily: "monospace" }}
+                    angle={-25}
+                    textAnchor="end"
+                    interval={0}
+                    height={70}
+                  />
+                  <YAxis
+                    tick={{ fill: "#a1a1aa", fontSize: 10, fontFamily: "monospace" }}
+                    tickFormatter={(v) => compareMetric === "avgConfidence" ? `${v.toFixed(0)}` : `${v.toFixed(1)}%`}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "#0a0a0a", border: "1px solid #27272a", fontFamily: "monospace", fontSize: 11 }}
+                    formatter={(value: any, _n: any, p: any) => [
+                      compareMetric === "avgConfidence" ? Number(value).toFixed(1) : `${Number(value).toFixed(2)}%`,
+                      metricLabel[compareMetric],
+                    ]}
+                    labelFormatter={(label) => {
+                      const row = chartData.find(r => r.sector === label);
+                      return `${label} · ${row?.count ?? 0} tickers`;
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 10 }} />
+                  <Bar dataKey="value" name={metricLabel[compareMetric]}>
+                    {chartData.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={
+                          compareMetric === "avgConfidence"
+                            ? (d.value >= 65 ? "#10b981" : d.value >= 40 ? "#f59e0b" : "#ef4444")
+                            : (d.value >= 0 ? "#10b981" : "#ef4444")
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <table className="w-full text-xs font-mono">
+              <thead className="bg-zinc-950 border-b border-zinc-800">
+                <tr>
+                  <th className="text-left px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">Sector</th>
+                  <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">Tickers</th>
+                  <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">Avg Fcst</th>
+                  <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">Median Fcst</th>
+                  <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">% Bullish</th>
+                  <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">Avg Conf</th>
+                  <th className="text-right px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">Avg Ann Ret</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aggregates.map(a => (
+                  <tr key={a.sector} className="border-b border-zinc-900">
+                    <td className="px-3 py-2 text-zinc-200 font-semibold">{a.sector}</td>
+                    <td className="px-3 py-2 text-right text-zinc-400">{a.count}</td>
+                    <td className={`px-3 py-2 text-right ${colorPct(a.avgForecastPct)}`}>{fmtPct(a.avgForecastPct)}</td>
+                    <td className={`px-3 py-2 text-right ${colorPct(a.medianForecastPct)}`}>{fmtPct(a.medianForecastPct)}</td>
+                    <td className="px-3 py-2 text-right text-zinc-300">{a.bullish.toFixed(0)}%</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${colorConf(a.avgConfidence)}`}>{a.avgConfidence.toFixed(0)}</td>
+                    <td className={`px-3 py-2 text-right ${colorPct(a.avgAnnReturn * 100)}`}>{fmtPct(a.avgAnnReturn * 100)}/yr</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {mode === "single" && sortedRows.length === 0 && !running && !error && (
           <div className="p-10 text-center text-zinc-500 text-xs font-mono">
             Pick a sector and click <span className="text-zinc-300">Run Backtest</span> to score every ticker.
           </div>
         )}
 
-        {sortedRows.length > 0 && (
+        {mode === "compare" && aggregates.length === 0 && !running && !error && (
+          <div className="p-10 text-center text-zinc-500 text-xs font-mono">
+            Pick sectors and click <span className="text-zinc-300">Run Comparison</span> to see a combined graphic.
+          </div>
+        )}
+
+        {mode === "single" && sortedRows.length > 0 && (
           <table className="w-full text-xs font-mono">
             <thead className="sticky top-0 bg-zinc-950 border-b border-zinc-800">
               <tr>
@@ -265,7 +504,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
       {(meta || failed.length > 0) && (
         <div className="px-6 py-3 border-t border-zinc-800 text-[10px] font-mono text-zinc-500 flex items-center justify-between gap-4">
           <div>
-            {meta && <>Sector: <span className="text-zinc-300">{meta.sector}</span> · Source: <span className="text-zinc-300">{meta.source}</span> · Scored: <span className="text-zinc-300">{sortedRows.length}</span></>}
+            {meta && <>Scope: <span className="text-zinc-300">{meta.sector}</span> · Source: <span className="text-zinc-300">{meta.source}</span> · Scored: <span className="text-zinc-300">{mode === "single" ? sortedRows.length : aggregates.reduce((a, b) => a + b.count, 0)}</span></>}
           </div>
           {failed.length > 0 && (
             <div className="text-amber-500/80">
