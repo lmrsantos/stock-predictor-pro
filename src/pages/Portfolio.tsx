@@ -609,6 +609,10 @@ export default function Portfolio() {
         </div>
       </main>
 
+      {backtestOpen && (
+        <PortfolioBacktest holdings={holdings} onClose={() => setBacktestOpen(false)} />
+      )}
+
       {analysisOpen && analysis && totals && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAnalysisOpen(false)}>
           <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
