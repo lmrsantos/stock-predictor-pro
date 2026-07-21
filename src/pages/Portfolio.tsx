@@ -9,6 +9,8 @@ import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PortfolioIntradaySparkline, usePortfolioIntraday, MiniSparkline } from "@/components/PortfolioIntradaySparkline";
+import { PortfolioBacktest } from "@/components/PortfolioBacktest";
+import { History } from "lucide-react";
 
 interface Holding {
   id: string;
@@ -274,6 +276,7 @@ export default function Portfolio() {
   const [showAdd, setShowAdd] = useState(false);
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  const [backtestOpen, setBacktestOpen] = useState(false);
 
   const { data: holdings = [], isLoading } = useQuery({
     queryKey: ["portfolio-holdings", user?.id],
@@ -427,9 +430,14 @@ export default function Portfolio() {
             <RefreshCw className="w-3.5 h-3.5" />Refresh
           </button>
           {holdings.length > 0 && (
-            <button onClick={() => setAnalysisOpen(true)} disabled={!totals?.allLoaded} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 disabled:opacity-50">
-              <Sparkles className="w-4 h-4" />Analyze Portfolio
-            </button>
+            <>
+              <button onClick={() => setBacktestOpen(true)} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2">
+                <History className="w-4 h-4" />Backtest 30d
+              </button>
+              <button onClick={() => setAnalysisOpen(true)} disabled={!totals?.allLoaded} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 disabled:opacity-50">
+                <Sparkles className="w-4 h-4" />Analyze Portfolio
+              </button>
+            </>
           )}
           <button onClick={() => setShowAdd(!showAdd)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors flex items-center gap-2">
             <Plus className="w-4 h-4" />Add Holding
@@ -600,6 +608,10 @@ export default function Portfolio() {
           Projections are based on the Enhanced-V2 regression model. Past performance does not guarantee future results. Not financial advice.
         </div>
       </main>
+
+      {backtestOpen && (
+        <PortfolioBacktest holdings={holdings} onClose={() => setBacktestOpen(false)} />
+      )}
 
       {analysisOpen && analysis && totals && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAnalysisOpen(false)}>
