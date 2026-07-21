@@ -98,10 +98,10 @@ function AgentMarkdown({ content }: { content: string }) {
               <div key={ri} className="rounded-lg bg-zinc-700/40 border border-zinc-600/30 px-3 py-2 flex flex-col gap-0.5">
                 {headers.map((header, hi) => row[hi] ? (
                   <div key={hi} className="flex gap-2 items-start">
-                    <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest shrink-0 w-16 pt-0.5">
+                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest shrink-0 w-16 pt-0.5">
                       {header.replace(/\*\*/g, "")}
                     </span>
-                    <span className="text-[10px] font-mono text-zinc-200 flex-1">
+                    <span className="text-[10px] font-mono text-foreground flex-1">
                       <InlineMarkdown text={row[hi]} />
                     </span>
                   </div>
@@ -118,7 +118,7 @@ function AgentMarkdown({ content }: { content: string }) {
     if (line.startsWith("## ") || line.startsWith("### ")) {
       const text = line.replace(/^#+\s/, "");
       elements.push(
-        <p key={i} className="text-[10px] font-mono font-semibold text-zinc-300 uppercase tracking-widest mt-2 mb-0.5">
+        <p key={i} className="text-[10px] font-mono font-semibold text-foreground uppercase tracking-widest mt-2 mb-0.5">
           {text}
         </p>
       );
@@ -132,7 +132,7 @@ function AgentMarkdown({ content }: { content: string }) {
       elements.push(
         <div key={i} className="flex gap-1.5 items-start">
           <span className="text-emerald-400 mt-0.5 shrink-0 text-[10px]">·</span>
-          <span className="text-[10px] font-mono text-zinc-300 leading-relaxed">
+          <span className="text-[10px] font-mono text-foreground leading-relaxed">
             <InlineMarkdown text={text} />
           </span>
         </div>
@@ -150,7 +150,7 @@ function AgentMarkdown({ content }: { content: string }) {
 
     // ── Regular paragraph ───────────────────────────────────────────────────
     elements.push(
-      <p key={i} className="text-[10px] font-mono text-zinc-200 leading-relaxed">
+      <p key={i} className="text-[10px] font-mono text-foreground leading-relaxed">
         <InlineMarkdown text={line} />
       </p>
     );
@@ -167,10 +167,10 @@ function InlineMarkdown({ text }: { text: string }) {
     <>
       {parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={i} className="text-zinc-100 font-semibold">{part.slice(2, -2)}</strong>;
+          return <strong key={i} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>;
         }
         if (part.startsWith("*") && part.endsWith("*")) {
-          return <em key={i} className="text-zinc-300">{part.slice(1, -1)}</em>;
+          return <em key={i} className="text-foreground">{part.slice(1, -1)}</em>;
         }
         return <span key={i}>{part}</span>;
       })}
@@ -202,14 +202,14 @@ function MessageBubble({ msg }: { msg: Message }) {
       )}
       <div className={`relative group max-w-[85%] rounded-xl px-3 py-2 text-xs font-mono leading-relaxed ${
         isAgent
-          ? "bg-zinc-800/80 text-zinc-200 border border-zinc-700/50"
+          ? "bg-zinc-800/80 text-foreground border border-border/50"
           : "bg-sky-500/10 text-sky-300 border border-sky-500/20"
       }`}>
         {isAgent && !msg.thinking && (
           <button
             onClick={handleCopy}
             title={copied ? "Copied" : "Copy response"}
-            className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300"
+            className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-zinc-700/50 text-muted-foreground hover:text-foreground"
           >
             {copied ? (
               <Check className="w-3 h-3 text-emerald-400" />
@@ -219,7 +219,7 @@ function MessageBubble({ msg }: { msg: Message }) {
           </button>
         )}
         {msg.thinking ? (
-          <div className="flex items-center gap-1.5 text-zinc-500">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             <div className="flex gap-1">
               {[0, 1, 2].map(i => (
                 <div key={i} className="w-1 h-1 rounded-full bg-emerald-400 animate-bounce"
@@ -424,14 +424,14 @@ export function QuantAgent({ context }: QuantAgentProps) {
           }}>
 
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/80"
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border/80"
             style={{ background: "rgba(16,185,129,0.05)" }}>
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
               <span className="text-sm">🧠</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-mono font-semibold text-zinc-100 tracking-wide">QuantAgent</p>
-              <p className="text-[10px] font-mono text-zinc-500 truncate">
+              <p className="text-xs font-mono font-semibold text-foreground tracking-wide">QuantAgent</p>
+              <p className="text-[10px] font-mono text-muted-foreground truncate">
                 {sessionReady
                   ? `${context.ticker} · Claude Managed Agents · Web Search`
                   : initializing ? "Initializing Managed Agent session..." : "Starting..."}
@@ -441,9 +441,9 @@ export function QuantAgent({ context }: QuantAgentProps) {
           </div>
 
           {/* Context bar */}
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-zinc-800/50 bg-zinc-900/30">
-            <span className="text-[10px] font-mono text-zinc-500">{context.ticker}</span>
-            {context.price && <span className="text-[10px] font-mono text-zinc-400">${context.price.toLocaleString()}</span>}
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-border/50 bg-card/30">
+            <span className="text-[10px] font-mono text-muted-foreground">{context.ticker}</span>
+            {context.price && <span className="text-[10px] font-mono text-muted-foreground">${context.price.toLocaleString()}</span>}
             {context.backtestResult && (
               <>
                 <span className="text-zinc-700 text-[10px]">·</span>
@@ -456,7 +456,7 @@ export function QuantAgent({ context }: QuantAgentProps) {
                 </span>
               </>
             )}
-            <span className="ml-auto text-[9px] font-mono text-zinc-600">🔍 web search</span>
+            <span className="ml-auto text-[9px] font-mono text-muted-foreground">🔍 web search</span>
           </div>
 
           {/* Messages */}
@@ -464,7 +464,7 @@ export function QuantAgent({ context }: QuantAgentProps) {
             {initializing ? (
               <div className="flex flex-col items-center justify-center h-full gap-3">
                 <div className="w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
-                <p className="text-[10px] font-mono text-zinc-500 animate-pulse text-center">
+                <p className="text-[10px] font-mono text-muted-foreground animate-pulse text-center">
                   Starting Claude Managed Agent session...<br />Web search enabled
                 </p>
               </div>
@@ -481,7 +481,7 @@ export function QuantAgent({ context }: QuantAgentProps) {
             <div className="px-3 pb-2 flex gap-1.5 flex-wrap">
               {QUICK_ACTIONS.slice(0, 3).map(action => (
                 <button key={action} onClick={() => sendMessage(action)} disabled={loading}
-                  className="text-[9px] font-mono px-2 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:border-emerald-500/40 hover:text-emerald-400 transition-all disabled:opacity-40 whitespace-nowrap">
+                  className="text-[9px] font-mono px-2 py-1 rounded-lg border border-border text-muted-foreground hover:border-emerald-500/40 hover:text-emerald-400 transition-all disabled:opacity-40 whitespace-nowrap">
                   {action}
                 </button>
               ))}
@@ -490,11 +490,11 @@ export function QuantAgent({ context }: QuantAgentProps) {
 
           {/* Input */}
           <div className="px-3 pb-3">
-            <div className="flex items-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-900/60 px-3 py-2 focus-within:border-emerald-500/40 transition-colors">
+            <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-3 py-2 focus-within:border-emerald-500/40 transition-colors">
               <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown} disabled={!sessionReady || loading}
                 placeholder={sessionReady ? `Ask about ${context.ticker}...` : "Initializing..."}
-                className="flex-1 bg-transparent text-xs font-mono text-zinc-200 placeholder-zinc-600 outline-none" />
+                className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder-zinc-600 outline-none" />
               <button onClick={() => sendMessage(input)} disabled={!input.trim() || !sessionReady || loading}
                 className="w-6 h-6 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
                 style={{ background: input.trim() ? "rgba(16,185,129,0.2)" : "transparent" }}>

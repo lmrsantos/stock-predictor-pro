@@ -504,7 +504,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           </div>
           {/* Show partial results while scanning */}
           {stocks.length > 0 && (
-            <p className="text-[10px] font-mono text-zinc-500">
+            <p className="text-[10px] font-mono text-muted-foreground">
               {stocks.length} BUY signal{stocks.length !== 1 ? "s" : ""} found so far...
             </p>
           )}

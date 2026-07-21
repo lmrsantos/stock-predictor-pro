@@ -32,7 +32,7 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   const trendIcon =
     projection.troughTrend === "rising"  ? <TrendingUp  className="w-3 h-3 text-emerald-400" /> :
     projection.troughTrend === "falling" ? <TrendingDown className="w-3 h-3 text-red-400" />    :
-    <Minus className="w-3 h-3 text-zinc-400" />;
+    <Minus className="w-3 h-3 text-muted-foreground" />;
 
   // Find nearby fib levels
   const nearbyFibs = projection.fibLevels
@@ -43,7 +43,7 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
           Cycle Analysis — Peaks & Troughs
         </p>
         <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${positionColors[projection.currentPosition]}`}>
@@ -60,11 +60,11 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
           <p className="text-lg font-mono font-bold text-emerald-400">
             ${projection.nextTrough.toFixed(2)}
           </p>
-          <p className="text-[9px] font-mono text-zinc-600">
+          <p className="text-[9px] font-mono text-muted-foreground">
             {((projection.nextTrough - currentPrice) / currentPrice * 100).toFixed(1)}% from current
             · {projection.troughConfidence}% conf
           </p>
-          <div className="flex items-center gap-1 text-[9px] font-mono text-zinc-600">
+          <div className="flex items-center gap-1 text-[9px] font-mono text-muted-foreground">
             {trendIcon}
             <span>Lows +{projection.avgTroughGrowth}%/cycle avg</span>
           </div>
@@ -77,11 +77,11 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
           <p className="text-lg font-mono font-bold text-red-400">
             ${projection.nextPeak.toFixed(2)}
           </p>
-          <p className="text-[9px] font-mono text-zinc-600">
+          <p className="text-[9px] font-mono text-muted-foreground">
             {((projection.nextPeak - currentPrice) / currentPrice * 100).toFixed(1)}% from current
             · {projection.peakConfidence}% conf
           </p>
-          <div className="flex items-center gap-1 text-[9px] font-mono text-zinc-600">
+          <div className="flex items-center gap-1 text-[9px] font-mono text-muted-foreground">
             <TrendingUp className="w-3 h-3 text-red-400" />
             <span>Highs +{projection.avgPeakGrowth}%/cycle avg</span>
           </div>
@@ -90,19 +90,19 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
 
       {/* Fibonacci levels */}
       {nearbyFibs.length > 0 && (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 space-y-2">
+        <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
           <div className="flex items-center gap-1.5">
-            <Target className="w-3 h-3 text-zinc-500" />
-            <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">
+            <Target className="w-3 h-3 text-muted-foreground" />
+            <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
               Fibonacci Levels (nearby)
             </p>
           </div>
           <div className="space-y-1">
             {nearbyFibs.slice(0, 4).map(fib => (
               <div key={fib.level} className="flex items-center justify-between">
-                <span className="text-[10px] font-mono text-zinc-500">{fib.level}</span>
+                <span className="text-[10px] font-mono text-muted-foreground">{fib.level}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-zinc-300">${fib.price.toFixed(2)}</span>
+                  <span className="text-[10px] font-mono text-foreground">${fib.price.toFixed(2)}</span>
                   <span className={`text-[9px] font-mono ${
                     fib.distanceFromCurrent > 0 ? "text-red-400" : "text-emerald-400"
                   }`}>
@@ -116,8 +116,8 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
       )}
 
       {/* Cycle history */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3 space-y-2">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-zinc-500">
+      <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
+        <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
           Cycle History ({peaks.length} peaks · {troughs.length} troughs)
         </p>
         <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -130,10 +130,10 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
                   <span className={pt.type === "peak" ? "text-red-400" : "text-emerald-400"}>
                     {pt.type === "peak" ? "▲" : "▼"}
                   </span>
-                  <span className="text-[9px] font-mono text-zinc-500">{pt.date}</span>
+                  <span className="text-[9px] font-mono text-muted-foreground">{pt.date}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-zinc-300">${pt.price.toFixed(2)}</span>
+                  <span className="text-[10px] font-mono text-foreground">${pt.price.toFixed(2)}</span>
                   {pt.pctFromPrev !== undefined && (
                     <span className={`text-[9px] font-mono ${
                       pt.pctFromPrev > 0 ? "text-emerald-400" : "text-red-400"
@@ -149,10 +149,10 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
 
       {/* Interpretation */}
       <div className="rounded-lg border border-sky-800/30 bg-sky-950/10 p-3">
-        <p className="text-[10px] font-mono text-zinc-400 leading-relaxed">
+        <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">
           {projection.interpretation}
         </p>
-        <p className="text-[9px] font-mono text-zinc-600 mt-1">
+        <p className="text-[9px] font-mono text-muted-foreground mt-1">
           Avg cycle: {projection.cycleLength} trading days (~{Math.round(projection.cycleLength/21)} months)
         </p>
       </div>
