@@ -41,9 +41,9 @@ function StatCard({ label, value, sub, color }: {
   return (
     <div className="rounded-xl border bg-white/[0.02] p-4 flex flex-col gap-1"
       style={{ borderColor: `${color}30` }}>
-      <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{label}</span>
+      <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">{label}</span>
       <span className="text-2xl font-semibold font-mono" style={{ color }}>{value}</span>
-      {sub && <span className="text-[11px] text-zinc-500 font-mono">{sub}</span>}
+      {sub && <span className="text-[11px] text-muted-foreground font-mono">{sub}</span>}
     </div>
   );
 }
@@ -67,12 +67,12 @@ function ConfidenceRing({ score }: { score: number }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-mono font-bold" style={{ color }}>{score}</span>
-          <span className="text-[9px] font-mono text-zinc-500">/ 100</span>
+          <span className="text-[9px] font-mono text-muted-foreground">/ 100</span>
         </div>
       </div>
       <div className="text-center">
         <div className="text-[11px] font-mono font-semibold tracking-widest" style={{ color }}>{label}</div>
-        <div className="text-[9px] font-mono text-zinc-600">CONFIDENCE</div>
+        <div className="text-[9px] font-mono text-muted-foreground">CONFIDENCE</div>
       </div>
     </div>
   );
@@ -82,45 +82,45 @@ function ConfidenceRing({ score }: { score: number }) {
 
 function CalibrationTable({ result }: { result: ForecastResult }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
-      <div className="px-4 py-2 border-b border-zinc-800">
-        <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+    <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
+      <div className="px-4 py-2 border-b border-border">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
           Model Calibration — which model best predicted today's price from {result.lookbackMonths} months ago
         </p>
       </div>
       <table className="w-full text-xs font-mono">
         <thead>
-          <tr className="border-b border-zinc-800">
+          <tr className="border-b border-border">
             {["Model", "Trend", "Predicted Today", "Actual Today", "Error", "R²", "Status"].map(h => (
-              <th key={h} className="text-left px-3 py-2 text-[10px] uppercase tracking-widest text-zinc-500">{h}</th>
+              <th key={h} className="text-left px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {result.models.map((m) => (
             <tr key={m.windowSize}
-              className={`border-b border-zinc-800/50 transition-colors ${m.winner ? "bg-emerald-500/5" : "hover:bg-white/[0.02]"}`}>
-              <td className="px-3 py-2 text-zinc-300">{m.label}</td>
+              className={`border-b border-border/50 transition-colors ${m.winner ? "bg-emerald-500/5" : "hover:bg-white/[0.02]"}`}>
+              <td className="px-3 py-2 text-foreground">{m.label}</td>
               <td className="px-3 py-2" style={{ color: m.slope >= 0 ? "#34d399" : "#f87171" }}>
                 {m.slope >= 0 ? "↑" : "↓"} {(m.annualizedReturn * 100).toFixed(1)}%/yr
               </td>
-              <td className="px-3 py-2 text-zinc-300">{fmtPrice(m.predictedTodayPrice)}</td>
-              <td className="px-3 py-2 text-zinc-400">{fmtPrice(m.actualTodayPrice)}</td>
+              <td className="px-3 py-2 text-foreground">{fmtPrice(m.predictedTodayPrice)}</td>
+              <td className="px-3 py-2 text-muted-foreground">{fmtPrice(m.actualTodayPrice)}</td>
               <td className="px-3 py-2" style={{ color: accentColor(m.errorPct, 1, 3) }}>
                 {m.errorPct.toFixed(2)}%
               </td>
-              <td className="px-3 py-2 text-zinc-400">{m.rSquared.toFixed(3)}</td>
+              <td className="px-3 py-2 text-muted-foreground">{m.rSquared.toFixed(3)}</td>
               <td className="px-3 py-2">
                 {m.winner
                   ? <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/15 text-emerald-400 font-semibold">🏆 WINNER</span>
-                  : <span className="text-zinc-600 text-[10px]">—</span>}
+                  : <span className="text-muted-foreground text-[10px]">—</span>}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="px-4 py-2 bg-zinc-900/40 border-t border-zinc-800">
-        <p className="text-[10px] font-mono text-zinc-600">
+      <div className="px-4 py-2 bg-card/40 border-t border-border">
+        <p className="text-[10px] font-mono text-muted-foreground">
           The winning model had the lowest prediction error for today's price — it earned the right to forecast forward.
         </p>
       </div>
@@ -194,34 +194,34 @@ function ForecastChart({ result }: { result: ForecastResult }) {
       <div className="flex justify-end mt-2">
         <button
           onClick={() => setShowData(!showData)}
-          className="text-[10px] font-mono px-3 py-1 rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 transition-all"
+          className="text-[10px] font-mono px-3 py-1 rounded border border-border text-muted-foreground hover:border-foreground/40 transition-all"
         >
           {showData ? "Hide Data" : "Show Data"}
         </button>
       </div>
 
       {showData && (
-        <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-zinc-800">
+        <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-border">
           <table className="w-full text-[10px] font-mono">
-            <thead className="sticky top-0 bg-zinc-900">
-              <tr className="border-b border-zinc-800">
-                <th className="text-left px-3 py-1.5 text-zinc-500">#</th>
-                <th className="text-left px-3 py-1.5 text-zinc-500">Date</th>
-                <th className="text-left px-3 py-1.5 text-zinc-500">Timestamp</th>
-                <th className="text-left px-3 py-1.5 text-zinc-500">Type</th>
-                <th className="text-right px-3 py-1.5 text-zinc-500">Price</th>
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-b border-border">
+                <th className="text-left px-3 py-1.5 text-muted-foreground">#</th>
+                <th className="text-left px-3 py-1.5 text-muted-foreground">Date</th>
+                <th className="text-left px-3 py-1.5 text-muted-foreground">Timestamp</th>
+                <th className="text-left px-3 py-1.5 text-muted-foreground">Type</th>
+                <th className="text-right px-3 py-1.5 text-muted-foreground">Price</th>
               </tr>
             </thead>
             <tbody>
               {data.map((row, i) => (
-                <tr key={i} className="border-b border-zinc-800/50">
-                  <td className="px-3 py-1 text-zinc-600">{i + 1}</td>
-                  <td className="px-3 py-1 text-zinc-300">{row.date}</td>
-                  <td className="px-3 py-1 text-zinc-600">{row.actual !== null ? new Date(allTs[i]).toISOString().split("T")[0] : "—"}</td>
+                <tr key={i} className="border-b border-border/50">
+                  <td className="px-3 py-1 text-muted-foreground">{i + 1}</td>
+                  <td className="px-3 py-1 text-foreground">{row.date}</td>
+                  <td className="px-3 py-1 text-muted-foreground">{row.actual !== null ? new Date(allTs[i]).toISOString().split("T")[0] : "—"}</td>
                   <td className="px-3 py-1" style={{ color: row.actual !== null ? "#60a5fa" : "#f59e0b" }}>
                     {row.actual !== null ? "actual" : "forecast"}
                   </td>
-                  <td className="px-3 py-1 text-right text-zinc-300">
+                  <td className="px-3 py-1 text-right text-foreground">
                     {row.actual !== null ? fmtPrice(row.actual) : fmtPrice(row.mean ?? 0)}
                   </td>
                 </tr>
@@ -246,7 +246,7 @@ function RegimeBanner({ regime }: { regime: ForecastResult["regime"] }) {
         <p className={`text-xs font-mono font-semibold mb-0.5 ${severe ? "text-red-400" : "text-amber-400"}`}>
           {severe ? "Extreme Regime Shift" : "Regime Warning"}
         </p>
-        <p className="text-[11px] font-mono text-zinc-400">{regime.warning}</p>
+        <p className="text-[11px] font-mono text-muted-foreground">{regime.warning}</p>
       </div>
     </div>
   );
@@ -340,15 +340,15 @@ Please search for current news, earnings calendar, analyst ratings, and macro fa
         {loading && <div className="w-3 h-3 border border-sky-400/30 border-t-sky-400 rounded-full animate-spin ml-auto" />}
       </div>
       {loading && (
-        <p className="text-[11px] font-mono text-zinc-500 animate-pulse">
+        <p className="text-[11px] font-mono text-muted-foreground animate-pulse">
           Searching for latest news, earnings, and analyst ratings for {ticker}...
         </p>
       )}
       {error && <p className="text-[11px] font-mono text-red-400">{error}</p>}
       {context && !loading && (
-        <p className="text-[11px] font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap">{context}</p>
+        <p className="text-[11px] font-mono text-foreground leading-relaxed whitespace-pre-wrap">{context}</p>
       )}
-      <p className="text-[9px] font-mono text-zinc-600">
+      <p className="text-[9px] font-mono text-muted-foreground">
         Powered by Claude with web search · Not financial advice
       </p>
     </div>
@@ -403,7 +403,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
         <div className="flex items-center gap-3">
           <span className="text-3xl">{emoji}</span>
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Model Recommendation for {ticker}
             </p>
             <p className="text-3xl font-mono font-bold mt-0.5" style={{ color: signalColor }}>
@@ -412,7 +412,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Position Size</p>
+          <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Position Size</p>
           <p className="text-sm font-mono font-semibold mt-0.5" style={{ color: signalColor }}>{positionSize}</p>
         </div>
       </div>
@@ -423,12 +423,12 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
             <span className="text-[11px] mt-0.5 shrink-0" style={{ color: positive ? "#34d399" : "#f87171" }}>
               {positive ? "✓" : "✗"}
             </span>
-            <span className="text-[11px] font-mono text-zinc-400">{text}</span>
+            <span className="text-[11px] font-mono text-muted-foreground">{text}</span>
           </div>
         ))}
       </div>
-      <div className="rounded-lg bg-black/20 px-3 py-2">
-        <p className="text-[9px] font-mono text-zinc-600 leading-relaxed">
+      <div className="rounded-lg bg-muted/40 px-3 py-2">
+        <p className="text-[9px] font-mono text-muted-foreground leading-relaxed">
           Based on calibration-by-hindsight: the model that best predicted today's price from {result.lookbackMonths} months ago
           earns the right to forecast forward. Combine with market context below before acting.
           Not financial advice.
@@ -532,47 +532,47 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)" }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-950"
+      <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-border bg-background"
         style={{ boxShadow: "0 0 100px rgba(0,0,0,0.95), 0 0 0 1px #27272a" }}>
 
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/98 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-background/95 backdrop-blur">
           <div>
-            <h2 className="text-sm font-mono font-semibold text-zinc-100 tracking-widest uppercase">
+            <h2 className="text-sm font-mono font-semibold text-foreground tracking-widest uppercase">
               Calibration Backtest
             </h2>
-            <p className="text-xs text-zinc-500 font-mono mt-0.5">
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
               {ticker} — 5 models compete · winner forecasts forward · AI market context
             </p>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors text-xl font-light">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors text-xl font-light">✕</button>
         </div>
 
         <div className="p-6 flex flex-col gap-5">
 
           {/* How it works */}
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">How it works</p>
-            <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono text-zinc-400">
-              <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-300">Start N months ago</span>
-              <span className="text-zinc-600">→</span>
-              <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-300">5 models project to today</span>
-              <span className="text-zinc-600">→</span>
+          <div className="rounded-xl border border-border bg-card/40 px-4 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">How it works</p>
+            <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono text-muted-foreground">
+              <span className="px-2 py-1 rounded bg-muted text-foreground">Start N months ago</span>
+              <span className="text-muted-foreground">→</span>
+              <span className="px-2 py-1 rounded bg-muted text-foreground">5 models project to today</span>
+              <span className="text-muted-foreground">→</span>
               <span className="px-2 py-1 rounded bg-emerald-900/40 border border-emerald-700/40 text-emerald-400">Winner = closest to actual price</span>
-              <span className="text-zinc-600">→</span>
+              <span className="text-muted-foreground">→</span>
               <span className="px-2 py-1 rounded bg-sky-900/40 border border-sky-700/40 text-sky-400">Winner forecasts 30 days forward</span>
-              <span className="text-zinc-600">+</span>
+              <span className="text-muted-foreground">+</span>
               <span className="px-2 py-1 rounded bg-purple-900/40 border border-purple-700/40 text-purple-400">🧠 AI market context</span>
             </div>
           </div>
 
           {/* Controls */}
           <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest">Lookback</span>
+            <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Lookback</span>
             <div className="flex gap-2">
               {([3, 6] as const).map(m => (
                 <button key={m} onClick={() => setLookback(m)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-sky-500/10 border-sky-500/50 text-sky-400" : "border-zinc-700 text-zinc-500 hover:border-zinc-500"}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-sky-500/10 border-sky-500/50 text-sky-400" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
                   {m} Months
                 </button>
               ))}
@@ -591,12 +591,12 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
             <div className="flex flex-col gap-4 py-8">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
-                <span className="text-xs font-mono text-zinc-400 animate-pulse text-center">{progress}</span>
+                <span className="text-xs font-mono text-muted-foreground animate-pulse text-center">{progress}</span>
               </div>
-              <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                 <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
               </div>
-              <p className="text-[10px] font-mono text-zinc-600 text-center">{progressPct}% complete</p>
+              <p className="text-[10px] font-mono text-muted-foreground text-center">{progressPct}% complete</p>
             </div>
           )}
 
@@ -626,9 +626,9 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
 
               {/* Confidence + recommendation */}
               <div className="flex flex-col md:flex-row gap-4">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 flex flex-col items-center justify-center min-w-[180px]">
+                <div className="rounded-xl border border-border bg-card/60 p-5 flex flex-col items-center justify-center min-w-[180px]">
                   <ConfidenceRing score={result.confidenceScore} />
-                  <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider mt-3 text-center leading-relaxed">
+                  <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider mt-3 text-center leading-relaxed">
                     Forecast<br />Confidence
                   </p>
                 </div>
@@ -645,7 +645,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
               />
 
               {/* Tabs */}
-              <div className="flex border-b border-zinc-800">
+              <div className="flex border-b border-border">
                 {([
                   { id: "forecast",    label: "Forecast + Cone" },
                   { id: "calibration", label: "Model Calibration" },
@@ -653,16 +653,16 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                   { id: "cycle",       label: "Cycle Analysis" },
                 ] as const).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? "border-sky-500 text-sky-400" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}>
+                    className={`px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? "border-sky-500 text-sky-400" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
                     {tab.label}
                   </button>
                 ))}
               </div>
 
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+              <div className="rounded-xl border border-border bg-card/60 p-4">
                 {activeTab === "forecast" && (
                   <>
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-3">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-3">
                       Winning model forecast with ensemble uncertainty cone
                     </p>
                     <ForecastChart result={result} />
@@ -679,7 +679,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                         sub={result.regime.outsideDistribution ? "Outside distribution" : "Within normal range"}
                         color={result.regime.ratio > 2.5 ? "#f87171" : result.regime.ratio > 1.5 ? "#fbbf24" : "#34d399"} />
                     </div>
-                    <p className="text-[10px] font-mono text-zinc-600 text-center">
+                    <p className="text-[10px] font-mono text-muted-foreground text-center">
                       Ratios above 1.5× mean current conditions are outside what the model was calibrated on.
                       Above 2.5× — do not act on the forecast.
                     </p>
@@ -700,7 +700,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
           {!result && !running && !error && (
             <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
               <span className="text-4xl">🏆</span>
-              <p className="text-sm font-mono text-zinc-400 font-semibold">Calibration Backtest Ready</p>
+              <p className="text-sm font-mono text-muted-foreground font-semibold">Calibration Backtest Ready</p>
               {dataLoading && (
                 <div className="flex items-center gap-2 text-xs font-mono text-sky-400 animate-pulse">
                   <div className="w-3 h-3 border border-sky-400/40 border-t-sky-400 rounded-full animate-spin" />
@@ -712,7 +712,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                   <span>✓</span> {dataPoints.length} trading days loaded — ready
                 </div>
               )}
-              <p className="text-[11px] font-mono text-zinc-600 max-w-md leading-relaxed">
+              <p className="text-[11px] font-mono text-muted-foreground max-w-md leading-relaxed">
                 5 models will compete to predict today's price from {lookback} months ago.
                 The winner earns the right to forecast the next 30 days.
                 QuantAgent will then search for current market context to help you decide.
