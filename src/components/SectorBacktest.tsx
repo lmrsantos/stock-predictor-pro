@@ -331,7 +331,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
             <span>{running ? `Processing ${progress.current || "…"}` : "Complete"}</span>
             <span>{progress.done} / {progress.total} ({pctDone}%)</span>
           </div>
-          <div className="h-1.5 bg-zinc-800 rounded overflow-hidden">
+          <div className="h-1.5 bg-muted rounded overflow-hidden">
             <div
               className="h-full bg-emerald-500 transition-all duration-200"
               style={{ width: `${pctDone}%` }}

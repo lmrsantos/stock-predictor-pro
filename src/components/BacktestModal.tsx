@@ -554,9 +554,9 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
           <div className="rounded-xl border border-border bg-card/40 px-4 py-3">
             <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">How it works</p>
             <div className="flex items-center gap-2 flex-wrap text-[10px] font-mono text-muted-foreground">
-              <span className="px-2 py-1 rounded bg-zinc-800 text-foreground">Start N months ago</span>
+              <span className="px-2 py-1 rounded bg-muted text-foreground">Start N months ago</span>
               <span className="text-muted-foreground">→</span>
-              <span className="px-2 py-1 rounded bg-zinc-800 text-foreground">5 models project to today</span>
+              <span className="px-2 py-1 rounded bg-muted text-foreground">5 models project to today</span>
               <span className="text-muted-foreground">→</span>
               <span className="px-2 py-1 rounded bg-emerald-900/40 border border-emerald-700/40 text-emerald-400">Winner = closest to actual price</span>
               <span className="text-muted-foreground">→</span>
@@ -593,7 +593,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                 <div className="w-8 h-8 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
                 <span className="text-xs font-mono text-muted-foreground animate-pulse text-center">{progress}</span>
               </div>
-              <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                 <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
               </div>
               <p className="text-[10px] font-mono text-muted-foreground text-center">{progressPct}% complete</p>

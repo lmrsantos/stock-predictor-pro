@@ -95,7 +95,7 @@ function AgentMarkdown({ content }: { content: string }) {
         elements.push(
           <div key={i} className="mt-2 mb-2 flex flex-col gap-1.5">
             {dataRows.map((row, ri) => (
-              <div key={ri} className="rounded-lg bg-zinc-700/40 border border-zinc-600/30 px-3 py-2 flex flex-col gap-0.5">
+              <div key={ri} className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2 flex flex-col gap-0.5">
                 {headers.map((header, hi) => row[hi] ? (
                   <div key={hi} className="flex gap-2 items-start">
                     <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest shrink-0 w-16 pt-0.5">
@@ -202,14 +202,14 @@ function MessageBubble({ msg }: { msg: Message }) {
       )}
       <div className={`relative group max-w-[85%] rounded-xl px-3 py-2 text-xs font-mono leading-relaxed ${
         isAgent
-          ? "bg-zinc-800/80 text-foreground border border-border/50"
+          ? "bg-muted/80 text-foreground border border-border/50"
           : "bg-sky-500/10 text-sky-300 border border-sky-500/20"
       }`}>
         {isAgent && !msg.thinking && (
           <button
             onClick={handleCopy}
             title={copied ? "Copied" : "Copy response"}
-            className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-zinc-700/50 text-muted-foreground hover:text-foreground"
+            className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity hover:bg-muted/60 text-muted-foreground hover:text-foreground"
           >
             {copied ? (
               <Check className="w-3 h-3 text-emerald-400" />
@@ -446,7 +446,7 @@ export function QuantAgent({ context }: QuantAgentProps) {
             {context.price && <span className="text-[10px] font-mono text-muted-foreground">${context.price.toLocaleString()}</span>}
             {context.backtestResult && (
               <>
-                <span className="text-zinc-700 text-[10px]">·</span>
+                <span className="text-muted-foreground text-[10px]">·</span>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded"
                   style={{
                     color: context.backtestResult.signal === "BUY" ? "#34d399" : context.backtestResult.signal === "SELL" ? "#f87171" : "#fbbf24",
@@ -494,14 +494,14 @@ export function QuantAgent({ context }: QuantAgentProps) {
               <input ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown} disabled={!sessionReady || loading}
                 placeholder={sessionReady ? `Ask about ${context.ticker}...` : "Initializing..."}
-                className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder-zinc-600 outline-none" />
+                className="flex-1 bg-transparent text-xs font-mono text-foreground placeholder:text-muted-foreground outline-none" />
               <button onClick={() => sendMessage(input)} disabled={!input.trim() || !sessionReady || loading}
                 className="w-6 h-6 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
                 style={{ background: input.trim() ? "rgba(16,185,129,0.2)" : "transparent" }}>
                 <span className="text-xs text-emerald-400">↑</span>
               </button>
             </div>
-            <p className="text-[9px] font-mono text-zinc-700 text-center mt-1.5">
+            <p className="text-[9px] font-mono text-muted-foreground text-center mt-1.5">
               Claude Managed Agents · Web search enabled · Sessions persist 2hrs
             </p>
           </div>

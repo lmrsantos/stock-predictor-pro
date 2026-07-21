@@ -114,7 +114,7 @@ function BucketCard({ bucket }: { bucket: AllocationBucket }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-16 h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-primary rounded-full"
               style={{ width: `${bucket.pct}%` }}
@@ -129,7 +129,7 @@ function BucketCard({ bucket }: { bucket: AllocationBucket }) {
           <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">{bucket.rationale}</p>
           <div className="space-y-2">
             {bucket.instruments.map(({ instrument, pct, amount }) => (
-              <div key={instrument.ticker} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-800/50">
+              <div key={instrument.ticker} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono font-bold text-primary w-16">{instrument.ticker}</span>
                   <div>
@@ -401,7 +401,7 @@ Search for any relevant current market news before responding.`;
         </div>
 
         {/* Progress */}
-        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
@@ -565,7 +565,7 @@ Search for any relevant current market news before responding.`;
             <div key={i} className={`p-3 rounded-lg text-[11px] font-mono leading-relaxed ${
               msg.role === "user"
                 ? "bg-primary/10 text-foreground ml-4"
-                : "bg-zinc-800/50 text-muted-foreground mr-4"
+                : "bg-muted/50 text-muted-foreground mr-4"
             }`}>
               {msg.content.split("\n").filter(l => l.trim()).slice(0, 8).map((line, j) => (
                 <p key={j}>{line.replace(/\*\*/g, "")}</p>
@@ -586,7 +586,7 @@ Search for any relevant current market news before responding.`;
               onChange={e => setChatMsg(e.target.value)}
               onKeyDown={e => e.key === "Enter" && sendChatMessage()}
               placeholder="Ask about any instrument, risk, or scenario..."
-              className="flex-1 bg-zinc-800 border border-border rounded-lg px-3 py-2 text-[11px] font-mono text-foreground placeholder-zinc-600 focus:outline-none focus:border-primary/50"
+              className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-[11px] font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
             />
             <button
               onClick={sendChatMessage}

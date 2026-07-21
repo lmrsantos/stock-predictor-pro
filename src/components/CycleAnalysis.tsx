@@ -157,7 +157,7 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
         </p>
       </div>
 
-      <p className="text-[9px] font-mono text-zinc-700 text-center">
+      <p className="text-[9px] font-mono text-muted-foreground text-center">
         Zigzag detection · Fibonacci retracements · Geometric cycle projection
       </p>
     </div>
