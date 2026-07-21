@@ -233,7 +233,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
             <button
               key={m}
               onClick={() => !running && setMode(m)}
-              className={`px-3 py-1.5 rounded ${mode === m ? "bg-emerald-500/20 text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1.5 rounded ${mode === m ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}
             >
               {m === "single" ? "Single sector" : "Compare sectors"}
             </button>
