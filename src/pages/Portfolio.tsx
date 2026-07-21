@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
-import { computeLinearRegression } from "@/lib/regression";
+import { computeLinearRegression, getShortTermProjectionWindow } from "@/lib/regression";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -91,22 +91,25 @@ function HoldingRow({
 
   const projection = useMemo((): HoldingProjection | null => {
     if (!stockData?.length) return null;
-    // Use the same risk-adjusted forecast as the main chart (log-space,
-    // dampened, momentum, R² scaling, bias-corrected). Forecast a full year
-    // so we can pick the 30/90/365 trading-day horizons off the same curve.
-    const regression = computeLinearRegression(stockData, 365);
+    // Use the short-term 4-month window for 30d projections. The longer 1y
+    // window was over-smoothing recent portfolio moves and creating large
+    // 30d backtest errors.
+    const shortTermData = getShortTermProjectionWindow(stockData);
+    const shortTermRegression = computeLinearRegression(shortTermData, 30);
+    const longTermRegression = computeLinearRegression(stockData, 365);
     const currentPrice = stockData[stockData.length - 1].close;
     const totalCost = holding.shares * holding.avg_cost;
     const currentValue = holding.shares * currentPrice;
-    const preds = regression.predictions;
+    const shortTermPreds = shortTermRegression.predictions;
+    const longTermPreds = longTermRegression.predictions;
     // Predictions skip weekends, so index N ≈ N trading days ahead.
     const priceAt = (tradingDays: number) => {
-      if (!preds.length) return currentPrice;
-      const idx = Math.min(Math.max(tradingDays - 1, 0), preds.length - 1);
-      return preds[idx].predicted;
+      if (!longTermPreds.length) return currentPrice;
+      const idx = Math.min(Math.max(tradingDays - 1, 0), longTermPreds.length - 1);
+      return longTermPreds[idx].predicted;
     };
     // 30 calendar days ≈ 21 trading days; 90 ≈ 63; 365 ≈ 252.
-    const price30 = priceAt(21);
+    const price30 = shortTermPreds[Math.min(20, shortTermPreds.length - 1)]?.predicted ?? currentPrice;
     const price90 = priceAt(63);
     const price1y = priceAt(252);
     const projected30d = holding.shares * price30;
@@ -127,7 +130,7 @@ function HoldingRow({
       projected1y,
       projected1yPct: currentValue > 0 ? (projected1y - currentValue) / currentValue : 0,
       annualReturn: currentPrice > 0 ? (price1y - currentPrice) / currentPrice : 0,
-      rSquared: regression.rSquared,
+      rSquared: shortTermRegression.rSquared,
     };
   }, [stockData, holding, meta]);
 

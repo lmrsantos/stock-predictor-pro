@@ -1,5 +1,11 @@
 import { StockDataPoint, RegressionResult, PredictionPoint, FitPoint } from "./types";
 
+export const SHORT_TERM_PROJECTION_LOOKBACK_DAYS = 84;
+
+export function getShortTermProjectionWindow(data: StockDataPoint[]): StockDataPoint[] {
+  return data.slice(-SHORT_TERM_PROJECTION_LOOKBACK_DAYS);
+}
+
 /**
  * Risk context from VIX and geopolitical tension.
  * Used to discount predictions during high-fear regimes.

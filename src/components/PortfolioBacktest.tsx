@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { X, History, Loader2 } from "lucide-react";
 import { getStockDataFromDB, fetchAndStoreStockData } from "@/lib/stock-data";
-import { computeLinearRegression } from "@/lib/regression";
+import { computeLinearRegression, getShortTermProjectionWindow, SHORT_TERM_PROJECTION_LOOKBACK_DAYS } from "@/lib/regression";
 import type { StockDataPoint } from "@/lib/types";
 
 interface Holding {
@@ -61,7 +61,7 @@ export function PortfolioBacktest({
       .map((h, i) => {
         const data = queries[i].data;
         if (!data || data.length < 30) return null;
-        const historical = sliceUpTo(data, date);
+        const historical = getShortTermProjectionWindow(sliceUpTo(data, date));
         if (historical.length < 30) return null;
         const asOfPrice = historical[historical.length - 1].close;
         const actualPrice = data[data.length - 1].close;
@@ -138,7 +138,7 @@ export function PortfolioBacktest({
               />
             </div>
             <p className="text-xs text-muted-foreground max-w-md">
-              Runs the same Enhanced-V2 regression on price history up to <span className="font-mono">{dateLabel}</span> and compares the 30-day forecast to today's actual price.
+              Runs the same Enhanced-V2 regression using the most recent ~4 months of price history up to <span className="font-mono">{dateLabel}</span> and compares the 30-day forecast to today's actual price.
             </p>
           </div>
 
@@ -220,7 +220,7 @@ export function PortfolioBacktest({
               </div>
 
               <p className="text-[10px] text-muted-foreground">
-                Same Enhanced-V2 regression as the "30d Proj" column, applied to historical data available on the as-of date only. Error shows how much the model's forecast differed from what actually happened.
+                Same Enhanced-V2 regression as the "30d Proj" column, using the last {SHORT_TERM_PROJECTION_LOOKBACK_DAYS} trading sessions available on the as-of date. Error shows how much the model's forecast differed from what actually happened.
               </p>
             </>
           )}
