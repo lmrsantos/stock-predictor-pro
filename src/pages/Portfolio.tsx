@@ -197,7 +197,15 @@ function HoldingRow({
         )}
       </td>
       <td className="pl-4 pr-2 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
-      <td className={`pl-3 pr-4 py-3 text-right font-mono text-sm border-l border-border/40 ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+      <td className="px-2 py-3 text-center border-l border-border/40">
+        {intraday && intraday.points && intraday.points.length > 1 ? (
+          <MiniSparkline points={intraday.points} baseline={intraday.baseline} />
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        )}
+      </td>
+      <td className={`px-3 py-3 text-right font-mono text-sm ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+
         {intraday ? (
           <>
             {(intraday.change >= 0 ? "+" : "-")}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
