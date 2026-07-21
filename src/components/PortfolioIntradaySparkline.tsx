@@ -221,14 +221,14 @@ export function usePortfolioIntraday(holdings: Holding[]) {
         change: 0,
         changePct: 0,
         ready: false,
-        perHolding: {} as Record<string, { baseline: number; latest: number; change: number; changePct: number }>,
+        perHolding: {} as Record<string, { baseline: number; latest: number; change: number; changePct: number; points: number[] }>,
       };
     }
     const shareMap = new Map<string, number>();
     for (const h of holdings) shareMap.set(h.ticker.toUpperCase(), h.shares);
     let base = 0;
     let last = 0;
-    const perHolding: Record<string, { baseline: number; latest: number; change: number; changePct: number }> = {};
+    const perHolding: Record<string, { baseline: number; latest: number; change: number; changePct: number; points: number[] }> = {};
     for (const t of tickers) {
       const s = series[t];
       const prev = s?.prevClose ?? s?.points[0]?.c ?? 0;
@@ -238,7 +238,8 @@ export function usePortfolioIntraday(holdings: Holding[]) {
       const hLast = shares * lastC;
       const hChange = hLast - hBase;
       const hChangePct = hBase > 0 ? (hChange / hBase) * 100 : 0;
-      perHolding[t] = { baseline: hBase, latest: hLast, change: hChange, changePct: hChangePct };
+      const points = s?.points.map((p) => shares * p.c) ?? [];
+      perHolding[t] = { baseline: hBase, latest: hLast, change: hChange, changePct: hChangePct, points };
       base += hBase;
       last += hLast;
     }
@@ -246,5 +247,63 @@ export function usePortfolioIntraday(holdings: Holding[]) {
     const changePct = base > 0 ? (change / base) * 100 : 0;
     return { baseline: base, latest: last, change, changePct, ready: true, perHolding };
   }, [series, holdings, tickers]);
+}
+
+/**
+ * Tiny inline sparkline for a single holding row. Takes raw value points
+ * (already multiplied by shares) and a baseline (day-open value).
+ */
+export function MiniSparkline({
+  points,
+  baseline,
+  width = 60,
+  height = 20,
+}: {
+  points: number[];
+  baseline: number;
+  width?: number;
+  height?: number;
+}) {
+  if (!points || points.length < 2) {
+    return <span className="text-muted-foreground text-xs">—</span>;
+  }
+  const last = points[points.length - 1];
+  const positive = last >= baseline;
+  const min = Math.min(...points, baseline);
+  const max = Math.max(...points, baseline);
+  const range = max - min || 1;
+  const stepX = width / (points.length - 1);
+  const path = points
+    .map((v, i) => {
+      const x = i * stepX;
+      const y = height - ((v - min) / range) * height;
+      return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  const baselineY = height - ((baseline - min) / range) * height;
+  const stroke = positive
+    ? "hsl(var(--price-positive, 142 71% 45%))"
+    : "hsl(var(--price-negative, 0 84% 60%))";
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className="overflow-visible inline-block"
+      aria-label="Intraday value"
+    >
+      <line
+        x1={0}
+        x2={width}
+        y1={baselineY}
+        y2={baselineY}
+        stroke="hsl(var(--muted-foreground))"
+        strokeDasharray="2 3"
+        strokeWidth={0.5}
+        opacity={0.5}
+      />
+      <path d={path} fill="none" stroke={stroke} strokeWidth={1.25} />
+    </svg>
+  );
 }
 
