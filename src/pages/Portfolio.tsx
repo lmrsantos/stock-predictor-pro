@@ -540,9 +540,9 @@ export default function Portfolio() {
                         </>
                       )}
                     </td>
-                    <td className="pl-3 pr-4 py-2 text-right border-l border-border/40">
+                    <td className="px-2 py-2 text-center border-l border-border/40">
                       {intraday.ready ? (
-                        <div className="flex justify-end">
+                        <div className="flex justify-center">
                           <PortfolioIntradaySparkline
                             holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
                             currentValue={totals.currentValue}
@@ -551,6 +551,18 @@ export default function Portfolio() {
                             compact
                           />
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className={`px-3 py-3 text-right text-sm ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                      {intraday.ready ? (
+                        <>
+                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          <div className="text-[10px]">
+                            {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
+                          </div>
+                        </>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
