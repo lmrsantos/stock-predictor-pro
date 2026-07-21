@@ -8,7 +8,7 @@ import { computeLinearRegression } from "@/lib/regression";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { PortfolioIntradaySparkline, usePortfolioIntraday } from "@/components/PortfolioIntradaySparkline";
+import { PortfolioIntradaySparkline, usePortfolioIntraday, MiniSparkline } from "@/components/PortfolioIntradaySparkline";
 
 interface Holding {
   id: string;
@@ -64,7 +64,7 @@ function HoldingRow({
   onDelete: (id: string) => void;
   onUpdate: (id: string, shares: number, avgCost: number, purchaseDate: string | null) => void;
   onProjection: (id: string, p: HoldingProjection | null) => void;
-  intraday?: { baseline: number; latest: number; change: number; changePct: number };
+  intraday?: { baseline: number; latest: number; change: number; changePct: number; points: number[] };
 }) {
   const [editing, setEditing] = useState(false);
   const [editShares, setEditShares] = useState(String(holding.shares));
@@ -148,7 +148,7 @@ function HoldingRow({
     return (
       <tr className="border-b border-border/50">
         <td className="px-4 py-3 font-mono font-bold text-primary">{holding.ticker}</td>
-        <td colSpan={10} className="px-4 py-3 text-muted-foreground text-sm">
+        <td colSpan={11} className="px-4 py-3 text-muted-foreground text-sm">
           <Loader2 className="w-3 h-3 animate-spin inline mr-2" />Loading…
         </td>
       </tr>
@@ -197,7 +197,15 @@ function HoldingRow({
         )}
       </td>
       <td className="pl-4 pr-2 py-3 text-right font-mono text-sm">${p.currentPrice.toFixed(2)}</td>
-      <td className={`pl-3 pr-4 py-3 text-right font-mono text-sm border-l border-border/40 ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+      <td className="px-2 py-3 text-center border-l border-border/40">
+        {intraday && intraday.points && intraday.points.length > 1 ? (
+          <MiniSparkline points={intraday.points} baseline={intraday.baseline} />
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        )}
+      </td>
+      <td className={`px-3 py-3 text-right font-mono text-sm ${(intraday?.change ?? 0) >= 0 ? "price-positive" : "price-negative"}`}>
+
         {intraday ? (
           <>
             {(intraday.change >= 0 ? "+" : "-")}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -489,7 +497,8 @@ export default function Portfolio() {
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Avg Cost</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Purchased / Held</th>
                   <th className="text-right pl-4 pr-2 py-3 font-bold uppercase tracking-widest text-[10px]">Current</th>
-                  <th className="text-right pl-3 pr-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">Intraday G/L</th>
+                  <th className="text-center px-2 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">Intraday</th>
+                  <th className="text-right px-3 py-3 font-bold uppercase tracking-widest text-[10px]">Intraday G/L</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Value</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Gain/Loss</th>
                   <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px] border-l border-border/40">30d Proj</th>
@@ -531,9 +540,9 @@ export default function Portfolio() {
                         </>
                       )}
                     </td>
-                    <td className="pl-3 pr-4 py-2 text-right border-l border-border/40">
+                    <td className="px-2 py-2 text-center border-l border-border/40">
                       {intraday.ready ? (
-                        <div className="flex justify-end">
+                        <div className="flex justify-center">
                           <PortfolioIntradaySparkline
                             holdings={holdings.map((h) => ({ ticker: h.ticker, shares: h.shares }))}
                             currentValue={totals.currentValue}
@@ -542,6 +551,18 @@ export default function Portfolio() {
                             compact
                           />
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className={`px-3 py-3 text-right text-sm ${intraday.change >= 0 ? "price-positive" : "price-negative"}`}>
+                      {intraday.ready ? (
+                        <>
+                          {intraday.change >= 0 ? "+" : "-"}${Math.abs(intraday.change).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          <div className="text-[10px]">
+                            {intraday.change >= 0 ? "+" : ""}{intraday.changePct.toFixed(2)}%
+                          </div>
+                        </>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
