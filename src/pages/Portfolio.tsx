@@ -9,6 +9,8 @@ import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PortfolioIntradaySparkline, usePortfolioIntraday, MiniSparkline } from "@/components/PortfolioIntradaySparkline";
+import { PortfolioBacktest } from "@/components/PortfolioBacktest";
+import { History } from "lucide-react";
 
 interface Holding {
   id: string;
