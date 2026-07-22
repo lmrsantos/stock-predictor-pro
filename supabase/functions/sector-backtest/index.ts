@@ -14,21 +14,69 @@ const corsHeaders = {
 };
 
 // Curated sector universes (large-cap, liquid US-listed).
+// Mirror of src/lib/sector-universes.ts — keep in sync.
 const CURATED_UNIVERSES: Record<string, string[]> = {
-  "Semiconductors":      ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU","ASML","MRVL","NXPI","ADI","TXN","ON","MCHP","SWKS","QRVO","MPWR","ARM","SMCI","WOLF","STM","TER","ENTG","ALAB","CRDO","SITM","RMBS"],
-  "Solar & Clean Energy":["ENPH","FSLR","SEDG","RUN","NOVA","ARRY","SHLS","CSIQ","JKS","PLUG","BE","BLDP","FCEL"],
-  "Software":            ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY","TEAM","DDOG","CRWD","SNOW","NET","ZS","MDB","HUBS","DOCU","OKTA","ZM","SHOP"],
-  "Mega-cap Tech":       ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
-  "Banks":               ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW","COF","BK","STT","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
-  "Biotech & Pharma":    ["LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD","VRTX","REGN","MRNA","BIIB","ISRG","ZTS","CVS","UNH"],
-  "Energy":              ["XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","PXD","HES","DVN","FANG","HAL","BKR","KMI","WMB","OKE"],
-  "Consumer Staples":    ["WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","K","HSY","SYY","CHD","CLX","MNST","STZ","TGT","KR"],
-  "Consumer Discretionary": ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG","ABNB","ORLY","AZO","DPZ","YUM","MAR","DRI","RCL","CCL"],
-  "Industrials & Defense": ["CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD","ETN","EMR","ITW","PH","CSX","NSC","FDX","UPS","WM"],
-  "Utilities":           ["NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC","ED","ETR","ES","AWK","PCG","CEG","VST"],
-  "Real Estate":         ["AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC","SPG","AVB","EQR","ARE","EXR","VTR","WY"],
+  // Technology
+  "Mega-cap Tech":               ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
+  "Semiconductors":              ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU","ASML","MRVL","NXPI","ADI","TXN","ON","MCHP","SWKS","QRVO","MPWR","ARM","SMCI","WOLF","STM","TER","ENTG","ALAB","CRDO","SITM","RMBS"],
+  "Semis: AI & GPU":             ["NVDA","AMD","AVGO","ARM","SMCI","MRVL","ALAB","CRDO"],
+  "Semis: Foundry & Equipment":  ["TSM","ASML","AMAT","LRCX","KLAC","TER","ENTG","KLIC"],
+  "Semis: Memory":               ["MU","WDC","STX"],
+  "Semis: Analog":               ["ADI","TXN","ON","MCHP","NXPI","MPWR","SWKS","QRVO","SITM","RMBS"],
+  "Software":                    ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY","TEAM","DDOG","CRWD","SNOW","NET","ZS","MDB","HUBS","DOCU","OKTA","ZM","SHOP"],
+  "Software: Cybersecurity":     ["PANW","CRWD","ZS","OKTA","NET","FTNT","S","CYBR","QLYS","RBRK"],
+  "Software: Data & AI":         ["SNOW","DDOG","MDB","PLTR","AI","PATH","ESTC","CFLT","GTLB"],
+  "Software: Cloud Infra":       ["MSFT","ORCL","NOW","WDAY","ADBE","CRM","INTU","HUBS"],
+
+  // Financials
+  "Banks":                       ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW","COF","BK","STT","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
+  "Money Center Banks":          ["JPM","BAC","WFC","C","GS","MS"],
+  "Regional Banks":              ["USB","PNC","TFC","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
+
+  // Healthcare
+  "Biotech & Pharma":            ["LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD","VRTX","REGN","MRNA","BIIB","ISRG","ZTS","CVS","UNH"],
+  "Pharma: Big Pharma":          ["LLY","JNJ","ABBV","MRK","PFE","BMY","NVS","AZN","GSK","NVO"],
+  "Biotech":                     ["VRTX","REGN","MRNA","BIIB","GILD","AMGN","BMRN","BEAM","CRSP","NTLA","ARWR","ALNY"],
+  "Medical Devices":             ["ISRG","ABT","MDT","SYK","BSX","EW","ZBH","DXCM","IDXX","BAX"],
+
+  // Energy
+  "Energy":                      ["XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","PXD","HES","DVN","FANG","HAL","BKR","KMI","WMB","OKE"],
+  "Energy: Integrated Majors":   ["XOM","CVX","BP","SHEL","TTE","COP","EQNR"],
+  "Energy: E&P":                 ["EOG","OXY","HES","DVN","FANG","MRO","APA","CTRA","PR"],
+  "Energy: Oilfield Services":   ["SLB","HAL","BKR","NOV","FTI","WFRD","LBRT"],
+  "Energy: Midstream":           ["KMI","WMB","OKE","ET","EPD","MPLX","TRGP","LNG"],
+
+  // Consumer
+  "Consumer Staples":            ["WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","K","HSY","SYY","CHD","CLX","MNST","STZ","TGT","KR"],
+  "Consumer Discretionary":      ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG","ABNB","ORLY","AZO","DPZ","YUM","MAR","DRI","RCL","CCL"],
+  "Retail":                      ["WMT","COST","TGT","TJX","HD","LOW","ORLY","AZO","DG","DLTR","ROST","BBY","ULTA"],
+  "Restaurants":                 ["MCD","SBUX","CMG","YUM","DPZ","DRI","QSR","WING","TXRH","SG"],
+  "Travel & Leisure":            ["BKNG","MAR","ABNB","RCL","CCL","NCLH","HLT","EXPE","H","VAC","LYV"],
+  "Autos & EVs":                 ["TSLA","GM","F","RIVN","LCID","NIO","LI","XPEV","TM","HMC","STLA","BYDDY"],
+
+  // Industrials
+  "Industrials & Defense":       ["CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD","ETN","EMR","ITW","PH","CSX","NSC","FDX","UPS","WM"],
+  "Defense":                     ["LMT","RTX","NOC","GD","BA","HII","LDOS","LHX","KTOS","AVAV"],
+  "Aerospace & Space":           ["LMT","RTX","NOC","GD","BA","HEI","TDG","RKLB","ASTS","LUNR","SPCE","PL"],
+  "Space":                       ["RKLB","ASTS","LUNR","SPCE","PL","IRDM","MAXR","BKSY"],
+
+  // Utilities & REITs
+  "Utilities":                   ["NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC","ED","ETR","ES","AWK","PCG","CEG","VST"],
+  "Real Estate":                 ["AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC","SPG","AVB","EQR","ARE","EXR","VTR","WY"],
+  "Data Center REITs":           ["EQIX","DLR","AMT","CCI","SBAC","IRM"],
+  "Residential REITs":           ["AVB","EQR","ESS","MAA","INVH","UDR","CPT","AMH"],
+
+  // Materials (NEW)
+  "Materials":                       ["LIN","APD","SHW","ECL","FCX","NEM","NUE","DOW","DD","PPG","VMC","MLM","CTVA","IFF","ALB","MOS","CF","STLD","X","AA"],
+  "Rare Earth & Critical Minerals":  ["MP","USAR","TMC","UUUU","IPX","TROX","REEMF","LYSDY"],
+  "Nickel & Battery Metals":         ["VALE","BHP","RIO","GLNCY","NILSY","SBSW","TMC","MP"],
+  "Lithium":                         ["ALB","SQM","LTHM","PLL","LAC","SGML","LITM","IONR"],
+  "Gold & Precious Metals":          ["NEM","GOLD","AEM","KGC","WPM","FNV","PAAS","AG","HL","RGLD","AU"],
+  "Copper":                          ["FCX","SCCO","TECK","HBM","ERO","TRQ","IVN","LUN"],
+  "Steel":                           ["NUE","STLD","X","CLF","RS","MT","TX","CMC"],
+
+  // Emerging
   "Quantum Computing":   ["IONQ","RGTI","QBTS","QUBT","ARQQ"],
-  "Aerospace & Space":   ["LMT","RTX","NOC","GD","BA","HEI","TDG","RKLB","ASTS","LUNR","SPCE","PL"],
 };
 
 // Yahoo screener sector IDs (Yahoo's `sector` field on equity screener).
