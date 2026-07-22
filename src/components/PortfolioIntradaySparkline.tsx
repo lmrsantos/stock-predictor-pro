@@ -291,23 +291,42 @@ export function MiniSparkline({
   if (!points || points.length < 2) {
     return <span className="text-muted-foreground text-xs">—</span>;
   }
-  const last = points[points.length - 1];
-  const positive = last >= baseline;
   const min = Math.min(...points, baseline);
   const max = Math.max(...points, baseline);
   const range = max - min || 1;
   const stepX = width / (points.length - 1);
-  const path = points
-    .map((v, i) => {
-      const x = i * stepX;
-      const y = height - ((v - min) / range) * height;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
-  const baselineY = height - ((baseline - min) / range) * height;
-  const stroke = positive
-    ? "hsl(var(--price-positive, 142 71% 45%))"
-    : "hsl(var(--price-negative, 0 84% 60%))";
+
+  const yFor = (v: number) => height - ((v - min) / range) * height;
+  const xFor = (i: number) => i * stepX;
+  const intercept = (v0: number, v1: number, i0: number) => {
+    const t = (baseline - v0) / (v1 - v0);
+    return { x: xFor(i0 + t), y: yFor(baseline) };
+  };
+
+  const segments: { d: string; positive: boolean }[] = [];
+  let currentD = `M${xFor(0).toFixed(2)},${yFor(points[0]).toFixed(2)}`;
+  let currentPositive = points[0] >= baseline;
+  for (let i = 1; i < points.length; i++) {
+    const v = points[i];
+    const p = v >= baseline;
+    const x = xFor(i);
+    const y = yFor(v);
+    if (p === currentPositive) {
+      currentD += ` L${x.toFixed(2)},${y.toFixed(2)}`;
+    } else {
+      const cross = intercept(points[i - 1], v, i - 1);
+      currentD += ` L${cross.x.toFixed(2)},${cross.y.toFixed(2)}`;
+      segments.push({ d: currentD, positive: currentPositive });
+      currentD = `M${cross.x.toFixed(2)},${cross.y.toFixed(2)} L${x.toFixed(2)},${y.toFixed(2)}`;
+      currentPositive = p;
+    }
+  }
+  if (currentD) segments.push({ d: currentD, positive: currentPositive });
+
+  const baselineY = yFor(baseline);
+  const positiveStroke = "hsl(var(--price-positive, 142 71% 45%))";
+  const negativeStroke = "hsl(var(--price-negative, 0 84% 60%))";
+
   return (
     <svg
       width={width}
@@ -326,7 +345,15 @@ export function MiniSparkline({
         strokeWidth={0.5}
         opacity={0.5}
       />
-      <path d={path} fill="none" stroke={stroke} strokeWidth={1.25} />
+      {segments.map((seg, idx) => (
+        <path
+          key={idx}
+          d={seg.d}
+          fill="none"
+          stroke={seg.positive ? positiveStroke : negativeStroke}
+          strokeWidth={1.25}
+        />
+      ))}
     </svg>
   );
 }
