@@ -265,14 +265,20 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
 
         {mode === "single" ? (
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Sector</label>
+            <label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Sector / Subsector</label>
             <select
               value={sector}
               onChange={e => setSector(e.target.value)}
               disabled={running}
               className="bg-card border border-border rounded px-2 py-1.5 text-xs font-mono text-foreground"
             >
-              {sectorOptions.map(s => <option key={s} value={s}>{s}</option>)}
+              {source === "yahoo"
+                ? sectorOptions.map(s => <option key={s} value={s}>{s}</option>)
+                : SECTOR_GROUPS.map(g => (
+                    <optgroup key={g.group} label={g.group}>
+                      {g.sectors.map(s => <option key={s} value={s}>{s}</option>)}
+                    </optgroup>
+                  ))}
             </select>
           </div>
         ) : (
@@ -280,24 +286,34 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
             <label className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Sectors ({selectedSectors.length} selected)
             </label>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-auto p-1.5 bg-card border border-border rounded">
-              {sectorOptions.map(s => {
-                const on = selectedSectors.includes(s);
-                return (
-                  <button
-                    key={s}
-                    disabled={running}
-                    onClick={() => toggleSectorPick(s)}
-                    className={`text-[10px] font-mono px-2 py-1 rounded border ${
-                      on
-                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
-                        : "bg-background border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-2 max-h-56 overflow-auto p-2 bg-card border border-border rounded">
+              {(source === "yahoo"
+                ? [{ group: "Yahoo screener", sectors: [...YAHOO_SECTORS] as string[] }]
+                : SECTOR_GROUPS.map(g => ({ group: g.group, sectors: [...g.sectors] as string[] }))
+              ).map(g => (
+                <div key={g.group}>
+                  <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground/70 mb-1">{g.group}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.sectors.map(s => {
+                      const on = selectedSectors.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          disabled={running}
+                          onClick={() => toggleSectorPick(s)}
+                          className={`text-[10px] font-mono px-2 py-1 rounded border ${
+                            on
+                              ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                              : "bg-background border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
