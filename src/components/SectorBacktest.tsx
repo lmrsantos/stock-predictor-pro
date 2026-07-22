@@ -5,6 +5,7 @@ import {
   CURATED_SECTORS, YAHOO_SECTORS,
   runSectorBacktest, SectorBacktestRow,
 } from "@/lib/sector-backtest";
+import { SECTOR_GROUPS } from "@/lib/sector-universes";
 import { InfoTooltip } from "./InfoTooltip";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
