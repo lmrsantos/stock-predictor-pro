@@ -113,29 +113,47 @@ export function PortfolioIntradaySparkline({
   const changePct = baseline > 0 ? (change / baseline) * 100 : 0;
   const positive = change >= 0;
 
-  // Build SVG path.
-  const path = useMemo(() => {
-    if (points.length < 2) return "";
+  // Build per-segment colored paths: green above baseline, red below.
+  const { segments, baselineY } = useMemo(() => {
+    if (points.length < 2) return { segments: [] as { d: string; positive: boolean }[], baselineY: null as number | null };
     const min = Math.min(...points, baseline);
     const max = Math.max(...points, baseline);
     const range = max - min || 1;
     const stepX = width / (points.length - 1);
-    return points
-      .map((v, i) => {
-        const x = i * stepX;
-        const y = height - ((v - min) / range) * height;
-        return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-      })
-      .join(" ");
-  }, [points, baseline, width, height]);
 
-  const baselineY = useMemo(() => {
-    if (!points.length) return null;
-    const min = Math.min(...points, baseline);
-    const max = Math.max(...points, baseline);
-    const range = max - min || 1;
-    return height - ((baseline - min) / range) * height;
-  }, [points, baseline, height]);
+    const yFor = (v: number) => height - ((v - min) / range) * height;
+    const xFor = (i: number) => i * stepX;
+    const intercept = (v0: number, v1: number, i0: number) => {
+      const t = (baseline - v0) / (v1 - v0);
+      return { x: xFor(i0 + t), y: yFor(baseline) };
+    };
+
+    const result: { d: string; positive: boolean }[] = [];
+    let currentD = "";
+    let currentPositive = points[0] >= baseline;
+    let prevX = xFor(0);
+    let prevY = yFor(points[0]);
+    currentD = `M${prevX.toFixed(2)},${prevY.toFixed(2)}`;
+
+    for (let i = 1; i < points.length; i++) {
+      const v = points[i];
+      const p = v >= baseline;
+      const x = xFor(i);
+      const y = yFor(v);
+      if (p === currentPositive) {
+        currentD += ` L${x.toFixed(2)},${y.toFixed(2)}`;
+      } else {
+        const cross = intercept(points[i - 1], v, i - 1);
+        currentD += ` L${cross.x.toFixed(2)},${cross.y.toFixed(2)}`;
+        result.push({ d: currentD, positive: currentPositive });
+        currentD = `M${cross.x.toFixed(2)},${cross.y.toFixed(2)} L${x.toFixed(2)},${y.toFixed(2)}`;
+        currentPositive = p;
+      }
+    }
+    if (currentD) result.push({ d: currentD, positive: currentPositive });
+
+    return { segments: result, baselineY: yFor(baseline) };
+  }, [points, baseline, width, height]);
 
   if (loading && !series) {
     return (
@@ -145,8 +163,6 @@ export function PortfolioIntradaySparkline({
     );
   }
   if (!points.length) return null;
-
-  const stroke = positive ? "hsl(var(--price-positive, 142 71% 45%))" : "hsl(var(--price-negative, 0 84% 60%))";
 
   return (
     <div className="flex items-center gap-3">
@@ -179,7 +195,15 @@ export function PortfolioIntradaySparkline({
             opacity={0.5}
           />
         )}
-        <path d={path} fill="none" stroke={stroke} strokeWidth={1.5} />
+        {segments.map((seg, idx) => (
+          <path
+            key={idx}
+            d={seg.d}
+            fill="none"
+            stroke={seg.positive ? "hsl(var(--price-positive, 142 71% 45%))" : "hsl(var(--price-negative, 0 84% 60%))"}
+            strokeWidth={1.5}
+          />
+        ))}
       </svg>
     </div>
   );
@@ -267,23 +291,42 @@ export function MiniSparkline({
   if (!points || points.length < 2) {
     return <span className="text-muted-foreground text-xs">—</span>;
   }
-  const last = points[points.length - 1];
-  const positive = last >= baseline;
   const min = Math.min(...points, baseline);
   const max = Math.max(...points, baseline);
   const range = max - min || 1;
   const stepX = width / (points.length - 1);
-  const path = points
-    .map((v, i) => {
-      const x = i * stepX;
-      const y = height - ((v - min) / range) * height;
-      return `${i === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    })
-    .join(" ");
-  const baselineY = height - ((baseline - min) / range) * height;
-  const stroke = positive
-    ? "hsl(var(--price-positive, 142 71% 45%))"
-    : "hsl(var(--price-negative, 0 84% 60%))";
+
+  const yFor = (v: number) => height - ((v - min) / range) * height;
+  const xFor = (i: number) => i * stepX;
+  const intercept = (v0: number, v1: number, i0: number) => {
+    const t = (baseline - v0) / (v1 - v0);
+    return { x: xFor(i0 + t), y: yFor(baseline) };
+  };
+
+  const segments: { d: string; positive: boolean }[] = [];
+  let currentD = `M${xFor(0).toFixed(2)},${yFor(points[0]).toFixed(2)}`;
+  let currentPositive = points[0] >= baseline;
+  for (let i = 1; i < points.length; i++) {
+    const v = points[i];
+    const p = v >= baseline;
+    const x = xFor(i);
+    const y = yFor(v);
+    if (p === currentPositive) {
+      currentD += ` L${x.toFixed(2)},${y.toFixed(2)}`;
+    } else {
+      const cross = intercept(points[i - 1], v, i - 1);
+      currentD += ` L${cross.x.toFixed(2)},${cross.y.toFixed(2)}`;
+      segments.push({ d: currentD, positive: currentPositive });
+      currentD = `M${cross.x.toFixed(2)},${cross.y.toFixed(2)} L${x.toFixed(2)},${y.toFixed(2)}`;
+      currentPositive = p;
+    }
+  }
+  if (currentD) segments.push({ d: currentD, positive: currentPositive });
+
+  const baselineY = yFor(baseline);
+  const positiveStroke = "hsl(var(--price-positive, 142 71% 45%))";
+  const negativeStroke = "hsl(var(--price-negative, 0 84% 60%))";
+
   return (
     <svg
       width={width}
@@ -302,7 +345,15 @@ export function MiniSparkline({
         strokeWidth={0.5}
         opacity={0.5}
       />
-      <path d={path} fill="none" stroke={stroke} strokeWidth={1.25} />
+      {segments.map((seg, idx) => (
+        <path
+          key={idx}
+          d={seg.d}
+          fill="none"
+          stroke={seg.positive ? positiveStroke : negativeStroke}
+          strokeWidth={1.25}
+        />
+      ))}
     </svg>
   );
 }
