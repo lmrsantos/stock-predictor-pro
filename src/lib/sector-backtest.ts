@@ -39,21 +39,10 @@ export interface SectorBacktestProgress {
   currentTicker: string;
 }
 
-export const CURATED_SECTORS = [
-  "Semiconductors",
-  "Software",
-  "Mega-cap Tech",
-  "Banks",
-  "Biotech & Pharma",
-  "Energy",
-  "Consumer Staples",
-  "Consumer Discretionary",
-  "Industrials & Defense",
-  "Utilities",
-  "Real Estate",
-  "Quantum Computing",
-  "Aerospace & Space",
-] as const;
+import { SECTOR_NAMES } from "@/lib/sector-universes";
+
+// All curated sectors + subsectors, sourced from the single map in sector-universes.
+export const CURATED_SECTORS = SECTOR_NAMES;
 
 export const YAHOO_SECTORS = [
   "Semiconductors",

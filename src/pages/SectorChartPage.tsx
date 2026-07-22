@@ -5,7 +5,7 @@ import { useQuery, useQueries } from "@tanstack/react-query";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, Legend, ReferenceLine,
 } from "recharts";
-import { CURATED_SECTOR_UNIVERSES, SECTOR_NAMES, type SectorName } from "@/lib/sector-universes";
+import { CURATED_SECTOR_UNIVERSES, SECTOR_NAMES, SECTOR_GROUPS, type SectorName } from "@/lib/sector-universes";
 import { SECTOR_ETF_PROXY } from "@/lib/sector-etf-mapping";
 import { buildSectorComposite } from "@/lib/sector-composite";
 import { computeLinearRegression } from "@/lib/regression";
@@ -63,14 +63,18 @@ export default function SectorChartPage() {
         <div className="flex flex-wrap items-center gap-3">
           {mode === "single" ? (
             <div className="flex items-center gap-2">
-              <label className="text-xs uppercase tracking-widest text-muted-foreground">Sector</label>
+              <label className="text-xs uppercase tracking-widest text-muted-foreground">Sector / Subsector</label>
               <select
                 value={sector}
                 onChange={(e) => setSector(e.target.value as SectorName)}
                 className="bg-secondary text-foreground text-sm rounded-md px-3 py-1.5 border border-border focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {SECTOR_NAMES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {SECTOR_GROUPS.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.sectors.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
@@ -79,25 +83,32 @@ export default function SectorChartPage() {
               <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
                 Sectors ({selected.length} selected)
               </div>
-              <div className="flex flex-wrap gap-2">
-                {SECTOR_NAMES.map((s) => {
-                  const active = selected.includes(s);
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => setSelected(prev =>
-                        prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
-                      )}
-                      className={`px-2.5 py-1 text-xs rounded border transition-colors ${
-                        active
-                          ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
-                          : "border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  );
-                })}
+              <div className="flex flex-col gap-2 max-h-64 overflow-auto p-2 border border-border rounded">
+                {SECTOR_GROUPS.map((g) => (
+                  <div key={g.group}>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground/70 mb-1">{g.group}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {g.sectors.map((s) => {
+                        const active = selected.includes(s);
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => setSelected(prev =>
+                              prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+                            )}
+                            className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                              active
+                                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                                : "border-border text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
