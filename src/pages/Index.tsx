@@ -56,6 +56,10 @@ const Index = () => {
       setTicker(up);
       setSearchInput(up);
     }
+    const open = searchParams.get("open");
+    if (open === "hot_stocks") setHotStocksOpen(true);
+    else if (open === "sentiment") setSentimentOpen(true);
+    else if (open === "backtest") setShowBacktest(true);
   }, [searchParams]);
 
   useEffect(() => {

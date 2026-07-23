@@ -20,6 +20,7 @@ import Privacy from "./pages/Privacy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import { DisclaimerBar } from "@/components/DisclaimerBar";
 import { LinkageAutoRunner } from "@/components/LinkageAutoRunner";
+import { GlobalQuantAgent } from "@/components/GlobalQuantAgent";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <GlobalQuantAgent />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
