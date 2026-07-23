@@ -20,6 +20,7 @@ import Privacy from "./pages/Privacy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import { DisclaimerBar } from "@/components/DisclaimerBar";
 import { LinkageAutoRunner } from "@/components/LinkageAutoRunner";
+import { GlobalQuantAgent } from "@/components/GlobalQuantAgent";
 
 const queryClient = new QueryClient();
 
