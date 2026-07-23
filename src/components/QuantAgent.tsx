@@ -388,16 +388,22 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
         return;
       }
 
+      const rawReply = data.response || "Analysis complete.";
+      const { text: cleanReply, actions } = parseActions(rawReply);
       setMessages(prev => [
         ...prev.filter(m => !m.thinking),
         {
           id: `agent-${Date.now()}`,
           role: "agent",
-          content: data.response || "Analysis complete.",
+          content: cleanReply || "Done.",
           timestamp: new Date(),
           streaming: false,
         },
       ]);
+      if (actions.length && onAction) {
+        // Execute after brief delay so user sees the confirmation text first
+        setTimeout(() => actions.forEach(a => onAction(a)), 400);
+      }
 
     } catch (e) {
       setMessages(prev => [
