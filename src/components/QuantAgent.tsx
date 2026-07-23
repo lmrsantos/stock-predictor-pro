@@ -48,8 +48,30 @@ interface Message {
   streaming?: boolean;
 }
 
+export type QuantAgentAction =
+  | { kind: "switch_ticker"; symbol: string }
+  | { kind: "navigate"; path: string }
+  | { kind: "open"; target: "hot_stocks" | "sentiment" | "backtest" };
+
 interface QuantAgentProps {
   context: AgentContext;
+  onAction?: (action: QuantAgentAction) => void;
+}
+
+// Parse [[ACTION:...]] tags from a reply. Returns cleaned text + actions.
+function parseActions(raw: string): { text: string; actions: QuantAgentAction[] } {
+  const actions: QuantAgentAction[] = [];
+  const cleaned = raw.replace(/\[\[ACTION:([a-z_]+):([^\]]+)\]\]/gi, (_m, kind: string, arg: string) => {
+    const k = kind.toLowerCase();
+    const v = arg.trim();
+    if (k === "switch_ticker") actions.push({ kind: "switch_ticker", symbol: v.toUpperCase() });
+    else if (k === "navigate") actions.push({ kind: "navigate", path: v.startsWith("/") ? v : `/${v}` });
+    else if (k === "open" && (v === "hot_stocks" || v === "sentiment" || v === "backtest")) {
+      actions.push({ kind: "open", target: v });
+    }
+    return "";
+  }).trim();
+  return { text: cleaned, actions };
 }
 
 const QUICK_ACTIONS = [
@@ -236,7 +258,7 @@ function MessageBubble({ msg }: { msg: Message }) {
   );
 }
 
-export function QuantAgent({ context }: QuantAgentProps) {
+export function QuantAgent({ context, onAction }: QuantAgentProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
