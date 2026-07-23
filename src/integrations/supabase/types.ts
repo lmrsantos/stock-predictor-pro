@@ -68,6 +68,57 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_linkage_analyses: {
+        Row: {
+          channel: string | null
+          coefficient: number | null
+          follower: string
+          id: string
+          is_private: boolean
+          lag_days: number | null
+          leader: string
+          p_adjusted: number | null
+          p_value: number | null
+          purchase_type: string | null
+          r_squared_delta: number | null
+          ran_at: string
+          user_id: string
+          validated: boolean | null
+        }
+        Insert: {
+          channel?: string | null
+          coefficient?: number | null
+          follower: string
+          id?: string
+          is_private?: boolean
+          lag_days?: number | null
+          leader: string
+          p_adjusted?: number | null
+          p_value?: number | null
+          purchase_type?: string | null
+          r_squared_delta?: number | null
+          ran_at?: string
+          user_id: string
+          validated?: boolean | null
+        }
+        Update: {
+          channel?: string | null
+          coefficient?: number | null
+          follower?: string
+          id?: string
+          is_private?: boolean
+          lag_days?: number | null
+          leader?: string
+          p_adjusted?: number | null
+          p_value?: number | null
+          purchase_type?: string | null
+          r_squared_delta?: number | null
+          ran_at?: string
+          user_id?: string
+          validated?: boolean | null
+        }
+        Relationships: []
+      }
       geopolitical_sentiment: {
         Row: {
           created_at: string
