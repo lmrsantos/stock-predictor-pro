@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 
 import { QuantAgent } from "@/components/QuantAgent";
+import { QuantAgentGate } from "@/components/QuantAgentGate";
+import { PlanBadge } from "@/components/PlanBadge";
 import { BacktestModal } from "@/components/BacktestModal";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
 import type { BacktestResult } from "@/lib/backtest";
@@ -317,17 +319,13 @@ const Index = () => {
             <Briefcase className="w-4 h-4" />
             My Portfolio
           </Link>
+          <PlanBadge />
           <Link
             to="/pricing"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity"
           >
             <Sparkles className="w-4 h-4" />
             Plans
-            {tier !== "free" && (
-              <span className="ml-1 text-[10px] uppercase px-1.5 py-0.5 rounded bg-white/20">
-                {tier}
-              </span>
-            )}
           </Link>
           {user ? (
             <Link
