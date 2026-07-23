@@ -263,7 +263,7 @@ export default function Landing() {
             <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-fuchsia-500/30 via-indigo-500/30 to-sky-500/20 blur-2xl" />
             <div className="relative rounded-2xl border border-white/10 overflow-hidden shadow-[0_30px_120px_-20px_rgba(139,92,246,0.5)]">
               <img
-                src="/src/assets/quantagent-hero.jpg"
+                src={quantAgentHero}
                 alt="QuantAgent — an AI quant analyst driving the QuantForecast terminal"
                 width={1280}
                 height={960}
