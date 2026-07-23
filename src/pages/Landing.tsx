@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import quantAgentHero from "@/assets/quantagent-hero.jpg";
 
 /**
  * QuantForecast marketing landing page.
@@ -251,7 +252,78 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── HOW IT WORKS ────────────────────────────────────── */}
+      {/* ─── QUANTAGENT SPOTLIGHT ────────────────────────────── */}
+      <section id="quantagent" className="py-32 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-10 -right-32 w-[520px] h-[520px] rounded-full bg-fuchsia-600/20 blur-3xl" />
+          <div className="absolute bottom-0 -left-32 w-[520px] h-[520px] rounded-full bg-indigo-600/25 blur-3xl" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="relative order-2 lg:order-1">
+            <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-fuchsia-500/30 via-indigo-500/30 to-sky-500/20 blur-2xl" />
+            <div className="relative rounded-2xl border border-white/10 overflow-hidden shadow-[0_30px_120px_-20px_rgba(139,92,246,0.5)]">
+              <img
+                src={quantAgentHero}
+                alt="QuantAgent — an AI quant analyst driving the QuantForecast terminal"
+                width={1280}
+                height={960}
+                loading="lazy"
+                className="w-full h-auto"
+              />
+            </div>
+          </div>
+
+          <div className="order-1 lg:order-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 text-xs text-fuchsia-200 mb-6">
+              <Bot className="w-3 h-3" />
+              Meet QuantAgent
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight">
+              An AI quant that <span className="bg-gradient-to-r from-fuchsia-300 via-indigo-300 to-sky-300 bg-clip-text text-transparent">drives the terminal</span> for you.
+            </h2>
+            <p className="text-white/70 text-lg leading-relaxed mb-8">
+              Talk to QuantAgent like a senior desk analyst — it reads your regression,
+              backtest, macro regime, and linkage graph in context, and it can{" "}
+              <span className="text-white">actually navigate the platform</span> when
+              you ask. Say <em>"switch to NVDA"</em>, <em>"open Hot Stocks"</em>, or{" "}
+              <em>"take me to the Linkage Engine"</em> — and it just happens.
+            </p>
+            <ul className="space-y-3 mb-10">
+              {[
+                'Type "switch to TSLA" → the chart reloads instantly',
+                'Type "open the Linkage Engine" → the page opens',
+                "Grounded on your live model, fundamentals & macro context",
+                "Every reply cites the numbers — no vibes, no hallucinated tickers",
+              ].map((f) => (
+                <li key={f} className="flex items-start gap-3 text-white/80">
+                  <Check className="w-5 h-5 text-fuchsia-300 shrink-0 mt-0.5" /> {f}
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to={user ? "/terminal" : "/auth"}
+                className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-semibold text-[#07071a] bg-gradient-to-r from-fuchsia-300 via-indigo-200 to-sky-300 shadow-[0_0_40px_-5px_rgba(217,70,239,0.7)] hover:shadow-[0_0_60px_-5px_rgba(217,70,239,0.9)] transition-shadow"
+              >
+                <Sparkles className="w-4 h-4" />
+                Try QuantAgent free
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                to="/terminal"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/15 text-white/80 hover:bg-white/5 hover:text-white text-sm"
+              >
+                See it in the terminal →
+              </Link>
+            </div>
+            <p className="text-xs text-white/40 mt-4">
+              No card required. Educational analysis — not financial advice.
+            </p>
+          </div>
+        </div>
+      </section>
+
+
       <section id="how" className="py-32 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           <div className="max-w-2xl mb-16">
