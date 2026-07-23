@@ -75,11 +75,11 @@ function parseActions(raw: string): { text: string; actions: QuantAgentAction[] 
 }
 
 const QUICK_ACTIONS = [
-  "How has this stock historically behaved in similar conditions?",
-  "Search for latest news on this stock",
-  "What are the key risks?",
+  "Switch to NVDA",
+  "Take me to my portfolio",
+  "Open the Linkage Engine",
   "Explain the backtest result",
-  "What does the 3-month model projection show?",
+  "Show me Hot Stocks",
 ];
 
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -33,6 +33,7 @@ import { slopeToAnnualReturn } from "@/lib/regression";
 const Index = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { tier } = useSubscription();
   const initialTicker = (searchParams.get("ticker") || "^GSPC").toUpperCase();
   const [ticker, setTicker] = useState(initialTicker);
@@ -433,7 +434,22 @@ const Index = () => {
       </main>
       </div>
 
-      <QuantAgent context={chatContext} />
+      <QuantAgent
+        context={chatContext}
+        onAction={(a) => {
+          if (a.kind === "switch_ticker") {
+            setSearchInput(a.symbol);
+            setTicker(a.symbol);
+            setActiveView("chart");
+          } else if (a.kind === "navigate") {
+            navigate(a.path);
+          } else if (a.kind === "open") {
+            if (a.target === "hot_stocks") setHotStocksOpen(true);
+            else if (a.target === "sentiment") setSentimentOpen(true);
+            else if (a.target === "backtest") setShowBacktest(true);
+          }
+        }}
+      />
 
       <BacktestModal
         isOpen={showBacktest}
