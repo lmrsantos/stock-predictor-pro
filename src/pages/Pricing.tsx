@@ -150,7 +150,7 @@ export default function Pricing() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map((p) => {
-            const isCurrent = tier === p.id;
+            const isCurrent = tier === p.stripeTier;
             const price = cycle === "monthly" ? p.monthly : p.yearly;
             const priceId = cycle === "monthly" ? p.priceMonthlyId : p.priceYearlyId;
             return (
@@ -165,6 +165,7 @@ export default function Pricing() {
                   </div>
                 )}
                 <h3 className="text-xl font-bold">{p.name}</h3>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1">{p.tagline}</p>
                 <p className="text-sm text-muted-foreground mb-4">{p.blurb}</p>
                 <div className="mb-6">
                   <span className="text-4xl font-bold">${price}</span>
