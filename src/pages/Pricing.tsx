@@ -8,58 +8,68 @@ import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 
 type Cycle = "monthly" | "yearly";
 
+// Plans align with subscription-gating.ts: free / standard / premium.
+// Stripe price IDs are unchanged (pro_* → Sector Intel, elite_* → Custom Intel).
 const PLANS = [
   {
     id: "free" as const,
-    name: "Free",
+    stripeTier: "free" as const,
+    name: "Market Pulse",
+    tagline: "Free",
     monthly: 0,
     yearly: 0,
-    blurb: "Try the terminal",
+    blurb: "See the market — with two linkages unlocked",
     features: [
       "Regression chart, any ticker",
       "30-day forecast horizon",
-      "3 symbol backtests / day",
+      "Full Linkage Graph — blurred",
+      "2 unlocked linkages: Banks → Real Estate, US10Y → Utilities",
       "Hot Stocks: Aggressive only (top 5)",
       "5 QuantAgent chats / day",
     ],
   },
   {
-    id: "pro" as const,
-    name: "Pro",
-    monthly: 19,
-    yearly: 190,
+    id: "standard" as const,
+    stripeTier: "pro" as const,
+    name: "Sector Intel",
+    tagline: "For active traders",
+    monthly: 49,
+    yearly: 490,
     priceMonthlyId: "pro_monthly",
     priceYearlyId: "pro_yearly",
-    blurb: "For active traders",
+    blurb: "All 22 linkages, event catalog, ticker-level view",
     highlight: true,
     features: [
-      "Everything in Free",
-      "30 / 90 / 180-day forecasts",
-      "Unlimited symbol backtests",
-      "Sector Backtest (5/day)",
+      "Everything in Market Pulse",
+      "🔗 All 22 cross-sector linkages unlocked",
+      "Event catalog — what moves each sector",
+      "Ticker-level linkage view",
+      "Sector & symbol backtests",
+      "Cycle Analysis + Portfolio Advisor",
       "All 3 Hot Stocks risk tiers",
-      "Cycle Analysis",
-      "Full Portfolio Insights",
-      "🔗 Cross-Sector Linkage Graph (read-only)",
       "50 QuantAgent chats / day",
+      "Custom linkage analysis — $29 one-time",
       "CSV exports",
     ],
   },
   {
-    id: "elite" as const,
-    name: "Elite",
-    monthly: 49,
-    yearly: 490,
+    id: "premium" as const,
+    stripeTier: "elite" as const,
+    name: "Custom Intel",
+    tagline: "For pros & funds",
+    monthly: 149,
+    yearly: 1490,
     priceMonthlyId: "elite_monthly",
     priceYearlyId: "elite_yearly",
-    blurb: "For pros & funds",
     badge: "Full Quant Suite",
+    blurb: "Run and monitor your own leader → follower pairs",
     features: [
-      "Everything in Pro",
-      "👑 Linkage Engine — live re-runs & CSV",
-      "Unlimited Sector Backtests",
+      "Everything in Sector Intel",
+      "👑 3 custom linkage analyses / month",
+      "Save & monitor private linkages over time",
+      "Rebalance alerts on your saved pairs",
+      "Live Linkage Engine re-runs + CSV export",
       "Custom forecast horizons",
-      "Rebalance alerts",
       "500 QuantAgent chats / day",
       "API & data access",
       "Priority support",
@@ -140,7 +150,7 @@ export default function Pricing() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map((p) => {
-            const isCurrent = tier === p.id;
+            const isCurrent = tier === p.stripeTier;
             const price = cycle === "monthly" ? p.monthly : p.yearly;
             const priceId = cycle === "monthly" ? p.priceMonthlyId : p.priceYearlyId;
             return (
@@ -155,6 +165,7 @@ export default function Pricing() {
                   </div>
                 )}
                 <h3 className="text-xl font-bold">{p.name}</h3>
+                <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground mb-1">{p.tagline}</p>
                 <p className="text-sm text-muted-foreground mb-4">{p.blurb}</p>
                 <div className="mb-6">
                   <span className="text-4xl font-bold">${price}</span>
