@@ -436,22 +436,24 @@ const Index = () => {
       </main>
       </div>
 
-      <QuantAgent
-        context={chatContext}
-        onAction={(a) => {
-          if (a.kind === "switch_ticker") {
-            setSearchInput(a.symbol);
-            setTicker(a.symbol);
-            setActiveView("chart");
-          } else if (a.kind === "navigate") {
-            navigate(a.path);
-          } else if (a.kind === "open") {
-            if (a.target === "hot_stocks") setHotStocksOpen(true);
-            else if (a.target === "sentiment") setSentimentOpen(true);
-            else if (a.target === "backtest") setShowBacktest(true);
-          }
-        }}
-      />
+      <QuantAgentGate>
+        <QuantAgent
+          context={chatContext}
+          onAction={(a) => {
+            if (a.kind === "switch_ticker") {
+              setSearchInput(a.symbol);
+              setTicker(a.symbol);
+              setActiveView("chart");
+            } else if (a.kind === "navigate") {
+              navigate(a.path);
+            } else if (a.kind === "open") {
+              if (a.target === "hot_stocks") setHotStocksOpen(true);
+              else if (a.target === "sentiment") setSentimentOpen(true);
+              else if (a.target === "backtest") setShowBacktest(true);
+            }
+          }}
+        />
+      </QuantAgentGate>
 
       <BacktestModal
         isOpen={showBacktest}
