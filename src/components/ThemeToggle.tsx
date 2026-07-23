@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 export function ThemeToggle() {
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") === "dark";
+      // Default to dark to match the landing page; only light if explicitly set.
+      return localStorage.getItem("theme") !== "light";
     }
-    return false;
+    return true;
   });
 
   useEffect(() => {
