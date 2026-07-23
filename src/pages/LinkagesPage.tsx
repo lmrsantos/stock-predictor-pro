@@ -7,6 +7,7 @@ import { InfoTooltip, metricInfo } from "@/components/InfoTooltip";
 import SectorLinkageGraph from "@/components/SectorLinkageGraph";
 import { SECTOR_MEMBERSHIP } from "@/config/sector-membership";
 import { useEntitlement } from "@/hooks/useEntitlement";
+import { CustomLinkageAnalysis } from "@/components/CustomLinkageAnalysis";
 import { toast } from "sonner";
 
 
@@ -200,6 +201,9 @@ export default function LinkagesPage() {
               />
             </div>
           )}
+
+          <CustomLinkageAnalysis />
+
           {payload && (
             <div className="rounded-lg border border-border bg-card overflow-hidden">
 
