@@ -298,6 +298,13 @@ const Index = () => {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400"></span>
             </span>
           </Link>
+          <Link
+            to="/ipo-intelligence"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <Sparkles className="w-4 h-4" />
+            IPO Intelligence
+          </Link>
           <button
             onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${

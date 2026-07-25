@@ -46,6 +46,7 @@ export default function Landing() {
           <nav className="hidden md:flex items-center gap-8 text-sm text-white/70">
             <a href="#product" className="hover:text-white">Product</a>
             <a href="#linkages" className="hover:text-white">Linkage Engine</a>
+            <Link to="/ipo-intelligence" className="hover:text-white">IPO Intelligence</Link>
             <a href="#how" className="hover:text-white">How it works</a>
             <Link to="/pricing" className="hover:text-white">Pricing</Link>
           </nav>
