@@ -269,9 +269,19 @@ serve(async (req) => {
       low: number; close: number; volume: number;
     }>();
 
+    // Yahoo sometimes returns the most recent daily bar with a null close
+    // even after the session ends. Fall back to meta.regularMarketPrice for
+    // the latest bar so Friday/last-session prices don't get dropped.
+    const lastIdx = timestamps.length - 1;
+    const metaLastPrice = typeof meta?.regularMarketPrice === "number" ? meta.regularMarketPrice : null;
+
     for (let i = 0; i < timestamps.length; i++) {
-      const close = quotes.close?.[i];
-      const open = quotes.open?.[i];
+      let close = quotes.close?.[i];
+      let open = quotes.open?.[i];
+      if (i === lastIdx && close == null && metaLastPrice != null) {
+        close = metaLastPrice;
+      }
+      if (open == null && close != null) open = close;
       if (close == null || open == null) continue;
 
       const date = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
