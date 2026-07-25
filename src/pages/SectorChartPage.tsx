@@ -315,7 +315,8 @@ function CompareView({ sectors, period }: { sectors: SectorName[]; period: strin
     })).sort((a, b) => (b.ret ?? -Infinity) - (a.ret ?? -Infinity));
 
     return { chartData, returns };
-  }, [sectors, results.map(r => r.data).join("|")]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectors.join("|"), period, results.map(r => `${r.data?.series?.length ?? 0}:${r.data?.series?.[r.data.series.length - 1]?.date ?? ""}`).join("|")]);
 
   if (!sectors.length) {
     return <div className="text-sm text-muted-foreground">Pick at least one sector to compare.</div>;
