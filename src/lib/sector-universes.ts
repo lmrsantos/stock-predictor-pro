@@ -104,7 +104,7 @@ export const CURATED_SECTOR_UNIVERSES: Record<SectorName, string[]> = {
   "Consumer Discretionary":      ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG","ABNB","ORLY","AZO","DPZ","YUM","MAR","DRI","RCL","CCL"],
   "Retail":                      ["WMT","COST","TGT","TJX","HD","LOW","ORLY","AZO","DG","DLTR","ROST","BBY","ULTA"],
   "Restaurants":                 ["MCD","SBUX","CMG","YUM","DPZ","DRI","QSR","WING","TXRH","SG"],
-  "Travel & Leisure":            ["BKNG","MAR","ABNB","RCL","CCL","NCLH","HLT","EXPE","H","VAC","LYV"],
+  "Travel & Leisure":            ["BKNG","MAR","ABNB","RCL","CCL","NCLH","HLT","EXPE","H","VAC","LYV","UAL","DAL","AAL","LUV"],
   "Autos & EVs":                 ["TSLA","GM","F","RIVN","LCID","NIO","LI","XPEV","TM","HMC","STLA","BYDDY"],
 
   // ── Industrials ─────────────────────────────────────────────
