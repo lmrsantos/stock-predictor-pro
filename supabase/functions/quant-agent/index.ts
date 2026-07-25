@@ -53,6 +53,35 @@ async function loadLinkages(): Promise<{ asOf?: string; validated: ValidatedLink
   }
 }
 
+async function loadIpoIntel(): Promise<string> {
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const client = createClient(url, service);
+    const { data } = await client
+      .from("ipo_intelligence")
+      .select("name, sector, horizon, stage, risk_tier, risk_score, accredited_required, min_investment, our_view")
+      .order("refreshed_at", { ascending: false })
+      .limit(20);
+    if (!data?.length) return "";
+    const rows = data.map((r: any) => ({
+      name: r.name,
+      sector: r.sector,
+      horizon: r.horizon,
+      stage: r.stage,
+      riskTier: r.risk_tier,
+      riskScore: r.risk_score,
+      accredited: r.accredited_required,
+      minInvestment: r.min_investment,
+      view: r.our_view,
+    }));
+    return `\n\nPRE-IPO INTELLIGENCE (most recent 20 tracked companies, scored by deterministic risk model):\n${JSON.stringify(rows)}\n\nWhen the user asks about pre-IPO opportunities, upcoming IPOs, private companies, accreditation, or their watched sectors' pipelines, reference this list. If they want to explore further, offer to navigate them there with [[ACTION:navigate:/ipo-intelligence]].`;
+  } catch (e) {
+    console.warn("ipo intel load failed", e);
+    return "";
+  }
+}
+
 function linkageBlock(ticker: string, cache: { asOf?: string; validated: ValidatedLinkage[] } | null): string {
   if (!cache || !cache.validated?.length) return "";
   const sector = SECTOR_OF[ticker.toUpperCase()];
@@ -208,8 +237,9 @@ serve(async (req) => {
 
       const linkCache = await loadLinkages();
       const linkageStr = linkageBlock(currentTicker, linkCache);
+      const ipoStr = await loadIpoIntel();
       const messages = [
-        { role: "system", content: buildSystemPrompt(context || {}, linkageStr) },
+        { role: "system", content: buildSystemPrompt(context || {}, linkageStr + ipoStr) },
         ...(Array.isArray(history) ? history.slice(-12).map((m: any) => ({
           role: m.role === "agent" ? "assistant" : "user",
           content: String(m.content || ""),
