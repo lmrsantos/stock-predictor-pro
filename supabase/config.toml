@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.fetch-intraday]
 verify_jwt = false
+
+[functions.fetch-ipo-intelligence]
+verify_jwt = false

@@ -146,6 +146,69 @@ export type Database = {
         }
         Relationships: []
       }
+      ipo_intelligence: {
+        Row: {
+          accredited_required: boolean
+          brief: string
+          dimension_scores: Json
+          horizon: string
+          id: string
+          ipo_timeline_note: string | null
+          min_investment: string | null
+          name: string
+          our_view: string
+          platforms: Json
+          raw_facts: Json
+          refreshed_at: string
+          risk_label: string
+          risk_score: number
+          risk_tier: string
+          sector: string
+          sources: Json
+          stage: string
+        }
+        Insert: {
+          accredited_required?: boolean
+          brief: string
+          dimension_scores: Json
+          horizon: string
+          id?: string
+          ipo_timeline_note?: string | null
+          min_investment?: string | null
+          name: string
+          our_view: string
+          platforms?: Json
+          raw_facts: Json
+          refreshed_at?: string
+          risk_label: string
+          risk_score: number
+          risk_tier: string
+          sector: string
+          sources?: Json
+          stage: string
+        }
+        Update: {
+          accredited_required?: boolean
+          brief?: string
+          dimension_scores?: Json
+          horizon?: string
+          id?: string
+          ipo_timeline_note?: string | null
+          min_investment?: string | null
+          name?: string
+          our_view?: string
+          platforms?: Json
+          raw_facts?: Json
+          refreshed_at?: string
+          risk_label?: string
+          risk_score?: number
+          risk_tier?: string
+          sector?: string
+          sources?: Json
+          stage?: string
+        }
+        Relationships: []
+      }
       legal_acknowledgments: {
         Row: {
           acknowledged_at: string
