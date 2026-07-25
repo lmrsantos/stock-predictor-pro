@@ -11,6 +11,7 @@ import Portfolio from "./pages/Portfolio.tsx";
 import SectorBacktestPage from "./pages/SectorBacktestPage.tsx";
 import SectorChartPage from "./pages/SectorChartPage.tsx";
 import LinkagesPage from "./pages/LinkagesPage.tsx";
+import IpoIntelligence from "./pages/IpoIntelligence.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import Account from "./pages/Account.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/sector-backtest" element={<SectorBacktestPage />} />
             <Route path="/sectors" element={<SectorChartPage />} />
             <Route path="/linkages" element={<LinkagesPage />} />
+            <Route path="/ipo-intelligence" element={<IpoIntelligence />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/account" element={<Account />} />
             <Route path="/terms" element={<Terms />} />
