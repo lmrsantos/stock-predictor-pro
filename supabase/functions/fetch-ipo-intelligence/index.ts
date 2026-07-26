@@ -75,7 +75,13 @@ serve(async (req) => {
     if (!textBlock) throw new Error('No text response from Claude');
 
     // --- Validate and score ---
-    const facts   = validateClaudeResponse(textBlock);
+    let facts;
+    try {
+      facts = validateClaudeResponse(textBlock);
+    } catch (e) {
+      console.error('Claude raw text (first 1500 chars):', textBlock.slice(0, 1500));
+      throw e;
+    }
     const scored  = scoreIpoUniverse(facts);
 
     // --- Write to Supabase ---
