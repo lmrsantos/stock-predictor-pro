@@ -360,11 +360,24 @@ RULES:
 
 export function validateClaudeResponse(raw: string): IpoRawFacts[] {
   let parsed: unknown;
+  const clean = raw.replace(/```json|```/g, '').trim();
   try {
-    const clean = raw.replace(/```json|```/g, '').trim();
     parsed = JSON.parse(clean);
   } catch {
-    throw new Error('Claude returned invalid JSON');
+    // Claude sometimes wraps the array in prose — extract first top-level array.
+    const start = clean.indexOf('[');
+    const end = clean.lastIndexOf(']');
+    if (start !== -1 && end > start) {
+      try {
+        parsed = JSON.parse(clean.slice(start, end + 1));
+      } catch {
+        console.error('Claude JSON parse failed. Preview:', clean.slice(0, 800));
+        throw new Error('Claude returned invalid JSON');
+      }
+    } else {
+      console.error('No JSON array in Claude response. Preview:', clean.slice(0, 800));
+      throw new Error('Claude returned invalid JSON');
+    }
   }
 
   if (!Array.isArray(parsed)) throw new Error('Expected JSON array');
