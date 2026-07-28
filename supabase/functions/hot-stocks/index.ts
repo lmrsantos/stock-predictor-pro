@@ -13,47 +13,104 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sector universe — MIRROR of src/lib/sector-universes.ts and
+// supabase/functions/sector-backtest/index.ts. Keep in sync so every feature
+// (Hot Stocks, Sector Backtest, Cross-Sector Linkages, QuantAgent) reasons over
+// the exact same symbol set.
+// ─────────────────────────────────────────────────────────────────────────────
 const SECTOR_UNIVERSES: Record<string, string[]> = {
-  "Semiconductors":         ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU"],
-  "Solar & Clean Energy":   ["ENPH","FSLR","SEDG","RUN","NOVA","ARRY","SHLS","CSIQ","JKS","PLUG"],
-  "Software":               ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY"],
-  "Mega-cap Tech":          ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
-  "Banks":                  ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW"],
-  "Biotech & Pharma":       ["LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD"],
-  "Energy":                 ["XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","HES"],
-  "Consumer Staples":       ["WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","HSY"],
-  "Consumer Discretionary": ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG"],
-  "Industrials & Defense":  ["CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD"],
-  "Utilities":              ["NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC"],
-  "Real Estate":            ["AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC"],
-  "Quantum Computing":      ["IONQ","RGTI","QBTS","QUBT","ARQQ"],
-  "Aerospace & Space":      ["LMT","RTX","NOC","GD","BA","HEI","TDG","RKLB","ASTS","LUNR"],
+  // Technology
+  "Mega-cap Tech":               ["AAPL","MSFT","GOOGL","AMZN","META","NVDA","TSLA","AVGO","ORCL","NFLX"],
+  "Semiconductors":              ["NVDA","AMD","AVGO","TSM","QCOM","INTC","AMAT","LRCX","KLAC","MU","ASML","MRVL","NXPI","ADI","TXN","ON","MCHP","SWKS","QRVO","MPWR","ARM","SMCI","WOLF","STM","TER","ENTG","ALAB","CRDO","SITM","RMBS"],
+  "Semis: AI & GPU":             ["NVDA","AMD","AVGO","ARM","SMCI","MRVL","ALAB","CRDO"],
+  "Semis: Foundry & Equipment":  ["TSM","ASML","AMAT","LRCX","KLAC","TER","ENTG","KLIC"],
+  "Semis: Memory":               ["MU","WDC","STX"],
+  "Semis: Analog":               ["ADI","TXN","ON","MCHP","NXPI","MPWR","SWKS","QRVO","SITM","RMBS"],
+  "Software":                    ["MSFT","ORCL","CRM","ADBE","NOW","INTU","PANW","SNPS","CDNS","WDAY","TEAM","DDOG","CRWD","SNOW","NET","ZS","MDB","HUBS","DOCU","OKTA","ZM","SHOP"],
+  "Software: Cybersecurity":     ["PANW","CRWD","ZS","OKTA","NET","FTNT","S","CYBR","QLYS","RBRK"],
+  "Software: Data & AI":         ["SNOW","DDOG","MDB","PLTR","AI","PATH","ESTC","CFLT","GTLB"],
+  "Software: Cloud Infra":       ["MSFT","ORCL","NOW","WDAY","ADBE","CRM","INTU","HUBS"],
+
+  // Financials
+  "Banks":                       ["JPM","BAC","WFC","C","GS","MS","USB","PNC","TFC","SCHW","COF","BK","STT","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
+  "Money Center Banks":          ["JPM","BAC","WFC","C","GS","MS"],
+  "Regional Banks":              ["USB","PNC","TFC","RF","FITB","HBAN","KEY","MTB","CFG","ZION"],
+
+  // Healthcare
+  "Biotech & Pharma":            ["LLY","JNJ","ABBV","MRK","PFE","TMO","ABT","BMY","AMGN","GILD","VRTX","REGN","MRNA","BIIB","ISRG","ZTS","CVS","UNH"],
+  "Pharma: Big Pharma":          ["LLY","JNJ","ABBV","MRK","PFE","BMY","NVS","AZN","GSK","NVO"],
+  "Biotech":                     ["VRTX","REGN","MRNA","BIIB","GILD","AMGN","BMRN","BEAM","CRSP","NTLA","ARWR","ALNY"],
+  "Medical Devices":             ["ISRG","ABT","MDT","SYK","BSX","EW","ZBH","DXCM","IDXX","BAX"],
+
+  // Energy
+  "Energy":                      ["XOM","CVX","COP","EOG","SLB","PSX","MPC","VLO","OXY","PXD","HES","DVN","FANG","HAL","BKR","KMI","WMB","OKE"],
+  "Energy: Integrated Majors":   ["XOM","CVX","BP","SHEL","TTE","COP","EQNR"],
+  "Energy: E&P":                 ["EOG","OXY","HES","DVN","FANG","MRO","APA","CTRA","PR"],
+  "Energy: Oilfield Services":   ["SLB","HAL","BKR","NOV","FTI","WFRD","LBRT"],
+  "Energy: Midstream":           ["KMI","WMB","OKE","ET","EPD","MPLX","TRGP","LNG"],
+
+  // Consumer
+  "Consumer Staples":            ["WMT","COST","PG","KO","PEP","MDLZ","CL","KMB","GIS","K","HSY","SYY","CHD","CLX","MNST","STZ","TGT","KR"],
+  "Consumer Discretionary":      ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","BKNG","TJX","CMG","ABNB","ORLY","AZO","DPZ","YUM","MAR","DRI","RCL","CCL"],
+  "Retail":                      ["WMT","COST","TGT","TJX","HD","LOW","ORLY","AZO","DG","DLTR","ROST","BBY","ULTA"],
+  "Restaurants":                 ["MCD","SBUX","CMG","YUM","DPZ","DRI","QSR","WING","TXRH","SG"],
+  "Travel & Leisure":            ["BKNG","MAR","ABNB","RCL","CCL","NCLH","HLT","EXPE","H","VAC","LYV","UAL","DAL","AAL","LUV"],
+  "Autos & EVs":                 ["TSLA","GM","F","RIVN","LCID","NIO","LI","XPEV","TM","HMC","STLA","BYDDY"],
+
+  // Industrials
+  "Industrials & Defense":       ["CAT","BA","LMT","RTX","HON","UNP","GE","DE","NOC","GD","ETN","EMR","ITW","PH","CSX","NSC","FDX","UPS","WM"],
+  "Defense":                     ["LMT","RTX","NOC","GD","BA","HII","LDOS","LHX","KTOS","AVAV"],
+  "Aerospace & Space":           ["LMT","RTX","NOC","GD","BA","HEI","TDG","RKLB","ASTS","LUNR","SPCE","PL"],
+  "Space":                       ["RKLB","ASTS","LUNR","SPCE","PL","IRDM","MAXR","BKSY"],
+
+  // Utilities & REITs
+  "Utilities":                   ["NEE","DUK","SO","D","AEP","SRE","XEL","EXC","PEG","WEC","ED","ETR","ES","AWK","PCG","CEG","VST"],
+  "Real Estate":                 ["AMT","PLD","EQIX","CCI","PSA","O","WELL","VICI","DLR","SBAC","SPG","AVB","EQR","ARE","EXR","VTR","WY"],
+  "Data Center REITs":           ["EQIX","DLR","AMT","CCI","SBAC","IRM"],
+  "Residential REITs":           ["AVB","EQR","ESS","MAA","INVH","UDR","CPT","AMH"],
+
+  // Materials
+  "Materials":                       ["LIN","APD","SHW","ECL","FCX","NEM","NUE","DOW","DD","PPG","VMC","MLM","CTVA","IFF","ALB","MOS","CF","STLD","X","AA"],
+  "Rare Earth & Critical Minerals":  ["MP","USAR","TMC","UUUU","IPX","TROX","REEMF","LYSDY"],
+  "Nickel & Battery Metals":         ["VALE","BHP","RIO","GLNCY","NILSY","SBSW","TMC","MP"],
+  "Lithium":                         ["ALB","SQM","LTHM","PLL","LAC","SGML","LITM","IONR"],
+  "Gold & Precious Metals":          ["NEM","GOLD","AEM","KGC","WPM","FNV","PAAS","AG","HL","RGLD","AU"],
+  "Copper":                          ["FCX","SCCO","TECK","HBM","ERO","TRQ","IVN","LUN"],
+  "Steel":                           ["NUE","STLD","X","CLF","RS","MT","TX","CMC"],
+
+  // Emerging
+  "Quantum Computing":           ["IONQ","RGTI","QBTS","QUBT","ARQQ"],
 };
 
 // Default risk tier per sector (1=safest, 4=most speculative).
 const SECTOR_RISK_TIER: Record<string, number> = {
-  "Utilities": 2,
-  "Real Estate": 2,
-  "Consumer Staples": 2,
-  "Banks": 2,
-  "Mega-cap Tech": 3,
-  "Software": 3,
-  "Semiconductors": 3,
-  "Biotech & Pharma": 3,
-  "Energy": 3,
-  "Industrials & Defense": 3,
-  "Consumer Discretionary": 3,
-  "Aerospace & Space": 3,
-  "Solar & Clean Energy": 4,
+  // Defensive
+  "Utilities": 2, "Real Estate": 2, "Data Center REITs": 2, "Residential REITs": 2,
+  "Consumer Staples": 2, "Banks": 2, "Money Center Banks": 2, "Regional Banks": 3,
+  "Pharma: Big Pharma": 2, "Medical Devices": 2,
+  // Core growth
+  "Mega-cap Tech": 3, "Software": 3, "Software: Cloud Infra": 3, "Software: Cybersecurity": 3,
+  "Software: Data & AI": 3, "Semiconductors": 3, "Semis: AI & GPU": 3, "Semis: Foundry & Equipment": 3,
+  "Semis: Memory": 3, "Semis: Analog": 3, "Biotech & Pharma": 3, "Biotech": 4,
+  "Energy": 3, "Energy: Integrated Majors": 2, "Energy: E&P": 3, "Energy: Oilfield Services": 3, "Energy: Midstream": 2,
+  "Industrials & Defense": 3, "Defense": 3, "Aerospace & Space": 3,
+  "Consumer Discretionary": 3, "Retail": 3, "Restaurants": 3, "Travel & Leisure": 3, "Autos & EVs": 4,
+  "Materials": 3, "Gold & Precious Metals": 3, "Copper": 3, "Steel": 3,
+  // Speculative
+  "Space": 4, "Rare Earth & Critical Minerals": 4, "Nickel & Battery Metals": 4, "Lithium": 4,
   "Quantum Computing": 4,
 };
 
 // Per-symbol overrides for tickers that don't match their sector default.
 const RISK_TIERS: Record<string, number> = {
-  // Mega-caps inside other sectors stay tier 3
+  // Mega-caps stay tier 3 even inside other sectors
   AAPL:3, MSFT:3, GOOGL:3, AMZN:3, META:3, NVDA:3, TSLA:3, AVGO:3, ORCL:3, NFLX:3,
   // SPAC-era speculative names
-  RKLB:4, ASTS:4, LUNR:4, PLUG:4, BLDP:4, FCEL:4,
+  RKLB:4, ASTS:4, LUNR:4, SPCE:4, PL:4, BKSY:4, MAXR:4,
+  RIVN:4, LCID:4, NIO:4, LI:4, XPEV:4,
+  BEAM:4, CRSP:4, NTLA:4, ARWR:4, BMRN:4,
+  PLTR:4, AI:4, PATH:4,
 };
 
 const RISK_PROFILE_TIERS: Record<string, number[]> = {
