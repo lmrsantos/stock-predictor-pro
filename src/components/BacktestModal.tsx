@@ -572,13 +572,13 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
             <div className="flex gap-2">
               {([3, 6] as const).map(m => (
                 <button key={m} onClick={() => setLookback(m)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-sky-500/10 border-sky-500/50 text-sky-400" : "border-border text-muted-foreground hover:border-foreground/40"}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-secondary text-secondary-foreground border-border hover:bg-accent hover:text-accent-foreground"}`}>
                   {m} Months
                 </button>
               ))}
             </div>
             <button onClick={handleRun} disabled={running || dataLoading || !dataReady}
-              className="ml-auto px-5 py-2 rounded-lg text-xs font-mono font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+              className="ml-auto px-5 py-2 rounded-lg text-xs font-mono font-semibold bg-accent-success text-white border border-accent-success hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
               {dataLoading ? "⟳ Loading data..." : running ? "⟳ Calibrating models..." : "▶ Run Backtest"}
             </button>
           </div>
