@@ -284,7 +284,7 @@ export function analyzeCycles(
   // Build interpretation
   const troughPct   = Math.round(troughProj.avgGrowth * 100);
   const peakPct     = Math.round(peakProj.avgGrowth * 100);
-  const distToNext  = Math.round(((troughProj.projected - currentPrice) / currentPrice) * 100);
+  const distToNext  = Math.round(((projTrough - currentPrice) / currentPrice) * 100);
 
   let interpretation = "";
   if (troughProj.trend === "rising") {
@@ -296,19 +296,19 @@ export function analyzeCycles(
   }
 
   if (currentPosition === "near_trough") {
-    interpretation += `Current price is near a potential support zone ($${Math.round(troughProj.projected)}). This may represent a buying opportunity.`;
+    interpretation += `Current price is near a potential support zone ($${Math.round(projTrough)}). This may represent a buying opportunity.`;
   } else if (currentPosition === "near_peak") {
-    interpretation += `Current price is near historical resistance. Caution — risk of pullback toward $${Math.round(troughProj.projected)}.`;
+    interpretation += `Current price is near historical resistance. Caution — risk of pullback toward $${Math.round(projTrough)}.`;
   } else if (currentPosition === "breakout") {
-    interpretation += `Price has broken above previous highs. Momentum is strong. Next projected peak: $${Math.round(peakProj.projected)}.`;
+    interpretation += `Price has broken above previous highs. Momentum is strong. Next projected peak: $${Math.round(projPeak)}.`;
   } else {
-    interpretation += `Price is mid-cycle. Projected next support: $${Math.round(troughProj.projected)} (${distToNext}% away).`;
+    interpretation += `Price is mid-cycle. Projected next support: $${Math.round(projTrough)} (${distToNext}% away).`;
   }
 
   const summary = `${peakPoints.length} peaks and ${troughPoints.length} troughs detected. ` +
     `Lows trending ${troughProj.trend} (+${troughPct}%/cycle avg). ` +
-    `Next projected support: ~$${Math.round(troughProj.projected)}. ` +
-    `Next projected resistance: ~$${Math.round(peakProj.projected)}.`;
+    `Next projected support: ~$${Math.round(projTrough)}. ` +
+    `Next projected resistance: ~$${Math.round(projPeak)}.`;
 
   return {
     ticker,
@@ -316,10 +316,10 @@ export function analyzeCycles(
     peaks:   peakPoints,
     troughs: troughPoints,
     projection: {
-      nextTrough:       Math.round(troughProj.projected * 100) / 100,
-      nextPeak:         Math.round(peakProj.projected * 100) / 100,
-      troughConfidence: troughProj.confidence,
-      peakConfidence:   peakProj.confidence,
+      nextTrough:       Math.round(projTrough * 100) / 100,
+      nextPeak:         Math.round(projPeak * 100) / 100,
+      troughConfidence: troughConf,
+      peakConfidence:   peakConf,
       avgTroughGrowth:  Math.round(troughProj.avgGrowth * 1000) / 10,
       avgPeakGrowth:    Math.round(peakProj.avgGrowth * 1000) / 10,
       troughTrend:      troughProj.trend,
