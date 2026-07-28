@@ -44,6 +44,11 @@ export interface CycleProjection {
   troughTrend:       "rising" | "falling" | "flat";  // are lows getting higher?
   peakTrend:         "rising" | "falling" | "flat";  // are highs getting higher?
   cycleLength:       number;   // average bars between same-type points
+  cycleLengthSource: "peak-to-peak" | "trough-to-trough" | "default";
+  cycleLengthFormula: string;
+  cycleLengthSampleSize: number;  // number of completed intervals used
+  cycleLengthDateRange: string;   // e.g. "2024-03-15 → 2026-07-24"
+  cycleLengthGaps:   number[];    // individual bar gaps between consecutive points
   fibLevels:         FibLevel[];
   currentPosition:   "near_trough" | "near_peak" | "mid_cycle" | "breakout";
   interpretation:    string;
