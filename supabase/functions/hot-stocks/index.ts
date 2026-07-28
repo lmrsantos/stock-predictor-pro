@@ -218,6 +218,9 @@ serve(async (req) => {
     ]);
 
     // Build symbol data for browser
+    const dropped = allSymbols.filter(s => !closesByTicker[s.symbol] || closesByTicker[s.symbol].length < 10);
+    console.log(`Dropped ${dropped.length} symbols for insufficient data:`, dropped.map(s => s.symbol));
+
     const symbolData = allSymbols
       .filter(s => closesByTicker[s.symbol]?.length >= 10)
       .map(s => ({
