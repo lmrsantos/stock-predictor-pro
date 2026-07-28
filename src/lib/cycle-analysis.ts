@@ -261,14 +261,26 @@ export function analyzeCycles(
     peakConf   = Math.min(peakConf,   20);
   }
 
-  // Determine current position in cycle
-  const distFromTrough = (currentPrice - lastTrough) / (lastPeak - lastTrough);
-  const currentPosition:
-    "near_trough" | "near_peak" | "mid_cycle" | "breakout" =
-    currentPrice > lastPeak    ? "breakout"    :
-    distFromTrough < 0.25      ? "near_trough" :
-    distFromTrough > 0.75      ? "near_peak"   :
-    "mid_cycle";
+  // Determine current position in cycle — use the CHRONOLOGICALLY most recent
+  // extreme, not the numerically last peak/trough. Otherwise a stock that just
+  // printed a fresh low still gets tagged "near resistance" because the last
+  // peak in the array is higher.
+  const lastPeakIdx   = peakPoints[peakPoints.length - 1]?.index   ?? -1;
+  const lastTroughIdx = troughPoints[troughPoints.length - 1]?.index ?? -1;
+  const recentExtremeIsPeak = lastPeakIdx > lastTroughIdx;
+  const range = Math.max(lastPeak - lastTrough, 1e-6);
+  const distFromTrough = (currentPrice - lastTrough) / range;
+
+  let currentPosition: "near_trough" | "near_peak" | "mid_cycle" | "breakout";
+  if (currentPrice > lastPeak * 1.01) {
+    currentPosition = "breakout";
+  } else if (recentExtremeIsPeak) {
+    // Most recent turn was a peak → we're descending from it
+    currentPosition = distFromTrough > 0.75 ? "near_peak" : "mid_cycle";
+  } else {
+    // Most recent turn was a trough → we're rising from it (or still near it)
+    currentPosition = distFromTrough < 0.25 ? "near_trough" : "mid_cycle";
+  }
 
   // Average cycle length
   const peakIndices   = peakPoints.map(p => p.index);
