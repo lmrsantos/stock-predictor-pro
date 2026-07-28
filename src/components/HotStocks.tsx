@@ -331,16 +331,26 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
       setScanStatus(`Running momentum pre-filter on ${symbolData.length} symbols...`);
 
-      // Step 2: Browser-side quickScore pre-filter → top 20 candidates
-      const candidates = symbolData
+      // Step 2: Browser-side quickScore pre-filter.
+      // Universe now mirrors sector-backtest (~250 unique symbols across
+      // sectors + subsectors), so keep the widest reasonable pool before AE
+      // scoring but cap at 6 per sector so one hot subsector can't crowd out
+      // everything else.
+      const preRanked = symbolData
         .map(s => ({ ...s, qs: quickScore(s.closes) }))
         .filter(s => s.qs !== null && s.qs.recentReturn > -0.05)
         .sort((a, b) => {
           const scoreA = (a.qs!.combinedScore) * (a.sectorBias) * (a.thematicBias);
           const scoreB = (b.qs!.combinedScore) * (b.sectorBias) * (b.thematicBias);
           return scoreB - scoreA;
-        })
-        .slice(0, 40);
+        });
+      const perSectorCap: Record<string, number> = {};
+      const candidates = preRanked.filter(c => {
+        const n = perSectorCap[c.sector] ?? 0;
+        if (n >= 6) return false;
+        perSectorCap[c.sector] = n + 1;
+        return true;
+      }).slice(0, 80);
 
       setScanStatus(`Training AE on top ${candidates.length} candidates...`);
 
