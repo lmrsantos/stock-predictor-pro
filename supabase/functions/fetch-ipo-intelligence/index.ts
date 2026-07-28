@@ -18,6 +18,7 @@ import {
 } from '../_shared/ipo-risk-engine.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+const LOVABLE_API_KEY   = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_KEY       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -57,6 +58,49 @@ async function callClaude(prompt: string, maxTokens = 8192) {
   if (!textBlock) throw new Error('No text response from Claude');
 
   return textBlock;
+}
+
+async function callLovableAi(prompt: string) {
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+
+  const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Lovable-API-Key': LOVABLE_API_KEY,
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-3.6-flash',
+      temperature: 0.1,
+      max_tokens: 8192,
+      messages: [
+        { role: 'system', content: CLAUDE_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Lovable AI error: ${err}`);
+  }
+
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text || typeof text !== 'string') throw new Error('No text response from Lovable AI');
+  return text;
+}
+
+async function fetchIpoFactsText(prompt: string) {
+  try {
+    return await callClaude(prompt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const shouldFallback = message.includes('credit balance is too low') || message.includes('Claude API error');
+    if (!shouldFallback) throw error;
+    console.warn('Anthropic unavailable for IPO refresh; using Lovable AI fallback:', message.slice(0, 240));
+    return await callLovableAi(prompt);
+  }
 }
 
 async function repairJsonWithClaude(raw: string) {
@@ -111,7 +155,7 @@ serve(async (req) => {
     }
 
     // --- Call Claude with web search ---
-    const textBlock = await callClaude(buildClaudePrompt(horizon, customQuery));
+    const textBlock = await fetchIpoFactsText(buildClaudePrompt(horizon, customQuery));
 
     // --- Validate and score ---
     let facts;
