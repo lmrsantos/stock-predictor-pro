@@ -151,6 +151,19 @@ const dn = (v: number, mn: number, mx: number) => v*(mx-mn)+mn;
 const avg = (a: number[]) => a.reduce((s,v) => s+v, 0)/a.length;
 const sd  = (a: number[]) => { const m = avg(a); return Math.sqrt(a.reduce((s,v) => s+(v-m)**2, 0)/a.length); };
 
+/** Cap picks-per-sector while preserving input order. */
+function capPerSector<T extends { sector: string }>(items: T[], perSector: number): T[] {
+  const counts: Record<string, number> = {};
+  const out: T[] = [];
+  for (const it of items) {
+    const n = counts[it.sector] ?? 0;
+    if (n >= perSector) continue;
+    counts[it.sector] = n + 1;
+    out.push(it);
+  }
+  return out;
+}
+
 function linReg(closes: number[]): { slope: number; rSquared: number; annualReturn: number } | null {
   const n = closes.length;
   if (n < 10) return null;
@@ -331,16 +344,26 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
       setScanStatus(`Running momentum pre-filter on ${symbolData.length} symbols...`);
 
-      // Step 2: Browser-side quickScore pre-filter → top 20 candidates
-      const candidates = symbolData
+      // Step 2: Browser-side quickScore pre-filter.
+      // Universe now mirrors sector-backtest (~250 unique symbols across
+      // sectors + subsectors), so keep the widest reasonable pool before AE
+      // scoring but cap at 6 per sector so one hot subsector can't crowd out
+      // everything else.
+      const preRanked = symbolData
         .map(s => ({ ...s, qs: quickScore(s.closes) }))
         .filter(s => s.qs !== null && s.qs.recentReturn > -0.05)
         .sort((a, b) => {
           const scoreA = (a.qs!.combinedScore) * (a.sectorBias) * (a.thematicBias);
           const scoreB = (b.qs!.combinedScore) * (b.sectorBias) * (b.thematicBias);
           return scoreB - scoreA;
-        })
-        .slice(0, 40);
+        });
+      const perSectorCap: Record<string, number> = {};
+      const candidates = preRanked.filter(c => {
+        const n = perSectorCap[c.sector] ?? 0;
+        if (n >= 6) return false;
+        perSectorCap[c.sector] = n + 1;
+        return true;
+      }).slice(0, 80);
 
       setScanStatus(`Training AE on top ${candidates.length} candidates...`);
 
@@ -435,22 +458,24 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
         // Show results progressively as they come in
         const sorted = [...buySignals].sort((a,b) => b.confidence - a.confidence);
-        setStocks(sorted.slice(0, 10));
+        setStocks(capPerSector(sorted, 5).slice(0, 25));
         setHasScanned(true);
       }
 
-      // Final sort
-      const final = buySignals
-        .sort((a,b) => {
+      // Final sort — bias-weighted, then cap 5 per sector so one hot
+      // subsector can't monopolise the shortlist.
+      const final = capPerSector(
+        buySignals.sort((a,b) => {
           const biasA = (data.sectorBias[a.sector]??1) * (data.thematicBias[a.sector]??1);
           const biasB = (data.sectorBias[b.sector]??1) * (data.thematicBias[b.sector]??1);
           return (b.confidence*biasB) - (a.confidence*biasA);
-        })
-        .slice(0, 10);
+        }),
+        5,
+      ).slice(0, 25);
 
       setStocks(final);
       setHasScanned(true);
-      setScanStatus(`Found ${buySignals.length} BUY signals`);
+      setScanStatus(`Found ${buySignals.length} BUY signals across ${new Set(buySignals.map(s => s.sector)).size} sectors`);
 
     } catch (e) {
       toast.error((e as Error).message);
