@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
@@ -27,8 +27,12 @@ interface HotStock {
   converged: boolean;
   riskTier: number;
   riskLabel: string;
-  linkageTilt?: number;      // e.g. 1.08 = +8% confidence boost from validated leader momentum
-  linkageNote?: string;      // hover explanation
+  profileLabel: string;
+  profileClass: string;
+  hot: boolean;
+  reason: string;
+  linkageTilt?: number;
+  linkageNote?: string;
 }
 
 interface SymbolData {
@@ -40,18 +44,17 @@ interface SymbolData {
   thematicBias: number;
 }
 
-type RiskProfile = "conservative" | "moderate" | "aggressive";
-
 const RISK_LABELS: Record<number, string> = {
   1: "🟢 Low Risk", 2: "🟡 Medium Risk",
   3: "🟠 Medium-High Risk", 4: "🔴 High Risk",
 };
 
-const RISK_PROFILES: { value: RiskProfile; label: string; color: string; selectedBg: string; selectedText: string }[] = [
-  { value: "conservative", label: "Conservative", color: "border-green-500/40 text-green-600 dark:text-green-400", selectedBg: "bg-green-600 dark:bg-green-500", selectedText: "text-white" },
-  { value: "moderate",     label: "Moderate",     color: "border-yellow-500/40 text-yellow-600 dark:text-yellow-400", selectedBg: "bg-yellow-500", selectedText: "text-white dark:text-black" },
-  { value: "aggressive",   label: "Aggressive",   color: "border-red-500/40 text-red-600 dark:text-red-400", selectedBg: "bg-red-600 dark:bg-red-500", selectedText: "text-white" },
-];
+const PROFILE_BY_TIER: Record<number, { label: string; cls: string }> = {
+  1: { label: "Conservative", cls: "bg-green-500/15 text-green-600 dark:text-green-400" },
+  2: { label: "Conservative", cls: "bg-green-500/15 text-green-600 dark:text-green-400" },
+  3: { label: "Moderate",     cls: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400" },
+  4: { label: "Aggressive",   cls: "bg-red-500/15 text-red-500 dark:text-red-400" },
+};
 
 // ─── AE + Scoring (identical to BacktestModal — proven in browser) ─────────────
 
