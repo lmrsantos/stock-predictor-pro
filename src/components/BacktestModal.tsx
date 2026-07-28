@@ -558,11 +558,11 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
               <span className="text-muted-foreground">→</span>
               <span className="px-2 py-1 rounded bg-muted text-foreground">5 models project to today</span>
               <span className="text-muted-foreground">→</span>
-              <span className="px-2 py-1 rounded bg-emerald-900/40 border border-emerald-700/40 text-emerald-400">Winner = closest to actual price</span>
+              <span className="px-2 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-semibold">Winner = closest to actual price</span>
               <span className="text-muted-foreground">→</span>
-              <span className="px-2 py-1 rounded bg-sky-900/40 border border-sky-700/40 text-sky-400">Winner forecasts 30 days forward</span>
+              <span className="px-2 py-1 rounded bg-sky-500/15 border border-sky-500/30 text-sky-400 font-semibold">Winner forecasts 30 days forward</span>
               <span className="text-muted-foreground">+</span>
-              <span className="px-2 py-1 rounded bg-purple-900/40 border border-purple-700/40 text-purple-400">🧠 AI market context</span>
+              <span className="px-2 py-1 rounded bg-purple-500/15 border border-purple-500/30 text-purple-400 font-semibold">🧠 AI market context</span>
             </div>
           </div>
 
