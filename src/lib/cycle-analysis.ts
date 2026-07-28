@@ -44,6 +44,11 @@ export interface CycleProjection {
   troughTrend:       "rising" | "falling" | "flat";  // are lows getting higher?
   peakTrend:         "rising" | "falling" | "flat";  // are highs getting higher?
   cycleLength:       number;   // average bars between same-type points
+  cycleLengthSource: "peak-to-peak" | "trough-to-trough" | "default";
+  cycleLengthFormula: string;
+  cycleLengthSampleSize: number;  // number of completed intervals used
+  cycleLengthDateRange: string;   // e.g. "2024-03-15 → 2026-07-24"
+  cycleLengthGaps:   number[];    // individual bar gaps between consecutive points
   fibLevels:         FibLevel[];
   currentPosition:   "near_trough" | "near_peak" | "mid_cycle" | "breakout";
   interpretation:    string;
@@ -282,16 +287,46 @@ export function analyzeCycles(
     currentPosition = distFromTrough < 0.25 ? "near_trough" : "mid_cycle";
   }
 
-  // Average cycle length
+  // Average cycle length: peak-to-peak is preferred; fall back to trough-to-trough
+  // then to a default estimate only when neither side has enough completed cycles.
   const peakIndices   = peakPoints.map(p => p.index);
   const troughIndices = troughPoints.map(p => p.index);
   const peakGaps:   number[] = [];
   const troughGaps: number[] = [];
   for (let i = 1; i < peakIndices.length; i++)   peakGaps.push(peakIndices[i] - peakIndices[i-1]);
   for (let i = 1; i < troughIndices.length; i++) troughGaps.push(troughIndices[i] - troughIndices[i-1]);
-  const avgCycleLength = peakGaps.length > 0
-    ? Math.round(peakGaps.reduce((s, g) => s + g, 0) / peakGaps.length)
-    : 60;
+
+  let avgCycleLength: number;
+  let cycleLengthSource: "peak-to-peak" | "trough-to-trough" | "default";
+  let cycleLengthGaps: number[];
+  let cycleLengthSampleSize: number;
+  let cycleLengthDateRange: string;
+
+  if (peakGaps.length > 0) {
+    avgCycleLength = Math.round(peakGaps.reduce((s, g) => s + g, 0) / peakGaps.length);
+    cycleLengthSource = "peak-to-peak";
+    cycleLengthGaps = [...peakGaps];
+    cycleLengthSampleSize = peakGaps.length;
+    cycleLengthDateRange = `${peakPoints[0].date} → ${peakPoints[peakPoints.length - 1].date}`;
+  } else if (troughGaps.length > 0) {
+    avgCycleLength = Math.round(troughGaps.reduce((s, g) => s + g, 0) / troughGaps.length);
+    cycleLengthSource = "trough-to-trough";
+    cycleLengthGaps = [...troughGaps];
+    cycleLengthSampleSize = troughGaps.length;
+    cycleLengthDateRange = `${troughPoints[0].date} → ${troughPoints[troughPoints.length - 1].date}`;
+  } else {
+    avgCycleLength = 60;
+    cycleLengthSource = "default";
+    cycleLengthGaps = [];
+    cycleLengthSampleSize = 0;
+    cycleLengthDateRange = "n/a";
+  }
+
+  const cycleLengthFormula = cycleLengthSource === "peak-to-peak"
+    ? "round( mean( peak_i.index - peak_{i-1}.index ) ) for i=1..n"
+    : cycleLengthSource === "trough-to-trough"
+    ? "round( mean( trough_i.index - trough_{i-1}.index ) ) for i=1..n"
+    : "n/a — default estimate used because fewer than 2 peaks and 2 troughs were detected";
 
   // Build interpretation
   const troughPct   = Math.round(troughProj.avgGrowth * 100);
@@ -337,6 +372,11 @@ export function analyzeCycles(
       troughTrend:      troughProj.trend,
       peakTrend:        peakProj.trend,
       cycleLength:      avgCycleLength,
+      cycleLengthSource,
+      cycleLengthFormula,
+      cycleLengthSampleSize,
+      cycleLengthDateRange,
+      cycleLengthGaps,
       fibLevels,
       currentPosition,
       interpretation,
@@ -369,7 +409,21 @@ export function formatCycleReport(result: CycleAnalysisResult): string {
   lines.push("", `### Projections (${projection.troughTrend} trend)`);
   lines.push(`📉 Next support (projected trough): **$${projection.nextTrough}** (${projection.troughConfidence}% confidence)`);
   lines.push(`📈 Next resistance (projected peak): **$${projection.nextPeak}** (${projection.peakConfidence}% confidence)`);
-  lines.push(`⏱️ Average cycle length: ${projection.cycleLength} trading days`);
+
+  lines.push("", `### Cycle Length Methodology`);
+  if (projection.cycleLengthSampleSize > 0) {
+    lines.push(`⏱️ Average cycle length: **${projection.cycleLength} trading days**`);
+    lines.push(`Formula: ${projection.cycleLengthFormula}`);
+    lines.push(`Source: ${projection.cycleLengthSource}`);
+    lines.push(`Completed cycles used: ${projection.cycleLengthSampleSize}`);
+    lines.push(`Date range: ${projection.cycleLengthDateRange}`);
+    lines.push(`Individual gaps (bars): ${projection.cycleLengthGaps.join(", ")}`);
+  } else {
+    lines.push(`⏱️ Average cycle length: **${projection.cycleLength} trading days** (default estimate)`);
+    lines.push(`Formula: ${projection.cycleLengthFormula}`);
+    lines.push(`Reason: only ${peaks.length} peak(s) and ${troughs.length} trough(s) detected — need at least 2 of the same type to compute a real cycle.`);
+  }
+
   lines.push("", `### Fibonacci Levels (${peaks[peaks.length-1]?.price ? `$${peaks[peaks.length-1].price}` : "high"} → ${troughs[troughs.length-1]?.price ? `$${troughs[troughs.length-1].price}` : "low"})`);
   for (const fib of projection.fibLevels) {
     const marker = Math.abs(fib.distanceFromCurrent) < 3 ? " ← CURRENT" : "";
