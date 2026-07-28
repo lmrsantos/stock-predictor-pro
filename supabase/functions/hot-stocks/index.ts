@@ -218,8 +218,10 @@ serve(async (req) => {
     ]);
 
     // Build symbol data for browser
-    const dropped = allSymbols.filter(s => !closesByTicker[s.symbol] || closesByTicker[s.symbol].length < 10);
-    console.log(`Dropped ${dropped.length} symbols for insufficient data:`, dropped.map(s => s.symbol));
+    const dropped = allSymbols.filter(s =>
+      !closesByTicker[s.symbol] || closesByTicker[s.symbol].length < 10
+    );
+    console.log(`Dropped symbols:`, dropped.map(s => s.symbol).join(', '));
 
     const symbolData = allSymbols
       .filter(s => closesByTicker[s.symbol]?.length >= 10)
@@ -227,7 +229,7 @@ serve(async (req) => {
         symbol: s.symbol,
         sector: s.sector,
         riskTier: s.riskTier,
-        closes: closesByTicker[s.symbol],
+        closes: closesByTicker[s.symbol].slice(-60),
         sectorBias: sectorBias[s.sector] ?? 1.0,
         thematicBias: thematicBias[s.sector] ?? 1.0,
       }));
