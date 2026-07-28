@@ -8,6 +8,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import {
   buildClaudePrompt,
   validateClaudeResponse,
@@ -17,16 +18,134 @@ import {
 } from '../_shared/ipo-risk-engine.ts';
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+const LOVABLE_API_KEY   = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_KEY       = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
+
+type ClaudeTextBlock = { type: 'text'; text: string };
+
+async function callClaude(prompt: string, maxTokens = 8192) {
+  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'tools-2024-04-04',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system: CLAUDE_SYSTEM_PROMPT,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!claudeRes.ok) {
+    const err = await claudeRes.text();
+    throw new Error(`Claude API error: ${err}`);
+  }
+
+  const claudeData = await claudeRes.json();
+  const textBlock = claudeData.content
+    ?.filter((b: { type: string }) => b.type === 'text')
+    ?.map((b: ClaudeTextBlock) => b.text)
+    ?.join('');
+
+  if (!textBlock) throw new Error('No text response from Claude');
+
+  return textBlock;
+}
+
+async function callLovableAi(prompt: string) {
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+
+  const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-3-flash-preview',
+      temperature: 0.1,
+      max_tokens: 8192,
+      messages: [
+        { role: 'system', content: CLAUDE_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Lovable AI error: ${err}`);
+  }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content;
+  const text = typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content.map((part) => typeof part === 'string' ? part : part?.text ?? '').join('')
+      : data?.choices?.[0]?.text ?? data?.output_text ?? data?.response;
+
+  if (!text || typeof text !== 'string') throw new Error('No text response from Lovable AI');
+  return text;
+}
+
+async function fetchIpoFactsText(prompt: string) {
+  try {
+    return await callClaude(prompt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const shouldFallback = message.includes('credit balance is too low') || message.includes('Claude API error');
+    if (!shouldFallback) throw error;
+    console.warn('Anthropic unavailable for IPO refresh; using Lovable AI fallback:', message.slice(0, 240));
+    return await callLovableAi(prompt);
+  }
+}
+
+async function repairJsonWithClaude(raw: string) {
+  const repairRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8192,
+      system: 'You repair JSON. Return only one valid JSON array. No markdown, no explanations.',
+      messages: [{
+        role: 'user',
+        content: `Convert this into one valid JSON array. Preserve fields and values. Drop prose outside the array. If the array is truncated, close the current object/array safely and return only complete objects.\n\n${raw}`,
+      }],
+    }),
+  });
+
+  if (!repairRes.ok) {
+    const err = await repairRes.text();
+    throw new Error(`Claude JSON repair error: ${err}`);
+  }
+
+  const repairData = await repairRes.json();
+  const repairedText = repairData.content
+    ?.filter((b: { type: string }) => b.type === 'text')
+    ?.map((b: ClaudeTextBlock) => b.text)
+    ?.join('');
+
+  if (!repairedText) throw new Error('No repair response from Claude');
+
+  return repairedText;
+}
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const { horizon, customQuery } = await req.json() as {
@@ -37,42 +156,12 @@ serve(async (req) => {
     if (!['imminent','near','medium','long'].includes(horizon)) {
       return new Response(
         JSON.stringify({ error: 'Invalid horizon' }),
-        { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
+        { status: 400, headers: jsonHeaders }
       );
     }
 
     // --- Call Claude with web search ---
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'tools-2024-04-04',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        system: CLAUDE_SYSTEM_PROMPT,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: buildClaudePrompt(horizon, customQuery) }],
-      }),
-    });
-
-    if (!claudeRes.ok) {
-      const err = await claudeRes.text();
-      throw new Error(`Claude API error: ${err}`);
-    }
-
-    const claudeData = await claudeRes.json();
-
-    // Extract the final text block (Claude may have web_search tool_use blocks first)
-    const textBlock = claudeData.content
-      ?.filter((b: { type: string }) => b.type === 'text')
-      ?.map((b: { text: string }) => b.text)
-      ?.join('');
-
-    if (!textBlock) throw new Error('No text response from Claude');
+    const textBlock = await fetchIpoFactsText(buildClaudePrompt(horizon, customQuery));
 
     // --- Validate and score ---
     let facts;
@@ -80,8 +169,17 @@ serve(async (req) => {
       facts = validateClaudeResponse(textBlock);
     } catch (e) {
       console.error('Claude raw text (first 1500 chars):', textBlock.slice(0, 1500));
-      throw e;
+      const repairedText = await repairJsonWithClaude(textBlock);
+      try {
+        facts = validateClaudeResponse(repairedText);
+      } catch (repairError) {
+        console.error('Claude repaired text (first 1500 chars):', repairedText.slice(0, 1500));
+        throw repairError;
+      }
     }
+
+    if (!facts.length) throw new Error('No valid IPO entries returned');
+
     const scored  = scoreIpoUniverse(facts);
 
     // --- Write to Supabase ---
@@ -121,14 +219,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ data: scored, refreshedAt: new Date().toISOString() }),
-      { headers: { ...CORS, 'Content-Type': 'application/json' } }
+      { headers: jsonHeaders }
     );
 
   } catch (err) {
     console.error('fetch-ipo-intelligence error:', err);
     return new Response(
       JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      { status: 500, headers: jsonHeaders }
     );
   }
 });
