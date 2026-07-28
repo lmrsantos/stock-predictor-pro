@@ -151,6 +151,19 @@ const dn = (v: number, mn: number, mx: number) => v*(mx-mn)+mn;
 const avg = (a: number[]) => a.reduce((s,v) => s+v, 0)/a.length;
 const sd  = (a: number[]) => { const m = avg(a); return Math.sqrt(a.reduce((s,v) => s+(v-m)**2, 0)/a.length); };
 
+/** Cap picks-per-sector while preserving input order. */
+function capPerSector<T extends { sector: string }>(items: T[], perSector: number): T[] {
+  const counts: Record<string, number> = {};
+  const out: T[] = [];
+  for (const it of items) {
+    const n = counts[it.sector] ?? 0;
+    if (n >= perSector) continue;
+    counts[it.sector] = n + 1;
+    out.push(it);
+  }
+  return out;
+}
+
 function linReg(closes: number[]): { slope: number; rSquared: number; annualReturn: number } | null {
   const n = closes.length;
   if (n < 10) return null;
