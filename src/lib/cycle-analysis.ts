@@ -235,6 +235,32 @@ export function analyzeCycles(
   const lastTrough = troughPoints[troughPoints.length - 1]?.price || currentPrice * 0.8;
   const fibLevels  = calcFibLevels(lastPeak, lastTrough, currentPrice);
 
+  // ─── Sanity clamp on projections ───────────────────────────────────────────
+  // Guarantee: projectedSupport ≤ currentPrice ≤ projectedResistance.
+  // Geometric extrapolation flips when trough-growth ≫ peak-growth (or vice
+  // versa); when that happens fall back to observed levels and downgrade
+  // confidence on the affected side.
+  let projTrough = troughProj.projected;
+  let projPeak   = peakProj.projected;
+  let troughConf = troughProj.confidence;
+  let peakConf   = peakProj.confidence;
+
+  if (projTrough > currentPrice) {
+    const fib382 = lastPeak - (lastPeak - lastTrough) * 0.382;
+    projTrough = Math.min(lastTrough, fib382, currentPrice * 0.95);
+    troughConf = Math.min(troughConf, 25);
+  }
+  if (projPeak < currentPrice) {
+    projPeak = Math.max(lastPeak, currentPrice * 1.05);
+    peakConf = Math.min(peakConf, 25);
+  }
+  if (projTrough >= projPeak) {
+    projTrough = Math.min(projTrough, currentPrice * 0.95);
+    projPeak   = Math.max(projPeak,   currentPrice * 1.05);
+    troughConf = Math.min(troughConf, 20);
+    peakConf   = Math.min(peakConf,   20);
+  }
+
   // Determine current position in cycle
   const distFromTrough = (currentPrice - lastTrough) / (lastPeak - lastTrough);
   const currentPosition:
