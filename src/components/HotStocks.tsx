@@ -445,22 +445,24 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
         // Show results progressively as they come in
         const sorted = [...buySignals].sort((a,b) => b.confidence - a.confidence);
-        setStocks(sorted.slice(0, 10));
+        setStocks(capPerSector(sorted, 5).slice(0, 25));
         setHasScanned(true);
       }
 
-      // Final sort
-      const final = buySignals
-        .sort((a,b) => {
+      // Final sort — bias-weighted, then cap 5 per sector so one hot
+      // subsector can't monopolise the shortlist.
+      const final = capPerSector(
+        buySignals.sort((a,b) => {
           const biasA = (data.sectorBias[a.sector]??1) * (data.thematicBias[a.sector]??1);
           const biasB = (data.sectorBias[b.sector]??1) * (data.thematicBias[b.sector]??1);
           return (b.confidence*biasB) - (a.confidence*biasA);
-        })
-        .slice(0, 10);
+        }),
+        5,
+      ).slice(0, 25);
 
       setStocks(final);
       setHasScanned(true);
-      setScanStatus(`Found ${buySignals.length} BUY signals`);
+      setScanStatus(`Found ${buySignals.length} BUY signals across ${new Set(buySignals.map(s => s.sector)).size} sectors`);
 
     } catch (e) {
       toast.error((e as Error).message);
