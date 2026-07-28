@@ -570,7 +570,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
           <div className="flex items-center gap-4 flex-wrap">
             <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">Lookback</span>
             <div className="flex gap-2">
-            {([3, 6] as const).map(m => (
+              {([3, 6] as const).map(m => (
                 <button key={m} onClick={() => setLookback(m)}
                   className={`px-4 py-1.5 rounded-lg text-xs font-mono border transition-all ${lookback === m ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-secondary text-secondary-foreground border-border hover:bg-accent hover:text-accent-foreground"}`}>
                   {m} Months
