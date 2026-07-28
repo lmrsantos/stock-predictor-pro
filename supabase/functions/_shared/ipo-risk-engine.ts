@@ -292,7 +292,9 @@ Your job is fact extraction only.
 
 Be conservative: if you cannot confirm a fact from a reliable source, use null.
 Never invent revenue figures, valuations, or filing statuses.
-Always include the source URLs you used.`;
+Always include the source URLs you used.
+Your final answer must be machine-readable JSON only: start with [ and end with ].
+Do not include markdown fences, commentary, explanations, citations outside fields, or prose.`;
 
 export function buildClaudePrompt(horizon: IpoHorizon, customQuery?: string): string {
   const horizonInstructions: Record<IpoHorizon, string> = {
@@ -321,7 +323,7 @@ ${horizonInstructions[horizon]}
 
 ${customQuery ? `USER ADDITIONAL FOCUS: ${customQuery}\n` : ''}
 
-Return a JSON array of 10–15 companies. For each company, return EXACTLY this structure:
+Return a JSON array of 10 companies. For each company, return EXACTLY this structure:
 
 {
   "name": "Company name",
@@ -351,6 +353,8 @@ RULES:
 - Use null for any numeric field you cannot confirm from a source.
 - filingStatus must reflect actual SEC filings, not speculation.
 - platforms must be real platforms where this company's shares are actually listed today.
+- Keep each text field concise.
+- Use at most 3 source URLs per company.
 - Return ONLY valid JSON array. No preamble, no explanation, no markdown.`;
 }
 
@@ -369,27 +373,39 @@ export function validateClaudeResponse(raw: string): IpoRawFacts[] {
   const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) candidates.push(fenceMatch[1].trim());
 
-  // 2. Raw text with fences stripped.
-  candidates.push(raw.replace(/```json|```/g, '').trim());
+  const stripped = raw.replace(/```(?:json)?|```/g, '').trim();
 
-  // 3. First balanced top-level [ ... ] array.
+  // 2. First quote-aware balanced top-level [ ... ] array.
   const findArray = (s: string): string | null => {
     let depth = 0, start = -1;
+    let inString = false;
+    let escaped = false;
     for (let i = 0; i < s.length; i++) {
       const c = s[i];
+
+      if (escaped) { escaped = false; continue; }
+      if (c === '\\') { escaped = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+
       if (c === '[') { if (depth === 0) start = i; depth++; }
       else if (c === ']') { depth--; if (depth === 0 && start !== -1) return s.slice(start, i + 1); }
     }
     return null;
   };
-  const arr = findArray(raw.replace(/```json|```/g, ''));
+  const arr = findArray(stripped);
   if (arr) candidates.push(arr);
+
+  // 3. Raw text with fences stripped, for cases where Claude obeys exactly.
+  candidates.push(stripped);
 
   for (const c of candidates) {
     try {
       const attempt = JSON.parse(c);
       if (Array.isArray(attempt)) { parsed = attempt; break; }
-    } catch { /* try next */ }
+    } catch (error) {
+      console.error('IPO JSON candidate parse failed:', error instanceof Error ? error.message : String(error));
+    }
   }
 
   if (!parsed) {
