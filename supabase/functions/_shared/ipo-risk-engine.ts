@@ -360,24 +360,41 @@ RULES:
 
 export function validateClaudeResponse(raw: string): IpoRawFacts[] {
   let parsed: unknown;
-  const clean = raw.replace(/```json|```/g, '').trim();
-  try {
-    parsed = JSON.parse(clean);
-  } catch {
-    // Claude sometimes wraps the array in prose — extract first top-level array.
-    const start = clean.indexOf('[');
-    const end = clean.lastIndexOf(']');
-    if (start !== -1 && end > start) {
-      try {
-        parsed = JSON.parse(clean.slice(start, end + 1));
-      } catch {
-        console.error('Claude JSON parse failed. Preview:', clean.slice(0, 800));
-        throw new Error('Claude returned invalid JSON');
-      }
-    } else {
-      console.error('No JSON array in Claude response. Preview:', clean.slice(0, 800));
-      throw new Error('Claude returned invalid JSON');
+  const clean = raw.replace(/^[\s\S]*?(?=```|\[)/, '').trim();
+
+  // Collect candidate JSON strings in order of reliability.
+  const candidates: string[] = [];
+
+  // 1. Fenced ```json ... ``` block (most reliable when Claude adds prose).
+  const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) candidates.push(fenceMatch[1].trim());
+
+  // 2. Raw text with fences stripped.
+  candidates.push(raw.replace(/```json|```/g, '').trim());
+
+  // 3. First balanced top-level [ ... ] array.
+  const findArray = (s: string): string | null => {
+    let depth = 0, start = -1;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '[') { if (depth === 0) start = i; depth++; }
+      else if (c === ']') { depth--; if (depth === 0 && start !== -1) return s.slice(start, i + 1); }
     }
+    return null;
+  };
+  const arr = findArray(raw.replace(/```json|```/g, ''));
+  if (arr) candidates.push(arr);
+
+  for (const c of candidates) {
+    try {
+      const attempt = JSON.parse(c);
+      if (Array.isArray(attempt)) { parsed = attempt; break; }
+    } catch { /* try next */ }
+  }
+
+  if (!parsed) {
+    console.error('Claude JSON parse failed. Preview:', clean.slice(0, 800));
+    throw new Error('Claude returned invalid JSON');
   }
 
   if (!Array.isArray(parsed)) throw new Error('Expected JSON array');
