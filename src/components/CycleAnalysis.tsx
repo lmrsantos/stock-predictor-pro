@@ -148,13 +148,35 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
       </div>
 
       {/* Interpretation */}
-      <div className="rounded-lg border border-sky-800/30 bg-sky-950/10 p-3">
+      <div className="rounded-lg border border-sky-800/30 bg-sky-950/10 p-3 space-y-2">
         <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">
           {projection.interpretation}
         </p>
-        <p className="text-[9px] font-mono text-muted-foreground mt-1">
-          Avg cycle: {projection.cycleLength} trading days (~{Math.round(projection.cycleLength/21)} months)
-        </p>
+        <div className="border-t border-sky-800/20 pt-2 space-y-1">
+          <p className="text-[9px] font-mono text-muted-foreground">
+            <span className="text-sky-400">Avg cycle:</span> {projection.cycleLength} trading days (~{Math.round(projection.cycleLength/21)} months)
+          </p>
+          {projection.cycleLengthSampleSize > 0 ? (
+            <>
+              <p className="text-[9px] font-mono text-muted-foreground">
+                <span className="text-sky-400">Formula:</span> {projection.cycleLengthFormula}
+              </p>
+              <p className="text-[9px] font-mono text-muted-foreground">
+                <span className="text-sky-400">Source:</span> {projection.cycleLengthSource} · {projection.cycleLengthSampleSize} completed cycle{projection.cycleLengthSampleSize > 1 ? 's' : ''}
+              </p>
+              <p className="text-[9px] font-mono text-muted-foreground">
+                <span className="text-sky-400">Dates:</span> {projection.cycleLengthDateRange}
+              </p>
+              <p className="text-[9px] font-mono text-muted-foreground">
+                <span className="text-sky-400">Gaps:</span> {projection.cycleLengthGaps.join(", ")} bars
+              </p>
+            </>
+          ) : (
+            <p className="text-[9px] font-mono text-muted-foreground">
+              <span className="text-sky-400">Formula:</span> {projection.cycleLengthFormula} — using default {projection.cycleLength} day estimate because only {peaks.length} peak{peaks.length !== 1 ? 's' : ''} and {troughs.length} trough{troughs.length !== 1 ? 's' : ''} were detected.
+            </p>
+          )}
+        </div>
       </div>
 
       <p className="text-[9px] font-mono text-muted-foreground text-center">
