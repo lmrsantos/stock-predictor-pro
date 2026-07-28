@@ -325,19 +325,19 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [isScanning, setIsScanning]   = useState(false);
   const [hasScanned, setHasScanned]   = useState(false);
   const [scanStatus, setScanStatus]   = useState("");
-  const [riskProfile, setRiskProfile] = useState<RiskProfile>("aggressive");
+  const [filter, setFilter]           = useState<"all" | "hot">("hot");
+  const autoRan = useRef(false);
 
-  const discover = useCallback(async (profile?: RiskProfile) => {
-    const activeProfile = profile ?? riskProfile;
+  const discover = useCallback(async () => {
     setIsScanning(true);
     setStocks([]);
     setHasScanned(false);
     setScanStatus("Fetching price data...");
 
     try {
-      // Step 1: Fetch raw price data from edge function
+      // Always fetch the full universe (aggressive covers all risk tiers)
       const { data, error } = await supabase.functions.invoke("hot-stocks", {
-        body: { riskProfile: activeProfile },
+        body: { riskProfile: "aggressive" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -347,13 +347,11 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
       setScanStatus(`Running momentum pre-filter on ${symbolData.length} symbols...`);
 
-      // Step 2: Browser-side quickScore pre-filter.
-      // Universe now mirrors sector-backtest (~250 unique symbols across
-      // sectors + subsectors), so keep the widest reasonable pool before AE
-      // scoring but cap at 6 per sector so one hot subsector can't crowd out
-      // everything else.
-      const preRanked = symbolData
-        .map(s => ({ ...s, qs: quickScore(s.closes) }))
+      // Pre-filter: compute quickScore for every symbol; keep all, mark rejects.
+      const allScored = symbolData.map(s => ({ ...s, qs: quickScore(s.closes) }));
+
+      // Candidates that pass pre-filter (recentReturn > -5%) go to full AE.
+      const preRanked = allScored
         .filter(s => s.qs !== null && s.qs.recentReturn > -0.05)
         .sort((a, b) => {
           const scoreA = (a.qs!.combinedScore) * (a.sectorBias) * (a.thematicBias);
@@ -367,16 +365,15 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         perSectorCap[c.sector] = n + 1;
         return true;
       }).slice(0, 80);
+      const candidateSet = new Set(candidates.map(c => c.symbol));
 
       setScanStatus(`Training AE on top ${candidates.length} candidates...`);
 
-      // Compute per-sector linkage tilt from validated linkages (localStorage cache).
-      // Skip macro-led links (OIL/GOLD/US10Y/XLY_XLP_RATIO) — no data here.
+      // Sector linkage tilt (unchanged)
       const MACRO = new Set(["OIL","GOLD","US10Y","XLY_XLP_RATIO"]);
       const linkCache = readCachedLinkages();
       const sectorTilt: Record<string, { factor: number; note: string }> = {};
       if (linkCache?.results?.length) {
-        // sector -> mean of last-5-day log returns across its symbols
         const sectorRecentReturn: Record<string, number> = {};
         const bySector: Record<string, number[]> = {};
         for (const s of symbolData) {
@@ -393,7 +390,6 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           sectorRecentReturn[sec] = arr.reduce((a,b)=>a+b,0) / arr.length;
         }
         const validated = linkCache.results.filter(r => r.validated && !MACRO.has(String(r.leader)));
-        // sector -> array of {contribution, note-piece}
         const followers = new Set(validated.map(v => v.follower));
         for (const follower of followers) {
           let raw = 0;
@@ -405,7 +401,6 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
             raw += contrib;
             pieces.push(`${v.leader} 5d ${(lr*100).toFixed(1)}%`);
           }
-          // scale raw to [-0.15, +0.15]; typical raw is ~0.005 -> tanh scaling
           const factor = 1 + Math.max(-0.15, Math.min(0.15, Math.tanh(raw * 20) * 0.15));
           if (Math.abs(factor - 1) > 0.005) {
             sectorTilt[follower] = {
@@ -416,69 +411,156 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         }
       }
 
-      // Step 3: Full 200-epoch AE on each candidate (browser — no limits)
-      const buySignals: HotStock[] = [];
+      const results: HotStock[] = [];
 
+      const buildRow = (
+        c: SymbolData,
+        opts: {
+          signal: string;
+          confidence: number;
+          forecastPct: number;
+          forecastDays: number;
+          forecastLabel: string;
+          walkForwardAccuracy: number;
+          hitRate: number;
+          regime: string;
+          converged: boolean;
+          hot: boolean;
+          reason: string;
+          breakout: boolean;
+          linkageTilt?: number;
+          linkageNote?: string;
+        }
+      ): HotStock => {
+        const prof = PROFILE_BY_TIER[c.riskTier] ?? PROFILE_BY_TIER[4];
+        return {
+          symbol: c.symbol,
+          price: c.closes[c.closes.length-1] ?? 0,
+          dayChange: 0,
+          sector: c.sector,
+          signal: opts.signal,
+          confidence: opts.confidence,
+          forecastPct: opts.forecastPct,
+          forecastDays: opts.forecastDays,
+          forecastLabel: opts.forecastLabel,
+          walkForwardAccuracy: opts.walkForwardAccuracy,
+          hitRate: opts.hitRate,
+          regime: opts.regime,
+          converged: opts.converged,
+          riskTier: c.riskTier,
+          riskLabel: RISK_LABELS[c.riskTier] ?? "🔴 High Risk",
+          profileLabel: prof.label,
+          profileClass: prof.cls,
+          breakout: opts.breakout,
+          sectorHot: c.sectorBias >= 1.5,
+          thematicHot: c.thematicBias >= 1.5,
+          hot: opts.hot,
+          reason: opts.reason,
+          linkageTilt: opts.linkageTilt,
+          linkageNote: opts.linkageNote,
+        };
+      };
+
+      // Add symbols that were filtered out at the pre-filter stage with reasons.
+      for (const s of allScored) {
+        if (candidateSet.has(s.symbol)) continue;
+        let reason = "";
+        if (s.closes.length < 30) {
+          reason = "Insufficient price history (<30 days)";
+        } else if (!s.qs) {
+          reason = "Could not compute momentum score";
+        } else if (s.qs.recentReturn <= -0.05) {
+          reason = `Recent downtrend (60d return ${(s.qs.recentReturn*100).toFixed(1)}%)`;
+        } else {
+          reason = "Crowded out by higher-scoring peers in same sector (cap 6/sector, top 80)";
+        }
+        results.push(buildRow(s, {
+          signal: "SKIPPED",
+          confidence: 0,
+          forecastPct: 0,
+          forecastDays: 0,
+          forecastLabel: "—",
+          walkForwardAccuracy: 0,
+          hitRate: 0,
+          regime: "NORMAL",
+          converged: false,
+          hot: false,
+          reason,
+          breakout: false,
+        }));
+      }
+
+      // Full AE scoring on every candidate; record all outcomes.
       for (let i = 0; i < candidates.length; i++) {
         const c = candidates[i];
         setScanStatus(`AE scoring ${c.symbol} (${i+1}/${candidates.length})...`);
-
-        // yield to browser to keep UI responsive
         await new Promise(r => setTimeout(r, 0));
 
         const scored = scoreStock(c.closes, c.riskTier);
-        console.log(`${c.symbol}: ${scored?.signal} conf=${scored?.confidence} hit=${scored?.hitRate} fPct=${scored?.forecastPct}`);
-        if (!scored) continue;
-        if (scored.signal !== "BUY" && scored.signal !== "WAIT") continue;
-        if (scored.signal === "WAIT" && scored.confidence < 20) continue;
-        if (scored.signal !== "BUY") continue; // strict BUY only for now
+        if (!scored) {
+          results.push(buildRow(c, {
+            signal: "NO MODEL",
+            confidence: 0,
+            forecastPct: 0,
+            forecastDays: 0,
+            forecastLabel: "—",
+            walkForwardAccuracy: 0,
+            hitRate: 0,
+            regime: "NORMAL",
+            converged: false,
+            hot: false,
+            reason: "Model failed to converge or produced invalid forecast",
+            breakout: false,
+          }));
+        } else {
+          const tilt = sectorTilt[c.sector];
+          const tiltedConfidence = tilt ? Math.min(100, scored.confidence * tilt.factor) : scored.confidence;
+          const hot = scored.signal === "BUY";
+          let reason = "";
+          if (hot) {
+            reason = `BUY · conf ${Math.round(tiltedConfidence)}% · hit ${scored.hitRate}% · forecast ${scored.forecastPct >= 0 ? "+" : ""}${scored.forecastPct}%`;
+          } else if (scored.signal === "STAY OUT") {
+            reason = `Stay out — ${scored.regime === "EXTREME" ? "extreme volatility regime" : `hit rate too low (${scored.hitRate}%)`}`;
+          } else if (scored.signal === "SELL") {
+            reason = `Bearish forecast (${scored.forecastPct}%) with confidence ${Math.round(tiltedConfidence)}%`;
+          } else {
+            reason = `Wait — confidence ${Math.round(tiltedConfidence)}% below tier threshold or flat forecast (${scored.forecastPct}%)`;
+          }
+          results.push(buildRow(c, {
+            signal: scored.signal,
+            confidence: Math.round(tiltedConfidence * 10) / 10,
+            forecastPct: scored.forecastPct,
+            forecastDays: scored.forecastDays,
+            forecastLabel: scored.forecastLabel,
+            walkForwardAccuracy: scored.walkForwardAccuracy,
+            hitRate: scored.hitRate,
+            regime: scored.regime,
+            converged: scored.converged,
+            hot,
+            reason,
+            breakout: c.qs!.breakout && scored.converged,
+            linkageTilt: tilt?.factor,
+            linkageNote: tilt?.note,
+          }));
+        }
 
-        const tilt = sectorTilt[c.sector];
-        const tiltedConfidence = tilt ? Math.min(100, scored.confidence * tilt.factor) : scored.confidence;
-
-        buySignals.push({
-          symbol:              c.symbol,
-          price:               c.closes[c.closes.length-1],
-          dayChange:           0,
-          sector:              c.sector,
-          signal:              scored.signal,
-          confidence:          Math.round(tiltedConfidence * 10) / 10,
-          forecastPct:         scored.forecastPct,
-          forecastDays:        scored.forecastDays,
-          forecastLabel:       scored.forecastLabel,
-          walkForwardAccuracy: scored.walkForwardAccuracy,
-          hitRate:             scored.hitRate,
-          regime:              scored.regime,
-          converged:           scored.converged,
-          riskTier:            c.riskTier,
-          riskLabel:           RISK_LABELS[c.riskTier] ?? "🔴 High Risk",
-          breakout:            c.qs!.breakout && scored.converged,
-          sectorHot:           c.sectorBias >= 1.5,
-          thematicHot:         c.thematicBias >= 1.5,
-          linkageTilt:         tilt?.factor,
-          linkageNote:         tilt?.note,
+        // Live update: hot first, then by confidence
+        const sorted = [...results].sort((a, b) => {
+          if (a.hot !== b.hot) return a.hot ? -1 : 1;
+          return b.confidence - a.confidence;
         });
-
-        // Show results progressively as they come in
-        const sorted = [...buySignals].sort((a,b) => b.confidence - a.confidence);
-        setStocks(capPerSector(sorted, 5).slice(0, 25));
+        setStocks(sorted);
         setHasScanned(true);
       }
 
-      // Final sort — bias-weighted, then cap 5 per sector so one hot
-      // subsector can't monopolise the shortlist.
-      const final = capPerSector(
-        buySignals.sort((a,b) => {
-          const biasA = (data.sectorBias[a.sector]??1) * (data.thematicBias[a.sector]??1);
-          const biasB = (data.sectorBias[b.sector]??1) * (data.thematicBias[b.sector]??1);
-          return (b.confidence*biasB) - (a.confidence*biasA);
-        }),
-        5,
-      ).slice(0, 25);
-
-      setStocks(final);
+      const finalSorted = [...results].sort((a, b) => {
+        if (a.hot !== b.hot) return a.hot ? -1 : 1;
+        return b.confidence - a.confidence;
+      });
+      setStocks(finalSorted);
       setHasScanned(true);
-      setScanStatus(`Found ${buySignals.length} BUY signals across ${new Set(buySignals.map(s => s.sector)).size} sectors`);
+      const hotCount = finalSorted.filter(s => s.hot).length;
+      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} hot (BUY) · ${finalSorted.length - hotCount} not hot`);
 
     } catch (e) {
       toast.error((e as Error).message);
@@ -486,40 +568,50 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
     } finally {
       setIsScanning(false);
     }
-  }, [riskProfile]);
+  }, []);
 
-  const handleProfileChange = (profile: RiskProfile) => {
-    setRiskProfile(profile);
-    if (hasScanned || stocks.length > 0) discover(profile);
-  };
+  // Auto-run once on mount
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+    discover();
+  }, [discover]);
+
+  const visible = filter === "hot" ? stocks.filter(s => s.hot) : stocks;
+  const hotCount = stocks.filter(s => s.hot).length;
 
   return (
     <div className="space-y-3">
-      {/* Risk Profile Toggle */}
-      <div className="flex gap-1.5">
-        {RISK_PROFILES.map(p => {
-          const isSelected = riskProfile === p.value;
-          return (
-            <button key={p.value} onClick={() => handleProfileChange(p.value)}
-              disabled={isScanning}
-              className={`flex-1 px-2 py-1.5 rounded-md text-[11px] font-semibold border transition-all disabled:opacity-60 ${
-                isSelected
-                  ? `${p.selectedBg} ${p.selectedText} border-transparent shadow-sm`
-                  : `bg-card/50 ${p.color} border hover:opacity-80`
-              }`}>
-              {p.label}
-            </button>
-          );
-        })}
-      </div>
-
       <button onClick={() => discover()} disabled={isScanning}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-70">
         {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
-        {isScanning ? "Scanning…" : hasScanned ? "Scan Again" : "Discover Hot Stocks"}
+        {isScanning ? "Scanning…" : hasScanned ? "Rescan" : "Run Hot Stocks"}
       </button>
 
-      {/* Live progress */}
+      {/* View toggle */}
+      {hasScanned && stocks.length > 0 && (
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setFilter("hot")}
+            className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
+              filter === "hot"
+                ? "bg-primary text-primary-foreground border-transparent"
+                : "bg-card/50 border-border text-muted-foreground hover:text-foreground"
+            }`}>
+            🔥 Hot only ({hotCount})
+          </button>
+          <button
+            onClick={() => setFilter("all")}
+            className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
+              filter === "all"
+                ? "bg-primary text-primary-foreground border-transparent"
+                : "bg-card/50 border-border text-muted-foreground hover:text-foreground"
+            }`}>
+            All results ({stocks.length})
+          </button>
+        </div>
+      )}
+
       {isScanning && (
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
           <div className="flex items-center gap-2">
@@ -530,58 +622,72 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
             </div>
             <span className="text-xs font-mono text-primary">{scanStatus}</span>
           </div>
-          {/* Show partial results while scanning */}
-          {stocks.length > 0 && (
-            <p className="text-[10px] font-mono text-muted-foreground">
-              {stocks.length} BUY signal{stocks.length !== 1 ? "s" : ""} found so far...
-            </p>
-          )}
         </div>
       )}
 
-      {/* No results */}
-      {hasScanned && stocks.length === 0 && !isScanning && (
+      {hasScanned && visible.length === 0 && !isScanning && (
         <p className="text-xs text-muted-foreground text-center py-2">
-          No strong BUY signals found. Market conditions may be mixed — try again or switch profiles.
+          {filter === "hot"
+            ? "No hot BUY signals in this scan. Switch to 'All results' to see what the model saw."
+            : "No results."}
         </p>
       )}
 
-      {/* Results */}
-      {stocks.length > 0 && (
-        <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
-          {stocks.map((stock, i) => (
+      {visible.length > 0 && (
+        <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
+          {visible.map((stock, i) => (
             <button key={stock.symbol} onClick={() => onSelectTicker(stock.symbol)}
-              className="w-full text-left p-3 rounded-lg bg-card/50 border border-border hover:border-primary/40 hover:bg-card transition-all group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              className={`w-full text-left p-3 rounded-lg border transition-all group ${
+                stock.hot
+                  ? "bg-card/50 border-border hover:border-primary/40 hover:bg-card"
+                  : "bg-card/20 border-border/50 hover:border-border opacity-80 hover:opacity-100"
+              }`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <span className="text-[10px] font-mono font-bold text-muted-foreground w-4">#{i+1}</span>
                   <span className="text-sm font-mono font-bold text-foreground group-hover:text-primary transition-colors">
                     {stock.symbol}
                   </span>
+                  {stock.hot && <span className="text-[10px]">🔥</span>}
+                  <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${stock.profileClass}`}>
+                    {stock.profileLabel}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-mono font-bold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
-                    {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    {stock.forecastLabel}
-                  </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {stock.hot ? (
+                    <>
+                      <span className={`text-xs font-mono font-bold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
+                        {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {stock.forecastLabel}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">
+                      {stock.signal}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="ml-6 mt-1 space-y-0.5">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    Confidence {stock.confidence.toFixed(1)}%
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    Hit {stock.hitRate}%
-                  </span>
                   {stock.sector && (
-                    <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
                       {stock.sector}
                     </span>
                   )}
                   <span className="text-[10px] font-mono font-semibold">{stock.riskLabel}</span>
+                  {stock.hot && (
+                    <>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        Conf {stock.confidence.toFixed(1)}%
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        Hit {stock.hitRate}%
+                      </span>
+                    </>
+                  )}
                   {stock.breakout && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500">
                       🔥 Breakout
@@ -607,6 +713,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                     </span>
                   )}
                 </div>
+                <p className={`text-[10px] font-mono leading-relaxed pt-0.5 ${stock.hot ? "text-foreground/80" : "text-muted-foreground"}`}>
+                  {stock.hot ? "✓ " : "· "}{stock.reason}
+                </p>
               </div>
             </button>
           ))}
