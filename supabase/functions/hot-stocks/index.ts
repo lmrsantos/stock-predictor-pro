@@ -227,18 +227,23 @@ serve(async (req) => {
 
     const allowedTiers = RISK_PROFILE_TIERS[riskProfile];
 
-    // Build symbol list for this profile
-    const allSymbols: { symbol: string; sector: string; riskTier: number }[] = [];
+    // Build symbol list for this profile.
+    // Many symbols appear in multiple universes (e.g. NVDA is in Mega-cap Tech,
+    // Semiconductors, and Semis: AI & GPU). Dedupe by symbol, preferring the
+    // NARROWEST subsector so per-sector caps in the UI feel meaningful. Broad
+    // baskets like "Mega-cap Tech" come first in SECTOR_UNIVERSES; narrower
+    // subsectors ("Semis: AI & GPU") come later, so last-wins gives us the
+    // narrower label.
+    const symByKey: Record<string, { symbol: string; sector: string; riskTier: number }> = {};
     for (const [sector, syms] of Object.entries(SECTOR_UNIVERSES)) {
       for (const sym of syms) {
         const riskTier = RISK_TIERS[sym] ?? SECTOR_RISK_TIER[sector] ?? 3;
-        if (allowedTiers.includes(riskTier)) {
-          allSymbols.push({ symbol: sym, sector, riskTier });
-        }
+        if (!allowedTiers.includes(riskTier)) continue;
+        symByKey[sym] = { symbol: sym, sector, riskTier };
       }
     }
-
-    const allTickers = [...new Set(allSymbols.map(s => s.symbol))];
+    const allSymbols = Object.values(symByKey);
+    const allTickers = allSymbols.map(s => s.symbol);
 
     // Fetch ALL price data using pagination to bypass 1000 row limit
     const PAGE_SIZE = 1000;
