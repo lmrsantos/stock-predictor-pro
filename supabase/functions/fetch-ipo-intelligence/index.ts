@@ -67,10 +67,10 @@ async function callLovableAi(prompt: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Lovable-API-Key': LOVABLE_API_KEY,
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'google/gemini-3.6-flash',
+      model: 'google/gemini-3-flash-preview',
       temperature: 0.1,
       max_tokens: 8192,
       messages: [
@@ -86,7 +86,13 @@ async function callLovableAi(prompt: string) {
   }
 
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const content = data?.choices?.[0]?.message?.content;
+  const text = typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content.map((part) => typeof part === 'string' ? part : part?.text ?? '').join('')
+      : data?.choices?.[0]?.text ?? data?.output_text ?? data?.response;
+
   if (!text || typeof text !== 'string') throw new Error('No text response from Lovable AI');
   return text;
 }
