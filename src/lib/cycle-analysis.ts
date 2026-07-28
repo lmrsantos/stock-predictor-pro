@@ -409,7 +409,21 @@ export function formatCycleReport(result: CycleAnalysisResult): string {
   lines.push("", `### Projections (${projection.troughTrend} trend)`);
   lines.push(`📉 Next support (projected trough): **$${projection.nextTrough}** (${projection.troughConfidence}% confidence)`);
   lines.push(`📈 Next resistance (projected peak): **$${projection.nextPeak}** (${projection.peakConfidence}% confidence)`);
-  lines.push(`⏱️ Average cycle length: ${projection.cycleLength} trading days`);
+
+  lines.push("", `### Cycle Length Methodology`);
+  if (projection.cycleLengthSampleSize > 0) {
+    lines.push(`⏱️ Average cycle length: **${projection.cycleLength} trading days**`);
+    lines.push(`Formula: ${projection.cycleLengthFormula}`);
+    lines.push(`Source: ${projection.cycleLengthSource}`);
+    lines.push(`Completed cycles used: ${projection.cycleLengthSampleSize}`);
+    lines.push(`Date range: ${projection.cycleLengthDateRange}`);
+    lines.push(`Individual gaps (bars): ${projection.cycleLengthGaps.join(", ")}`);
+  } else {
+    lines.push(`⏱️ Average cycle length: **${projection.cycleLength} trading days** (default estimate)`);
+    lines.push(`Formula: ${projection.cycleLengthFormula}`);
+    lines.push(`Reason: only ${peaks.length} peak(s) and ${troughs.length} trough(s) detected — need at least 2 of the same type to compute a real cycle.`);
+  }
+
   lines.push("", `### Fibonacci Levels (${peaks[peaks.length-1]?.price ? `$${peaks[peaks.length-1].price}` : "high"} → ${troughs[troughs.length-1]?.price ? `$${troughs[troughs.length-1].price}` : "low"})`);
   for (const fib of projection.fibLevels) {
     const marker = Math.abs(fib.distanceFromCurrent) < 3 ? " ← CURRENT" : "";
