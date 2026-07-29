@@ -60,19 +60,20 @@ export function PortfolioBacktest({
     return holdings
       .map((h, i) => {
         const data = queries[i].data;
-        if (!data || data.length < 30) return null;
-        const historical = getShortTermProjectionWindow(sliceUpTo(data, date));
-        if (historical.length < 30) return null;
+        if (!data || data.length < 60) return null;
+        const historical = sliceUpTo(data, date);
+        if (historical.length < 60) return null;
         const asOfPrice = historical[historical.length - 1].close;
         const actualPrice = data[data.length - 1].close;
 
+        // Use the same calibration engine as the Hot Stocks + Backtest modal
         let projected30d = asOfPrice;
         try {
-          const reg = computeLinearRegression(historical, 30);
-          // 30 calendar days ≈ 21 trading days
-          const preds = reg.predictions;
-          const idx = Math.min(20, preds.length - 1);
-          projected30d = preds[idx]?.predicted ?? asOfPrice;
+          const points: BacktestDataPoint[] = historical
+            .filter((p) => Number.isFinite(p.close) && p.close > 0)
+            .map((p) => ({ date: p.date, timestamp: new Date(p.date).getTime(), actual: p.close }));
+          const bt = backtest(points, 6, 30);
+          projected30d = bt.forecastPoints.at(-1)?.mean ?? asOfPrice;
         } catch {
           return null;
         }
