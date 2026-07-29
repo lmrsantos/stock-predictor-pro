@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
-import { computeLinearRegression, getShortTermProjectionWindow } from "@/lib/regression";
+import { computeLinearRegression } from "@/lib/regression";
+import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -91,27 +92,40 @@ function HoldingRow({
 
   const projection = useMemo((): HoldingProjection | null => {
     if (!stockData?.length) return null;
-    // Use the short-term 4-month window for 30d projections. The longer 1y
-    // window was over-smoothing recent portfolio moves and creating large
-    // 30d backtest errors.
-    const shortTermData = getShortTermProjectionWindow(stockData);
-    const shortTermRegression = computeLinearRegression(shortTermData, 30);
-    const longTermRegression = computeLinearRegression(stockData, 365);
     const currentPrice = stockData[stockData.length - 1].close;
     const totalCost = holding.shares * holding.avg_cost;
     const currentValue = holding.shares * currentPrice;
-    const shortTermPreds = shortTermRegression.predictions;
+
+    // ── 30d projection: use the same calibration engine the Backtest modal uses ──
+    // (single source of truth — 5-model ensemble picks the winner that best
+    //  matched today's price, then projects that model forward 30 calendar days)
+    let price30 = currentPrice;
+    let calibrationR2 = 0;
+    try {
+      const points: BacktestDataPoint[] = stockData
+        .filter((p) => Number.isFinite(p.close) && p.close > 0)
+        .map((p) => ({ date: p.date, timestamp: new Date(p.date).getTime(), actual: p.close }));
+      if (points.length >= 60) {
+        const bt = backtest(points, 6, 30);
+        price30 = bt.forecastPoints.at(-1)?.mean ?? currentPrice;
+        calibrationR2 = bt.winningModel.rSquared;
+      }
+    } catch {
+      // fall through — leave price30 = currentPrice
+    }
+
+    // ── Longer horizons still use the long-window regression ──
+    const longTermRegression = computeLinearRegression(stockData, 365);
     const longTermPreds = longTermRegression.predictions;
-    // Predictions skip weekends, so index N ≈ N trading days ahead.
     const priceAt = (tradingDays: number) => {
       if (!longTermPreds.length) return currentPrice;
       const idx = Math.min(Math.max(tradingDays - 1, 0), longTermPreds.length - 1);
       return longTermPreds[idx].predicted;
     };
-    // 30 calendar days ≈ 21 trading days; 90 ≈ 63; 365 ≈ 252.
-    const price30 = shortTermPreds[Math.min(20, shortTermPreds.length - 1)]?.predicted ?? currentPrice;
+    // 90 calendar days ≈ 63 trading days; 365 ≈ 252.
     const price90 = priceAt(63);
     const price1y = priceAt(252);
+
     const projected30d = holding.shares * price30;
     const projected1y = holding.shares * price1y;
     return {
@@ -130,7 +144,7 @@ function HoldingRow({
       projected1y,
       projected1yPct: currentValue > 0 ? (projected1y - currentValue) / currentValue : 0,
       annualReturn: currentPrice > 0 ? (price1y - currentPrice) / currentPrice : 0,
-      rSquared: shortTermRegression.rSquared,
+      rSquared: calibrationR2 || longTermRegression.rSquared,
     };
   }, [stockData, holding, meta]);
 

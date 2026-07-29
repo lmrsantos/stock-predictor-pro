@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { X, History, Loader2 } from "lucide-react";
 import { getStockDataFromDB, fetchAndStoreStockData } from "@/lib/stock-data";
-import { computeLinearRegression, getShortTermProjectionWindow, SHORT_TERM_PROJECTION_LOOKBACK_DAYS } from "@/lib/regression";
+import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import type { StockDataPoint } from "@/lib/types";
 
 interface Holding {
@@ -60,19 +60,20 @@ export function PortfolioBacktest({
     return holdings
       .map((h, i) => {
         const data = queries[i].data;
-        if (!data || data.length < 30) return null;
-        const historical = getShortTermProjectionWindow(sliceUpTo(data, date));
-        if (historical.length < 30) return null;
+        if (!data || data.length < 60) return null;
+        const historical = sliceUpTo(data, date);
+        if (historical.length < 60) return null;
         const asOfPrice = historical[historical.length - 1].close;
         const actualPrice = data[data.length - 1].close;
 
+        // Use the same calibration engine as the Hot Stocks + Backtest modal
         let projected30d = asOfPrice;
         try {
-          const reg = computeLinearRegression(historical, 30);
-          // 30 calendar days ≈ 21 trading days
-          const preds = reg.predictions;
-          const idx = Math.min(20, preds.length - 1);
-          projected30d = preds[idx]?.predicted ?? asOfPrice;
+          const points: BacktestDataPoint[] = historical
+            .filter((p) => Number.isFinite(p.close) && p.close > 0)
+            .map((p) => ({ date: p.date, timestamp: new Date(p.date).getTime(), actual: p.close }));
+          const bt = backtest(points, 6, 30);
+          projected30d = bt.forecastPoints.at(-1)?.mean ?? asOfPrice;
         } catch {
           return null;
         }
@@ -220,7 +221,7 @@ export function PortfolioBacktest({
               </div>
 
               <p className="text-[10px] text-muted-foreground">
-                Same Enhanced-V2 regression as the "30d Proj" column, using the last {SHORT_TERM_PROJECTION_LOOKBACK_DAYS} trading sessions available on the as-of date. Error shows how much the model's forecast differed from what actually happened.
+                Same 5-model calibration engine as the Hot Stocks + Backtest modal — fits 10/15/20/30/40-day trend models to data up to the as-of date, picks the winner that best matched the price the day before "today", then projects that winner 30 days forward. Error shows how much the winner's forecast differed from what actually happened.
               </p>
             </>
           )}
