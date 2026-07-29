@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { X, History, Loader2 } from "lucide-react";
 import { getStockDataFromDB, fetchAndStoreStockData } from "@/lib/stock-data";
-import { computeLinearRegression, getShortTermProjectionWindow, SHORT_TERM_PROJECTION_LOOKBACK_DAYS } from "@/lib/regression";
+import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import type { StockDataPoint } from "@/lib/types";
 
 interface Holding {
