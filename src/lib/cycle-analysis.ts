@@ -328,18 +328,34 @@ export function analyzeCycles(
     ? "round( mean( trough_i.index - trough_{i-1}.index ) ) for i=1..n"
     : "n/a — default estimate used because fewer than 2 peaks and 2 troughs were detected";
 
-  // Build interpretation
+  // Build interpretation — combine trough trend, peak trend, and recent price action
+  // so we don't call a stock an "UPTREND" when peaks are falling and price is in
+  // a months-long decline (rising older lows can be misleading in isolation).
   const troughPct   = Math.round(troughProj.avgGrowth * 100);
   const peakPct     = Math.round(peakProj.avgGrowth * 100);
   const distToNext  = Math.round(((projTrough - currentPrice) / currentPrice) * 100);
 
+  // Recent price action: compare current price to price ~cycleLength bars ago
+  const lookback = Math.min(avgCycleLength, prices.length - 1);
+  const pastPrice = prices[prices.length - 1 - lookback] ?? prices[0];
+  const recentPct = ((currentPrice - pastPrice) / pastPrice) * 100;
+  const recentDir: "up" | "down" | "flat" =
+    recentPct > 5 ? "up" : recentPct < -5 ? "down" : "flat";
+
+  const tT = troughProj.trend;
+  const pT = peakProj.trend;
+
   let interpretation = "";
-  if (troughProj.trend === "rising") {
-    interpretation = `${ticker} shows a clear UPTREND pattern — each successive low is ${troughPct > 0 ? "+" : ""}${troughPct}% higher than the previous. `;
-  } else if (troughProj.trend === "falling") {
-    interpretation = `${ticker} shows a DOWNTREND — lows are getting lower (${troughPct}% per cycle). `;
+  if (tT === "rising" && pT === "rising" && recentDir !== "down") {
+    interpretation = `${ticker} shows a clear UPTREND — higher lows (+${troughPct}%/cycle) and higher highs (+${peakPct}%/cycle). `;
+  } else if (tT === "falling" && pT === "falling") {
+    interpretation = `${ticker} shows a clear DOWNTREND — lower lows (${troughPct}%/cycle) and lower highs (${peakPct}%/cycle). `;
+  } else if (tT === "rising" && pT !== "rising") {
+    interpretation = `${ticker} shows a MIXED pattern — lows are rising (+${troughPct}%/cycle) but highs are ${pT} (${peakPct}%/cycle), so the range is compressing. Recent ${lookback}-bar move: ${recentPct >= 0 ? "+" : ""}${recentPct.toFixed(1)}%. `;
+  } else if (tT !== "falling" && pT === "falling") {
+    interpretation = `${ticker} shows a WEAKENING pattern — highs are falling (${peakPct}%/cycle) while lows are ${tT}. Recent ${lookback}-bar move: ${recentPct >= 0 ? "+" : ""}${recentPct.toFixed(1)}%. `;
   } else {
-    interpretation = `${ticker} shows a SIDEWAYS pattern — lows are relatively stable. `;
+    interpretation = `${ticker} shows a SIDEWAYS pattern — lows ${tT}, highs ${pT}. Recent ${lookback}-bar move: ${recentPct >= 0 ? "+" : ""}${recentPct.toFixed(1)}%. `;
   }
 
   if (currentPosition === "near_trough") {
