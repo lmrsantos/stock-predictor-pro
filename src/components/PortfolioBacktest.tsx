@@ -221,7 +221,7 @@ export function PortfolioBacktest({
               </div>
 
               <p className="text-[10px] text-muted-foreground">
-                Same Enhanced-V2 regression as the "30d Proj" column, using the last {SHORT_TERM_PROJECTION_LOOKBACK_DAYS} trading sessions available on the as-of date. Error shows how much the model's forecast differed from what actually happened.
+                Same 5-model calibration engine as the Hot Stocks + Backtest modal — fits 10/15/20/30/40-day trend models to data up to the as-of date, picks the winner that best matched the price the day before "today", then projects that winner 30 days forward. Error shows how much the winner's forecast differed from what actually happened.
               </p>
             </>
           )}
