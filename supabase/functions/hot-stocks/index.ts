@@ -247,31 +247,30 @@ serve(async (req) => {
 
     // Fetch ALL price data using pagination to bypass 1000 row limit
     const PAGE_SIZE = 1000;
-    let allRows: { ticker: string; close: number }[] = [];
+    let allRows: { ticker: string; close: number; date: string }[] = [];
     let page = 0;
     while (true) {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("stock_prices")
-        .select("ticker,close")
+        .select("ticker,close,date")
         .in("ticker", allTickers)
         .order("date", { ascending: true })
         .range(from, to);
       if (error || !data?.length) break;
-      allRows = allRows.concat(data);
+      allRows = allRows.concat(data as any);
       if (data.length < PAGE_SIZE) break;
       page++;
     }
 
-    // Group closes by ticker
-    const closesByTicker: Record<string, number[]> = {};
+    // Group by ticker as {date, close} points
+    const seriesByTicker: Record<string, { date: string; close: number }[]> = {};
     for (const row of allRows) {
-      if (!closesByTicker[row.ticker]) closesByTicker[row.ticker] = [];
-      closesByTicker[row.ticker].push(Number(row.close));
+      (seriesByTicker[row.ticker] ??= []).push({ date: row.date, close: Number(row.close) });
     }
 
-    console.log(`Fetched ${allRows.length} rows for ${Object.keys(closesByTicker).length} symbols`);
+    console.log(`Fetched ${allRows.length} rows for ${Object.keys(seriesByTicker).length} symbols`);
 
     // Fetch biases in parallel
     const [sectorBias, thematicBias] = await Promise.all([
@@ -279,19 +278,22 @@ serve(async (req) => {
       fetchThematicBias(supabase),
     ]);
 
-    // Build symbol data for browser
+    // Need ≥60 points for the backtest() engine to run reliably.
+    const MIN_POINTS = 60;
     const dropped = allSymbols.filter(s =>
-      !closesByTicker[s.symbol] || closesByTicker[s.symbol].length < 10
+      !seriesByTicker[s.symbol] || seriesByTicker[s.symbol].length < MIN_POINTS
     );
     console.log(`Dropped symbols:`, dropped.map(s => s.symbol).join(', '));
 
+    // Send the last ~260 trading days so the browser's backtest() can use
+    // its full 6-month lookback window (matches the Calibration Backtest modal).
     const symbolData = allSymbols
-      .filter(s => closesByTicker[s.symbol]?.length >= 10)
+      .filter(s => (seriesByTicker[s.symbol]?.length ?? 0) >= MIN_POINTS)
       .map(s => ({
         symbol: s.symbol,
         sector: s.sector,
         riskTier: s.riskTier,
-        closes: closesByTicker[s.symbol].slice(-60),
+        series: seriesByTicker[s.symbol].slice(-260),
         sectorBias: sectorBias[s.sector] ?? 1.0,
         thematicBias: thematicBias[s.sector] ?? 1.0,
       }));
