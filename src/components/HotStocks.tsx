@@ -475,6 +475,15 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         </div>
       )}
 
+      {hasScanned && visible.length > 0 && !isScanning && (
+        <button
+          onClick={exportToExcel}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all">
+          <Download className="w-3.5 h-3.5" />
+          Export to Excel ({visible.length} rows)
+        </button>
+      )}
+
       {isScanning && (
         <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
           <div className="flex items-center gap-2">
