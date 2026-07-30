@@ -292,6 +292,27 @@ export function formatPercent(value: number): string {
   return (value * 100).toFixed(2) + "%";
 }
 
+/**
+ * Implied annual return from the regression trend.
+ *
+ * The underlying fit is log-linear, so growth compounds per trading bar.
+ * `slope` is the linear-space delta of the last fitted bar, which implies a
+ * daily growth rate g = ln(P / (P - slope)). Annualizing over 252 trading days:
+ *   annual = (P / (P - slope))^252 - 1
+ *
+ * The old formula ((slope * 252) / P) was a simple, non-compounded
+ * approximation that understated strong uptrends and overstated downtrends.
+ */
 export function slopeToAnnualReturn(slope: number, currentPrice: number): number {
-  return (slope * 252) / currentPrice;
+  if (!currentPrice || !isFinite(currentPrice) || !isFinite(slope)) return 0;
+
+  const base = currentPrice - slope;
+  // Degenerate case (slope >= price): fall back to the linear approximation.
+  if (base <= 0) return (slope * 252) / currentPrice;
+
+  const dailyGrowth = Math.log(currentPrice / base);
+  const annual = Math.expm1(dailyGrowth * 252);
+
+  // Clamp runaway extrapolations from very short/steep windows.
+  return Math.max(-0.99, Math.min(10, annual));
 }
