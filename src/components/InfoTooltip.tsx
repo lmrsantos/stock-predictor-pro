@@ -105,8 +105,8 @@ export const metricInfo = {
   },
   annualReturn: {
     title: "Implied Annual Return",
-    what: "The trend line's slope extrapolated to one year, expressed as a percentage. It estimates how much the stock would gain or lose if the current trend continues.",
-    howToRead: "This is NOT a guarantee — it's what would happen if the recent trend continued perfectly. Example: an implied annual return of +18% means that at the current pace, a $10,000 investment would grow to about $11,800 in a year. Always check R² — high R² makes this more meaningful.",
+    what: "The trend line's daily growth rate compounded over 252 trading days (one year). It estimates how much the stock would gain or lose if the current trend kept compounding.",
+    howToRead: "This is NOT a guarantee — it's a compounded extrapolation of a short trend window, so it can look extreme. Example: +18% means that at the current pace, $10,000 would grow to about $11,800 in a year. Always check R²: a low R² makes this number unreliable. Values are capped at +1000% / -99%.",
   },
   oneSigmaBand: {
     title: "1σ Band (68% Confidence)",
