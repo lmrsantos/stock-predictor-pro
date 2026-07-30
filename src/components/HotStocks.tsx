@@ -408,6 +408,42 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const visible = filter === "hot" ? stocks.filter(s => s.hot) : stocks;
   const hotCount = stocks.filter(s => s.hot).length;
 
+  const exportToExcel = useCallback(() => {
+    if (!visible.length) return;
+    const rows = visible.map((s, i) => ({
+      Rank: i + 1,
+      Symbol: s.symbol,
+      Sector: s.sector,
+      Signal: s.signal,
+      Hot: s.hot ? "YES" : "NO",
+      "Price ($)": Number(s.price.toFixed(2)),
+      "Forecast (%)": Number(s.forecastPct.toFixed(2)),
+      "Forecast Horizon": s.forecastLabel,
+      "Confidence (%)": s.confidence,
+      "Model Agreement (%)": s.hitRate,
+      "Winner Accuracy (%)": s.walkForwardAccuracy,
+      Regime: s.regime,
+      "Risk Profile": s.profileLabel,
+      "Risk Tier": s.riskLabel.replace(/[^\w\s-]/g, "").trim(),
+      Breakout: s.breakout ? "YES" : "NO",
+      "Hot Sector": s.sectorHot ? "YES" : "NO",
+      "Macro Tailwind": s.thematicHot ? "YES" : "NO",
+      "Linkage Tilt": s.linkageTilt ? Number(((s.linkageTilt - 1) * 100).toFixed(2)) : "",
+      "Linkage Note": s.linkageNote ?? "",
+      Reason: s.reason,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = Object.keys(rows[0]).map(k =>
+      ({ wch: k === "Reason" || k === "Linkage Note" ? 60 : Math.max(12, k.length + 2) })
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Hot Stocks");
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+    XLSX.writeFile(wb, `hot-stocks-${filter}-${stamp}.xlsx`);
+    toast.success(`Exported ${rows.length} rows to Excel`);
+  }, [visible, filter]);
+
+
   return (
     <div className="space-y-3">
       <button onClick={() => discover()} disabled={isScanning}
