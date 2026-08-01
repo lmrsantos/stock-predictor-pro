@@ -117,9 +117,14 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
 
       {/* Cycle history */}
       <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
-        <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
-          Cycle History ({peaks.length} peaks · {troughs.length} troughs)
-        </p>
+        <div className="space-y-0.5">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
+            Cycle History ({peaks.length} peaks · {troughs.length} troughs)
+          </p>
+          <p className="text-[8px] font-mono text-muted-foreground/70">
+            ▲ red = peak (local high / resistance) · ▼ green = trough (local low / support). Showing last 8 pivots.
+          </p>
+        </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
           {[...peaks, ...troughs]
             .sort((a, b) => a.index - b.index)
@@ -129,6 +134,11 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
                 <div className="flex items-center gap-1.5">
                   <span className={pt.type === "peak" ? "text-red-400" : "text-emerald-400"}>
                     {pt.type === "peak" ? "▲" : "▼"}
+                  </span>
+                  <span className={`text-[8px] font-mono uppercase tracking-wider ${
+                    pt.type === "peak" ? "text-red-400/80" : "text-emerald-400/80"
+                  }`}>
+                    {pt.type === "peak" ? "Peak" : "Trough"}
                   </span>
                   <span className="text-[9px] font-mono text-muted-foreground">{pt.date}</span>
                 </div>
