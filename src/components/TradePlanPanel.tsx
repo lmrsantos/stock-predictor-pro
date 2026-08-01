@@ -169,6 +169,16 @@ export function TradePlanPanel({
           >
             {HORIZONS.map((h) => <option key={h.key} value={h.key}>{h.label}</option>)}
           </select>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-2 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors"
+              aria-label="Hide trade plan"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+
         </div>
       </div>
 
