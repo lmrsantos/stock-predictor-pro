@@ -625,7 +625,10 @@ export default function Portfolio() {
           </div>
         )}
 
-        {holdings.length > 0 && <TradePlanPanel holdings={holdings} />}
+        {holdings.length > 0 && planVisible && (
+          <TradePlanPanel holdings={holdings} onClose={() => setPlanVisible(false)} />
+        )}
+
 
         <div className="text-[10px] text-muted-foreground text-center">
           Projections are based on the Enhanced-V2 regression model. Past performance does not guarantee future results. Not financial advice.
