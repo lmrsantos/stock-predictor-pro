@@ -295,6 +295,8 @@ export default function Portfolio() {
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [backtestOpen, setBacktestOpen] = useState(false);
+  const [planVisible, setPlanVisible] = useState(false);
+
 
   const { data: holdings = [], isLoading } = useQuery({
     queryKey: ["portfolio-holdings", user?.id],
