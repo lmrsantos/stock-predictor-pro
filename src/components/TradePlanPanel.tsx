@@ -120,9 +120,12 @@ function PlanRow({
 
 export function TradePlanPanel({
   holdings,
+  onClose,
 }: {
   holdings: { id: string; ticker: string; shares: number; avg_cost: number }[];
+  onClose?: () => void;
 }) {
+
   const [risk, setRisk] = useState<RiskTolerance>(
     () => (localStorage.getItem("tradeplan.risk") as RiskTolerance) || "moderate",
   );
