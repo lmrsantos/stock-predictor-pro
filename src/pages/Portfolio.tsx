@@ -11,6 +11,7 @@ import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, R
 import { toast } from "sonner";
 import { PortfolioIntradaySparkline, usePortfolioIntraday, MiniSparkline } from "@/components/PortfolioIntradaySparkline";
 import { PortfolioBacktest } from "@/components/PortfolioBacktest";
+import { TradePlanPanel } from "@/components/TradePlanPanel";
 import { History } from "lucide-react";
 
 interface Holding {
