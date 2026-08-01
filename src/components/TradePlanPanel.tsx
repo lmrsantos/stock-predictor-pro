@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStockDataFromDB } from "@/lib/stock-data";
 import { computeTradePlan, type RiskTolerance, type Horizon, type TradePlan } from "@/lib/trade-plan";
-import { Target, Loader2, ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
+import { Target, Loader2, ChevronDown, ChevronRight, ShieldAlert, X } from "lucide-react";
 
 const RISKS: RiskTolerance[] = ["conservative", "moderate", "aggressive"];
 const HORIZONS: { key: Horizon; label: string }[] = [
