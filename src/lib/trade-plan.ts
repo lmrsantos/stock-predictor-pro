@@ -62,10 +62,11 @@ export interface TradePlan {
 }
 
 const RISK_ATR: Record<RiskTolerance, { stop: number; t1: number; t2: number }> = {
-  conservative: { stop: 1.5, t1: 1.5, t2: 3.0 },
+  conservative: { stop: 1.0, t1: 1.2, t2: 2.0 },
   moderate: { stop: 2.0, t1: 2.5, t2: 4.5 },
-  aggressive: { stop: 2.5, t1: 3.5, t2: 6.5 },
+  aggressive: { stop: 3.5, t1: 5.0, t2: 9.0 },
 };
+
 
 const HORIZON_SCALE: Record<Horizon, number> = {
   swing: 0.7,
@@ -167,18 +168,29 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
   const mult = RISK_ATR[input.risk];
   const scale = HORIZON_SCALE[input.horizon];
 
-  const entryLow = Math.max(support, currentPrice - mult.stop * atr * 0.6);
+  // Entry zone widens with risk appetite
+  const entryLow = input.risk === "aggressive"
+    ? currentPrice - mult.stop * atr * 0.5
+    : Math.max(support, currentPrice - mult.stop * atr * 0.6);
   const entryHigh = Math.max(entryLow * 1.001, currentPrice - 0.2 * atr);
 
-  // Stop sits below the structural support, never above it
+  // Stop: conservative keeps it tight (ATR only), wider profiles sit under support
   const atrStop = currentPrice - mult.stop * atr * scale;
-  const stop = Math.max(0.01, Math.min(atrStop, support * 0.985));
+  const supportFloor =
+    input.risk === "conservative" ? Infinity : support * (input.risk === "aggressive" ? 0.96 : 0.985);
+  const stop = Math.max(0.01, Math.min(atrStop, supportFloor));
 
   const atrT1 = currentPrice + mult.t1 * atr * scale;
   const atrT2 = currentPrice + mult.t2 * atr * scale;
-  // First target respects near resistance; second extends beyond it
-  const target1 = Math.min(atrT1, Math.max(resistance, currentPrice * 1.01));
+  // Conservative books into resistance; moderate respects it loosely; aggressive runs past it
+  const target1 =
+    input.risk === "conservative"
+      ? Math.min(atrT1, Math.max(resistance, currentPrice * 1.005))
+      : input.risk === "moderate"
+        ? Math.min(atrT1, Math.max(resistance * 1.02, currentPrice * 1.01))
+        : atrT1;
   const target2 = Math.max(atrT2, target1 * 1.02);
+
 
   const risk = currentPrice - stop;
   const reward = target1 - currentPrice;

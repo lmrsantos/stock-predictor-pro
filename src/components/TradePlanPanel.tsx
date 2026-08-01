@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getStockDataFromDB } from "@/lib/stock-data";
 import { computeTradePlan, type RiskTolerance, type Horizon, type TradePlan } from "@/lib/trade-plan";
-import { Target, Loader2, ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
+import { Target, Loader2, ChevronDown, ChevronRight, ShieldAlert, X } from "lucide-react";
 
 const RISKS: RiskTolerance[] = ["conservative", "moderate", "aggressive"];
 const HORIZONS: { key: Horizon; label: string }[] = [
@@ -120,9 +120,12 @@ function PlanRow({
 
 export function TradePlanPanel({
   holdings,
+  onClose,
 }: {
   holdings: { id: string; ticker: string; shares: number; avg_cost: number }[];
+  onClose?: () => void;
 }) {
+
   const [risk, setRisk] = useState<RiskTolerance>(
     () => (localStorage.getItem("tradeplan.risk") as RiskTolerance) || "moderate",
   );
@@ -166,6 +169,16 @@ export function TradePlanPanel({
           >
             {HORIZONS.map((h) => <option key={h.key} value={h.key}>{h.label}</option>)}
           </select>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="px-2 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-accent transition-colors"
+              aria-label="Hide trade plan"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+
         </div>
       </div>
 
