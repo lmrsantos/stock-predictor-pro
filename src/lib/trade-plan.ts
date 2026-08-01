@@ -62,10 +62,11 @@ export interface TradePlan {
 }
 
 const RISK_ATR: Record<RiskTolerance, { stop: number; t1: number; t2: number }> = {
-  conservative: { stop: 1.5, t1: 1.5, t2: 3.0 },
+  conservative: { stop: 1.0, t1: 1.2, t2: 2.0 },
   moderate: { stop: 2.0, t1: 2.5, t2: 4.5 },
-  aggressive: { stop: 2.5, t1: 3.5, t2: 6.5 },
+  aggressive: { stop: 3.5, t1: 5.0, t2: 9.0 },
 };
+
 
 const HORIZON_SCALE: Record<Horizon, number> = {
   swing: 0.7,
