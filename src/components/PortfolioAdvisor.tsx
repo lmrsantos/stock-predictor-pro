@@ -84,17 +84,57 @@ const QUESTIONS: Question[] = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function RegimeBadge({ regime }: { regime: { label: string; confidence: number; description: string } }) {
+function RegimeBadge({ regime }: { regime: RegimeAssessment }) {
+  const analogs = regime.analogs ?? [];
   return (
-    <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-mono font-bold text-amber-400">{regime.label}</span>
-        <span className="text-[10px] font-mono text-amber-600">{regime.confidence}% confidence</span>
+    <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 dark:border-amber-800/40 dark:bg-amber-950/20 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-mono font-bold text-amber-900 dark:text-amber-300">{regime.label}</span>
+        <span className="text-[10px] font-mono text-amber-800 dark:text-amber-400 whitespace-nowrap">
+          {regime.confidence}% confidence
+        </span>
       </div>
-      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed">{regime.description}</p>
+      <p className="text-[11px] font-mono text-foreground/80 leading-relaxed">{regime.description}</p>
+
+      {analogs.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-amber-800 dark:text-amber-400">
+            Closest historical analogs
+          </p>
+          {analogs.map((a) => (
+            <div key={a.id} className="rounded-lg border border-border/60 bg-background/60 p-2 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-mono font-semibold text-foreground">
+                  {a.years} · {a.name}
+                </span>
+                <span className="text-[10px] font-mono text-foreground/70">{a.similarity}% match</span>
+              </div>
+              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-amber-500 dark:bg-amber-400"
+                  style={{ width: `${a.similarity}%` }}
+                />
+              </div>
+              {a.drivers.length > 0 && (
+                <p className="text-[9px] font-mono text-muted-foreground leading-relaxed">
+                  Matching: {a.drivers.join(" · ")}
+                </p>
+              )}
+              <p className="text-[9px] font-mono text-muted-foreground leading-relaxed">
+                Then: {a.outcome}
+              </p>
+            </div>
+          ))}
+          <p className="text-[9px] font-mono text-muted-foreground leading-relaxed pt-0.5">
+            Matches are scored across inflation, real rates, curve shape, energy stress, valuation,
+            volatility, geopolitics, gold bid, index concentration and credit stress — recomputed from live data.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function BucketCard({ bucket }: { bucket: AllocationBucket }) {
   const [expanded, setExpanded] = useState(false);
