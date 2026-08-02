@@ -27,65 +27,62 @@ export function StockHeader({
   const isPositive = change >= 0;
 
   return (
-    <header className="flex justify-between items-end flex-wrap gap-4">
+    <header className="flex justify-between items-center flex-wrap gap-3">
       <div>
         {isLoading ? (
-          <div className="space-y-2 animate-pulse">
-            <div className="h-8 w-48 bg-muted rounded" />
-            <div className="h-10 w-36 bg-muted rounded" />
+          <div className="flex items-center gap-3 animate-pulse">
+            <div className="h-6 w-32 bg-muted rounded" />
+            <div className="h-6 w-28 bg-muted rounded" />
           </div>
         ) : (
-          <>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-                {ticker}{" "}
-                <span className="text-muted-foreground font-normal text-lg">{name}</span>
-              </h1>
-              {(website || irWebsite) && (
-                <div className="flex items-center gap-1.5">
-                  {website && (
-                    <a
-                      href={website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                      title="Company Website"
-                    >
-                      <Globe className="w-3 h-3" />
-                      Website
-                    </a>
-                  )}
-                  {irWebsite && (
-                    <a
-                      href={irWebsite}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
-                      title="Investor Relations"
-                    >
-                      <FileText className="w-3 h-3" />
-                      IR
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex items-baseline gap-3 mt-2">
-              <span className="text-3xl lg:text-4xl font-mono font-bold">
-                ${formatPrice(price)}
-              </span>
-              <InfoTooltip {...metricInfo.price} />
-              <span className={`text-sm font-mono ${isPositive ? "price-positive" : "price-negative"}`}>
-                {isPositive ? "+" : ""}{formatPrice(change)} ({isPositive ? "+" : ""}{(changePct * 100).toFixed(2)}%)
-              </span>
-              <InfoTooltip {...metricInfo.dailyChange} />
-            </div>
-          </>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl lg:text-2xl font-bold tracking-tight">
+              {ticker}{" "}
+              <span className="text-muted-foreground font-normal text-sm">{name}</span>
+            </h1>
+            <span className="text-2xl lg:text-3xl font-mono font-bold">
+              ${formatPrice(price)}
+            </span>
+            <InfoTooltip {...metricInfo.price} />
+            <span className={`text-sm font-mono ${isPositive ? "price-positive" : "price-negative"}`}>
+              {isPositive ? "+" : ""}{formatPrice(change)} ({isPositive ? "+" : ""}{(changePct * 100).toFixed(2)}%)
+            </span>
+            <InfoTooltip {...metricInfo.dailyChange} />
+            {(website || irWebsite) && (
+              <div className="flex items-center gap-1.5">
+                {website && (
+                  <a
+                    href={website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    title="Company Website"
+                  >
+                    <Globe className="w-3 h-3" />
+                    Website
+                  </a>
+                )}
+                {irWebsite && (
+                  <a
+                    href={irWebsite}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-accent text-accent-foreground hover:bg-accent/80 transition-colors"
+                    title="Investor Relations"
+                  >
+                    <FileText className="w-3 h-3" />
+                    IR
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
       </div>
     </header>
+
   );
 }
