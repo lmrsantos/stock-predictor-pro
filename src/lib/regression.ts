@@ -239,13 +239,18 @@ export function computeLinearRegression(
     predicted = lastPrice + (predicted - lastPrice) * r2ConfidenceScale;
 
     // IMPROVEMENT 5: Bias correction
-    // Subtract systematic bias (if model consistently overshoots)
-    predicted = predicted * (1 - biasFraction * dampeningFactor);
+    // Residuals are (actual - fitted): a positive mean bias means the fit sits
+    // BELOW recent prices, so the projection must be nudged up, not down.
+    // Applied to the projected move only, never to the price level.
+    predicted = lastPrice + (predicted - lastPrice) + lastPrice * biasFraction * dampeningFactor;
 
-    // Risk discount — pulls prediction toward last known price
+    // Risk discount — pulls the projection toward the last known price.
+    // Must shrink the projected move, not the price level, otherwise a flat
+    // instrument (e.g. a T-bill ETF) gets marked down by the full discount.
     const horizonFactor = Math.min(i / forecastDays, 1);
     const appliedDiscount = riskDiscount * horizonFactor;
-    predicted = predicted * (1 - appliedDiscount);
+    predicted = lastPrice + (predicted - lastPrice) * (1 - appliedDiscount);
+
 
     const futureDate = new Date(lastDate);
     futureDate.setDate(futureDate.getDate() + i);
