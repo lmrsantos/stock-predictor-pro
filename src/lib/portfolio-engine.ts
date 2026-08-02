@@ -49,6 +49,20 @@ export interface RegimeAssessment {
   signals:     string[];     // what triggered this regime
   risks:       string[];     // what could change it
   nextTrigger: string;       // most important signal to watch
+  analogs?:    RegimeAnalog[]; // ranked historical episodes behind the label
+}
+
+export interface RegimeAnalog {
+  id:         string;
+  years:      string;
+  name:       string;
+  family:     AnalogFamily;
+  similarity: number;
+  drivers:    string[];
+  outcome:    string;
+  playbook:   string;
+  keyRisk:    string;
+  reEntry:    string;
 }
 
 // ─── Asset Classes ────────────────────────────────────────────────────────────
