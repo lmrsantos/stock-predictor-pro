@@ -286,7 +286,7 @@ export function PortfolioAdvisor() {
         totalPct: buckets.reduce((s, b) => s + b.pct, 0),
         reEntryTriggers: triggers,
         avoidList: avoid,
-        summary: `Based on the ${regime.label} regime and your ${p.horizon} horizon, an investor profile matching your inputs has historically been associated with a defensive-leaning allocation. ${regime.description} This is an illustrative educational model, not a recommendation.`,
+        summary: `Today's macro fingerprint matches ${regime.label} (${regime.confidence}% confidence). Combined with your ${p.horizon} horizon, comparable historical periods have been associated with roughly ${regime.equityBias}% equity exposure. ${regime.description} This is an illustrative educational model, not a recommendation.`,
         generatedAt: new Date().toISOString(),
       };
       setRec(rec);
