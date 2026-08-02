@@ -31,9 +31,9 @@ export function ChartControls({
   onForecastDaysChange,
 }: ChartControlsProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center gap-2 min-w-[200px]">
-        <label className="label-upper whitespace-nowrap">Ticker Symbol</label>
+    <div className="flex items-center gap-2 flex-nowrap shrink-0">
+      <div className="flex items-center gap-1.5 w-[170px] shrink-0">
+        <label className="label-upper whitespace-nowrap">Ticker</label>
         <TickerSearch
           value={searchInput}
           onChange={onSearchInputChange}
@@ -41,8 +41,8 @@ export function ChartControls({
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="label-upper whitespace-nowrap">Analysis Period</label>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <label className="label-upper whitespace-nowrap">Period</label>
         <select
           value={period}
           onChange={(e) => onPeriodChange(e.target.value)}
@@ -56,9 +56,9 @@ export function ChartControls({
         </select>
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="label-upper whitespace-nowrap">Forecast Horizon</label>
-        <div className="flex gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <label className="label-upper whitespace-nowrap">Forecast</label>
+        <div className="flex gap-1 flex-nowrap">
           {forecastOptions.map((d) => (
             <button
               key={d}
