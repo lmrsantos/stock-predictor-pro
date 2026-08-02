@@ -711,6 +711,8 @@ export default function Portfolio() {
                 </div>
               )}
 
+              {holdings.length > 0 && <TradePlanPanel holdings={holdings} />}
+
               <div className="border-t border-border pt-4 text-[10px] text-muted-foreground leading-relaxed">
                 <strong>Educational only.</strong> This analysis is based on the Enhanced-V2 linear regression model applied to each holding's 1-year price history.
                 It describes historical trend and dispersion — it is not a recommendation, forecast guarantee, or advice to buy, hold, or sell.
