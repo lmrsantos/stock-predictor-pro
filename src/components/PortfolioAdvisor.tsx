@@ -555,9 +555,10 @@ Search for any relevant current market news before responding.`;
               { label: "Gold", value: `$${Number(macroCtx.goldPrice).toLocaleString()}`, alert: Number(macroCtx.goldPrice) > 3000 },
               { label: "10yr Yield", value: `${macroCtx.yield10yr}%`, alert: Boolean(macroCtx.bondYieldRising) },
             ].map(item => (
-              <div key={item.label} className={`rounded-lg p-2.5 border ${item.alert ? "border-amber-800/40 bg-amber-950/20" : "border-border bg-card/60"}`}>
+              <div key={item.label} className={`rounded-lg p-2.5 border ${item.alert ? "border-amber-500/50 bg-amber-500/10 dark:border-amber-800/40 dark:bg-amber-950/20" : "border-border bg-card/60"}`}>
                 <p className="text-[9px] font-mono text-muted-foreground uppercase">{item.label}</p>
-                <p className={`text-sm font-mono font-bold ${item.alert ? "text-amber-400" : "text-foreground"}`}>{item.value}</p>
+                <p className={`text-sm font-mono font-bold ${item.alert ? "text-amber-900 dark:text-amber-300" : "text-foreground"}`}>{item.value}</p>
+
               </div>
             ))}
           </div>
