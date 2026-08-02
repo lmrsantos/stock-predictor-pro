@@ -679,8 +679,9 @@ Search for any relevant current market news before responding.`;
           </div>
         </div>
 
-        <p className="text-[9px] font-mono text-muted-foreground text-center leading-relaxed border border-amber-900/40 bg-amber-950/10 rounded-lg p-3">
-          <strong className="text-amber-300">Not investment advice.</strong> QuantForecast is not a registered
+        <p className="text-[9px] font-mono text-muted-foreground text-center leading-relaxed border border-amber-500/40 bg-amber-500/5 dark:border-amber-900/40 dark:bg-amber-950/10 rounded-lg p-3">
+          <strong className="text-amber-900 dark:text-amber-300">Not investment advice.</strong> QuantForecast is not a registered
+
           investment adviser. This is an illustrative educational model based on
           quantitative signals and macro regime analysis — not a recommendation to
           buy, sell, or hold any security. Any dollar figures are for illustration
