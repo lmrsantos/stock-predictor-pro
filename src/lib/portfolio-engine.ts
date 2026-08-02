@@ -8,6 +8,14 @@
 //   - Cross-asset allocation across ALL instrument types
 // ─────────────────────────────────────────────────────────────────────────────
 
+import {
+  rankAnalogs,
+  type AnalogMatch,
+  type AnalogFamily,
+  type HistoricalEpisode,
+  type MacroReading,
+} from "./historical-analogs";
+
 // ─── Investor Profile ─────────────────────────────────────────────────────────
 
 export interface InvestorProfile {
