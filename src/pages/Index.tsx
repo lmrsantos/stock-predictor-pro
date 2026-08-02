@@ -366,18 +366,8 @@ const Index = () => {
       }} />
 
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-0 overflow-hidden">
-
-
-      <Sidebar
-        regression={regression}
-        lastPrice={lastPrice}
-        isLoading={isLoading}
-        fundamentals={fundamentals}
-        ticker={ticker}
-      />
-
-      <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
+      <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto h-full">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="shrink-0">
           <StockHeader
