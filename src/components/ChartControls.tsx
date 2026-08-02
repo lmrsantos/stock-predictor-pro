@@ -31,9 +31,9 @@ export function ChartControls({
   onForecastDaysChange,
 }: ChartControlsProps) {
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <div className="space-y-1.5 min-w-[180px]">
-        <label className="label-upper">Ticker Symbol</label>
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2 min-w-[200px]">
+        <label className="label-upper whitespace-nowrap">Ticker Symbol</label>
         <TickerSearch
           value={searchInput}
           onChange={onSearchInputChange}
@@ -41,12 +41,12 @@ export function ChartControls({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="label-upper">Analysis Period</label>
+      <div className="flex items-center gap-2">
+        <label className="label-upper whitespace-nowrap">Analysis Period</label>
         <select
           value={period}
           onChange={(e) => onPeriodChange(e.target.value)}
-          className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm input-focus"
+          className="bg-secondary border border-border rounded-lg px-2 py-1 text-sm input-focus"
         >
           {periods.map((p) => (
             <option key={p.value} value={p.value}>
@@ -56,14 +56,14 @@ export function ChartControls({
         </select>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="label-upper">Forecast Horizon</label>
+      <div className="flex items-center gap-2">
+        <label className="label-upper whitespace-nowrap">Forecast Horizon</label>
         <div className="flex gap-1.5 flex-wrap">
           {forecastOptions.map((d) => (
             <button
               key={d}
               onClick={() => onForecastDaysChange(d)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors ${
+              className={`px-2 py-1 rounded-md text-xs font-mono transition-colors ${
                 forecastDays === d
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary text-secondary-foreground hover:bg-accent"
