@@ -9,6 +9,7 @@ import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } fro
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { Sidebar } from "@/components/Sidebar";
+import { ChartControls } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
@@ -369,13 +370,6 @@ const Index = () => {
 
 
       <Sidebar
-        searchInput={searchInput}
-        onSearchInputChange={setSearchInput}
-        onSearch={handleSearch}
-        period={period}
-        onPeriodChange={setPeriod}
-        forecastDays={forecastDays}
-        onForecastDaysChange={setForecastDays}
         regression={regression}
         lastPrice={lastPrice}
         isLoading={isLoading}
@@ -384,16 +378,27 @@ const Index = () => {
       />
 
       <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
-        <StockHeader
-          ticker={ticker}
-          name={meta?.name || ""}
-          price={lastPrice}
-          change={priceChange}
-          changePct={priceChangePct}
-          isLoading={isLoading}
-          website={website}
-          irWebsite={irWebsite}
-        />
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <StockHeader
+            ticker={ticker}
+            name={meta?.name || ""}
+            price={lastPrice}
+            change={priceChange}
+            changePct={priceChangePct}
+            isLoading={isLoading}
+            website={website}
+            irWebsite={irWebsite}
+          />
+          <ChartControls
+            searchInput={searchInput}
+            onSearchInputChange={setSearchInput}
+            onSearch={handleSearch}
+            period={period}
+            onPeriodChange={setPeriod}
+            forecastDays={forecastDays}
+            onForecastDaysChange={setForecastDays}
+          />
+        </div>
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
             <div className="text-center space-y-2">

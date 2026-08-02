@@ -3,8 +3,6 @@ import { RegressionResult } from "@/lib/types";
 import { formatPrice, slopeToAnnualReturn } from "@/lib/regression";
 import { StockFundamentals } from "@/lib/stock-data";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
-import { TickerSearch } from "./TickerSearch";
-import { InvestmentSimulator } from "./InvestmentSimulator";
 
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,30 +11,12 @@ import { Briefcase, BarChart3, Sparkles, User, Activity } from "lucide-react";
 
 
 interface SidebarProps {
-  searchInput: string;
-  onSearchInputChange: (v: string) => void;
-  onSearch: (ticker?: string) => void;
-  period: string;
-  onPeriodChange: (v: string) => void;
-  forecastDays: number;
-  onForecastDaysChange: (v: number) => void;
   regression: RegressionResult | null;
   lastPrice: number;
   isLoading: boolean;
   fundamentals: StockFundamentals | null;
   ticker: string;
 }
-
-const periods = [
-  { value: "1mo", label: "1 Month" },
-  { value: "3mo", label: "3 Months" },
-  { value: "6mo", label: "6 Months" },
-  { value: "1y", label: "1 Year" },
-  { value: "2y", label: "2 Years" },
-  { value: "5y", label: "5 Years" },
-];
-
-const forecastOptions = [7, 14, 30, 60, 90];
 
 function formatMarketCap(value: number): string {
   if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
@@ -46,13 +26,6 @@ function formatMarketCap(value: number): string {
 }
 
 export function Sidebar({
-  searchInput,
-  onSearchInputChange,
-  onSearch,
-  period,
-  onPeriodChange,
-  forecastDays,
-  onForecastDaysChange,
   regression,
   lastPrice,
   isLoading,
@@ -74,55 +47,6 @@ export function Sidebar({
           QuantForecast
         </span>
       </div>
-
-      {/* Search */}
-      <div className="space-y-2">
-        <label className="label-upper">Ticker Symbol</label>
-        <TickerSearch
-          value={searchInput}
-          onChange={onSearchInputChange}
-          onSelect={(symbol) => onSearch(symbol)}
-        />
-      </div>
-
-      {/* Analysis Period */}
-      <div className="space-y-2">
-        <label className="label-upper">Analysis Period</label>
-        <select
-          value={period}
-          onChange={(e) => onPeriodChange(e.target.value)}
-          className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm input-focus"
-        >
-          {periods.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Forecast Days */}
-      <div className="space-y-2">
-        <label className="label-upper">Forecast Horizon</label>
-        <div className="flex gap-1.5 flex-wrap">
-          {forecastOptions.map((d) => (
-            <button
-              key={d}
-              onClick={() => onForecastDaysChange(d)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors ${
-                forecastDays === d
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-accent"
-              }`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-border" />
 
       {/* Fundamentals */}
       {fundamentals && (fundamentals.pe_ratio || fundamentals.eps || fundamentals.sector) && (
@@ -206,22 +130,6 @@ export function Sidebar({
 
       {/* Divider */}
       <div className="border-t border-border" />
-
-      {/* Investment Simulator */}
-      <div id="investment-simulator">
-        <InvestmentSimulator
-          regression={regression}
-          lastPrice={lastPrice}
-          ticker={ticker}
-        />
-      </div>
-
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-
-
-
 
     </aside>
   );
