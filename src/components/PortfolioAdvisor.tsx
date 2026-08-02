@@ -298,6 +298,7 @@ tax-advantaged: ${p.taxAdvantaged}, can lock funds: ${p.canLockFunds},
 amount: ${p.amount ? `$${p.amount.toLocaleString()}` : "not specified"}
 
 Current regime: ${regime.label} (${regime.confidence}% confidence)
+Ranked historical analogs: ${(regime.analogs ?? []).map(a => `${a.years} ${a.name} ${a.similarity}%`).join(" | ")}
 Oil: $${macroData.oilPrice}, Gold: $${macroData.goldPrice}, CAPE: ${macroData.capeRatio}x, 
 Geo tension: ${macroData.geoScore}/100, Bond yields rising: ${macroData.bondYieldRising}
 
@@ -311,7 +312,9 @@ Search for any relevant current market news before responding.`;
         body: {
           action: "get_analysis",
           macroContext: macroData,
+          regime,
           profile: p,
+
           message: profileSummary,
           history: [],
         },
