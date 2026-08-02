@@ -27,7 +27,7 @@ export function StockHeader({
   const isPositive = change >= 0;
 
   return (
-    <header className="flex justify-between items-center flex-wrap gap-3">
+    <header className="flex items-center gap-3 flex-nowrap shrink-0">
       <div>
         {isLoading ? (
           <div className="flex items-center gap-3 animate-pulse">
@@ -35,7 +35,7 @@ export function StockHeader({
             <div className="h-6 w-28 bg-muted rounded" />
           </div>
         ) : (
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-nowrap">
             <h1 className="text-xl lg:text-2xl font-bold tracking-tight">
               {ticker}{" "}
               <span className="text-muted-foreground font-normal text-sm">{name}</span>
