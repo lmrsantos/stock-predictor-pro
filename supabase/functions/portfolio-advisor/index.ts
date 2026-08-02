@@ -83,15 +83,28 @@ serve(async (req) => {
 - Gold: $${macroContext.goldPrice.toLocaleString()} ${macroContext.goldPrice > 3000 ? "— All-time high territory" : ""}
 - 10yr Treasury Yield: ${macroContext.yield10yr}% ${macroContext.bondYieldRising ? "📈 Rising — bond prices falling" : ""}
 - Geopolitical Tension: ${macroContext.geoScore}/100 (${macroContext.geoScore > 60 ? "HIGH" : macroContext.geoScore > 40 ? "MODERATE" : "LOW"})
-- Shiller CAPE: ~${macroContext.capeRatio}x (2nd highest in 154 years)
+- Shiller CAPE: ~${macroContext.capeRatio}x
 - Geo Summary: ${macroContext.geoSummary}
+${macroContext.cpiYoY != null ? `- CPI YoY: ${macroContext.cpiYoY}%` : ""}
+${macroContext.fedFunds != null ? `- Fed Funds: ${macroContext.fedFunds}%` : ""}
+${macroContext.curve10y2y != null ? `- 10y–2y spread: ${macroContext.curve10y2y}` : ""}
+${macroContext.vix != null ? `- VIX: ${macroContext.vix}` : ""}
 
-## Proprietary Regime Analysis
-Current regime: **1970s+1999 Hybrid** — the most underappreciated macro setup:
-- 1970s signals: Iran oil disruption, NATO rearmament, gold ATH, multipolar fragmentation
-- 1999 signals: AI bubble, CAPE 37x, market concentration 50yr high
-- DANGER: both analogs active simultaneously — most analysts missing this
-- Scenario C risk: both break together → -40-50% broad market
+## Regime Analysis (computed by the platform's historical-analog engine)
+The platform scores today's macro fingerprint (inflation, real rates, curve,
+energy stress, valuation, volatility, geopolitics, safe-haven gold bid, index
+concentration, credit stress) against a library of documented market episodes
+(1929, 1937, 1966, 1973, 1979, 1987, 1990, 1994, 1995, 1998, 1999, 2008, 2011,
+2015, 2018, 2020, 2022, 2023) and returns the closest matches:
+
+${body.regime ? `Label: ${body.regime.label} (confidence ${body.regime.confidence}%)
+Ranked analogs:
+${(body.regime.analogs || []).map((a: any) => `- ${a.years} ${a.name}: ${a.similarity}% match. Drivers: ${(a.drivers || []).join("; ")}. Outcome: ${a.outcome} Playbook: ${a.playbook} Key risk: ${a.keyRisk}`).join("\n")}` : "No regime payload supplied — derive the analogs yourself from the macro data above."}
+
+IMPORTANT: do NOT assume any fixed analog. Reason from the ranked matches above
+and the live data. If the data points at episodes other than the top match,
+say so and explain which fingerprint dimensions disagree.
+
 
 ## Investor Profile
 ${JSON.stringify(profile, null, 2)}

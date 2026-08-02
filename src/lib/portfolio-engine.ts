@@ -8,6 +8,14 @@
 //   - Cross-asset allocation across ALL instrument types
 // ─────────────────────────────────────────────────────────────────────────────
 
+import {
+  rankAnalogs,
+  type AnalogMatch,
+  type AnalogFamily,
+  type HistoricalEpisode,
+  type MacroReading,
+} from "./historical-analogs";
+
 // ─── Investor Profile ─────────────────────────────────────────────────────────
 
 export interface InvestorProfile {
@@ -41,6 +49,20 @@ export interface RegimeAssessment {
   signals:     string[];     // what triggered this regime
   risks:       string[];     // what could change it
   nextTrigger: string;       // most important signal to watch
+  analogs?:    RegimeAnalog[]; // ranked historical episodes behind the label
+}
+
+export interface RegimeAnalog {
+  id:         string;
+  years:      string;
+  name:       string;
+  family:     AnalogFamily;
+  similarity: number;
+  drivers:    string[];
+  outcome:    string;
+  playbook:   string;
+  keyRisk:    string;
+  reEntry:    string;
 }
 
 // ─── Asset Classes ────────────────────────────────────────────────────────────
@@ -261,94 +283,89 @@ export function classifyRegime(
   capeRatio: number,
   geoTensionScore: number,
   bondYieldRising: boolean,
+  extra: Partial<MacroReading> = {},
 ): RegimeAssessment {
+  const reading: MacroReading = {
+    oilPrice,
+    goldPrice,
+    capeRatio,
+    geoTension: geoTensionScore,
+    ...extra,
+  };
+
+  const ranked = rankAnalogs(reading);
+  const top = ranked.slice(0, 3);
+  const [a1, a2, a3] = top;
+
+  // Blend the equity bias of the top matches, weighted by similarity.
+  const wsum = top.reduce((s, m) => s + m.similarity, 0) || 1;
+  let equityBias = Math.round(
+    top.reduce((s, m) => s + m.similarity * m.episode.equityBias, 0) / wsum,
+  );
+  if (bondYieldRising && capeRatio > 28) equityBias = Math.max(5, equityBias - 10);
+
+  // A "hybrid" is two strong matches from different families.
+  const hybrid = a2 && a1.similarity - a2.similarity <= 10 && a1.episode.family !== a2.episode.family;
+
+  const label = hybrid
+    ? `🧭 ${a1.episode.years.split("–")[0]} ${shortName(a1.episode)} + ${a2.episode.years.split("–")[0]} ${shortName(a2.episode)} hybrid`
+    : `🧭 ${a1.episode.years} analog — ${shortName(a1.episode)}`;
+
+  const description = hybrid
+    ? `Today's macro fingerprint sits between two historical episodes: ${a1.episode.name} (${a1.similarity}% match) and ${a2.episode.name} (${a2.similarity}% match). ${a1.episode.playbook} At the same time, ${a2.episode.playbook.charAt(0).toLowerCase()}${a2.episode.playbook.slice(1)}`
+    : `The closest historical fingerprint is ${a1.episode.name} (${a1.similarity}% match, ${a1.episode.years}). ${a1.episode.outcome} ${a1.episode.playbook}`;
 
   const signals: string[] = [];
-  const risks: string[] = [];
-
-  // ── 1970s+1999 Hybrid Detection (YOUR THESIS) ─────────────────────────────
-  const is1970s = oilPrice > 90 && geoTensionScore > 60;
-  const is1999  = capeRatio > 30 && goldPrice > 3000;
-  const isHybrid = is1970s && is1999;
-  const isBondStress = bondYieldRising && capeRatio > 28;
-
-  if (isHybrid && isBondStress) {
-    if (oilPrice > 90) signals.push(`Oil at $${oilPrice} (1970s energy crisis analog)`);
-    if (geoTensionScore > 60) signals.push(`Geopolitical tension ${geoTensionScore}/100 (multipolar fragmentation)`);
-    if (capeRatio > 30) signals.push(`Shiller CAPE at ${capeRatio}x (1999 tech bubble analog)`);
-    if (goldPrice > 3000) signals.push(`Gold at $${goldPrice.toLocaleString()} (simultaneous safe haven demand)`);
-    if (bondYieldRising) signals.push("Bonds AND stocks falling simultaneously (most dangerous signal)");
-
-    risks.push("Scenario A: Geopolitics wins → oil crushes tech margins → 1974-style crash");
-    risks.push("Scenario B: AI productivity wins → both tech and gold continue higher");
-    risks.push("Scenario C: Both break simultaneously → -40-50% broad market");
-
-    return {
-      regime: "hybrid_1970s_1999",
-      confidence: 85,
-      label: "🌋 1970s + 1999 Hybrid",
-      description: "The most underappreciated macro regime. Oil shock AND technology bubble simultaneously active. Most analysts are using a single analog — they're missing the convergence risk. Capital preservation mode with strategic real asset exposure.",
-      equityBias: 10,
-      signals,
-      risks,
-      nextTrigger: "NVIDIA earnings — beat confirms 1999 analog still active. Miss triggers Scenario C.",
-    };
+  for (const m of top) {
+    signals.push(
+      `${m.episode.years} ${shortName(m.episode)} — ${m.similarity}% match${m.drivers.length ? `: ${m.drivers.map((d) => d.note).join("; ")}` : ""}`,
+    );
   }
+  if (bondYieldRising) signals.push("Bond yields rising alongside elevated valuations — stock/bond correlation risk");
 
-  // ── Early 2000 (bubble peak) ──────────────────────────────────────────────
-  if (capeRatio > 40 && !is1970s) {
-    signals.push(`CAPE ${capeRatio}x — 2nd highest in 154 years`);
-    return {
-      regime: "early_2000",
-      confidence: 75,
-      label: "⚠️ Bubble Peak Risk",
-      description: "Valuations at historical extremes. Similar to early 2000. Rotate defensive.",
-      equityBias: 15,
-      signals, risks,
-      nextTrigger: "Fed policy shift or earnings miss from mega-cap tech.",
-    };
-  }
+  const risks = top.map(
+    (m) => `If the ${m.episode.years} path repeats (${m.similarity}% match): ${m.episode.keyRisk} → ${m.episode.outcome}`,
+  );
 
-  // ── Mid-1998 (late cycle growth) ──────────────────────────────────────────
-  if (capeRatio > 28 && capeRatio <= 38 && !is1970s && !bondYieldRising) {
-    signals.push(`CAPE ${capeRatio}x — elevated but not extreme`);
-    signals.push("Bond yields stable — financial conditions manageable");
-    return {
-      regime: "mid_1998",
-      confidence: 65,
-      label: "📈 Late Cycle Growth",
-      description: "Elevated valuations but growth momentum intact. Similar to mid-1998. Stay invested in quality but reduce risk.",
-      equityBias: 50,
-      signals, risks,
-      nextTrigger: "Yield curve inversion or credit spread widening.",
-    };
-  }
-
-  // ── 2008 Crisis ───────────────────────────────────────────────────────────
-  if (bondYieldRising && capeRatio < 20 && geoTensionScore > 70) {
-    return {
-      regime: "crisis_2008",
-      confidence: 70,
-      label: "🚨 Credit Crisis",
-      description: "Maximum defensive. Capital preservation above all.",
-      equityBias: 5,
-      signals, risks,
-      nextTrigger: "Fed emergency intervention or credit spread compression.",
-    };
-  }
-
-  // ── Neutral ───────────────────────────────────────────────────────────────
   return {
-    regime: "neutral",
-    confidence: 40,
-    label: "⚖️ Mixed Signals",
-    description: "No clear analog. Balanced approach with defensive tilt.",
-    equityBias: 35,
-    signals: ["Mixed macro signals — no dominant analog"],
-    risks: ["Unexpected policy shift", "Geopolitical escalation"],
-    nextTrigger: "Watch oil price and Fed meeting for regime clarity.",
+    regime: bucketFor(a1, a2, hybrid),
+    confidence: Math.max(25, Math.min(90, Math.round(a1.similarity * (hybrid ? 0.85 : 1)))),
+    label,
+    description,
+    equityBias,
+    signals,
+    risks,
+    nextTrigger: `${a1.episode.reEntry} (from the ${a1.episode.years} analog)${a2 ? ` — cross-check against ${a2.episode.years}: ${a2.episode.reEntry}` : ""}`,
+    analogs: top.map((m) => ({
+      id: m.episode.id,
+      years: m.episode.years,
+      name: m.episode.name,
+      family: m.episode.family,
+      similarity: m.similarity,
+      drivers: m.drivers.map((d) => d.note),
+      outcome: m.episode.outcome,
+      playbook: m.episode.playbook,
+      keyRisk: m.episode.keyRisk,
+      reEntry: m.episode.reEntry,
+    })),
   };
 }
+
+function shortName(ep: HistoricalEpisode): string {
+  return ep.name.replace(/^\d{4}\s*/, "");
+}
+
+function bucketFor(a1: AnalogMatch, a2: AnalogMatch | undefined, hybrid: boolean): MacroRegime {
+  const fams = [a1.episode.family, ...(hybrid && a2 ? [a2.episode.family] : [])];
+  if (fams.includes("inflation-shock") && fams.includes("bubble-valuation")) return "hybrid_1970s_1999";
+  if (fams.includes("credit-crisis")) return "crisis_2008";
+  if (a1.episode.family === "bubble-valuation") return "early_2000";
+  if (a1.episode.family === "inflation-shock") return "early_2000";
+  if (a1.episode.family === "growth-scare") return "recovery_2020";
+  if (a1.episode.family === "expansion") return a1.episode.id === "1996" ? "late_1996" : "mid_1998";
+  return "mid_1998";
+}
+
 
 // ─── Portfolio Allocation Engine ──────────────────────────────────────────────
 
@@ -549,35 +566,43 @@ export function buildAllocation(
 
 export function getReEntryTriggers(regime: RegimeAssessment): string[] {
   const base = [
-    "NVIDIA Q1 FY2027 earnings beat (May 28, 2026) → add 15% tech allocation",
-    "Oil drops below $90 → reduce energy, add growth tech",
-    "10-year Treasury yield peaks and turns down → add IEF/TLT",
-    "Shiller CAPE drops below 30 → increase equity allocation to 30%",
-    "Geopolitical tension score drops below 50 → risk-on rotation",
+    "Oil rolling over from its 30-day high → energy risk premium decaying",
+    "10-year Treasury yield peaking and turning down → add duration (IEF, then TLT)",
+    "Shiller CAPE compressing back below 30x → step up equity allocation",
+    "Geopolitical tension score below 50 → risk-on rotation",
+    "Market breadth broadening beyond the mega-cap leaders → the rally is confirmed",
   ];
 
-  if (regime.regime === "hybrid_1970s_1999") {
-    return [
-      "🔑 PRIMARY: NVIDIA earnings — beat + raised guidance → 1999 analog dominant, add NVDA/RKLB/IONQ",
-      "🛢️ Oil below $90 → 1970s analog fading, reduce XLE, increase tech",
-      "📉 10yr yield peaks → add IEF then TLT as rates start falling",
-      "📊 CAPE drops below 32 → begin equity re-entry in quality names",
-      "🌍 Iran resolution → oil normalizes, geopolitical premium fades",
-      ...base.slice(4),
-    ];
-  }
-  return base;
+  const fromAnalogs = (regime.analogs ?? []).map(
+    (a, i) => `${i === 0 ? "🔑 PRIMARY" : "•"} ${a.years} analog (${a.similarity}% match) → ${a.reEntry}`,
+  );
+
+  return [...fromAnalogs, ...base].slice(0, 8);
 }
 
 export function getAvoidList(regime: RegimeAssessment, profile: InvestorProfile): string[] {
   const avoid: string[] = [];
-  if (regime.regime === "hybrid_1970s_1999") {
-    avoid.push("TLT / IEF — long-duration bonds (yields still rising, prices falling)");
-    avoid.push("High-multiple tech (NVDA P/E 57x, IONQ no earnings) — wait for earnings clarity");
-    avoid.push("Leveraged ETFs (TQQQ, UPRO) — decay kills in volatile sideways market");
-    avoid.push("HYG / JNK — high yield bonds (credit risk rises in stagflation)");
-    avoid.push("Crypto — high beta, no safe haven properties despite narrative");
+  const fams = new Set((regime.analogs ?? []).map((a) => a.family));
+
+  if (fams.has("inflation-shock")) {
+    avoid.push("Long-duration Treasuries (TLT / IEF) while inflation surprises are still to the upside");
+    avoid.push("High-multiple, no-earnings growth — the most rate-sensitive part of the market");
   }
+  if (fams.has("bubble-valuation")) {
+    avoid.push("Concentrated index exposure — cap-weighted funds are a single-theme bet in this regime");
+    avoid.push("Leveraged ETFs (TQQQ, UPRO) — volatility decay dominates in choppy, high-multiple markets");
+  }
+  if (fams.has("credit-crisis")) {
+    avoid.push("High-yield credit (HYG / JNK) — spreads lead equities in funding-driven drawdowns");
+    avoid.push("Illiquid or leveraged private vehicles — redemption risk peaks exactly when you need cash");
+  }
+  if (fams.has("policy-tightening")) {
+    avoid.push("Adding duration before the hiking cycle is clearly finished");
+  }
+  if (regime.equityBias <= 25) {
+    avoid.push("Crypto — high beta to liquidity, no reliable safe-haven behavior in defensive regimes");
+  }
+
   if (profile.horizon === "short") {
     avoid.push("VNQ — REITs sensitive to rates, need 2-3yr horizon");
     avoid.push("5-year CDs — lock-in risk if you need funds");

@@ -9,6 +9,7 @@ import {
   type InvestorProfile,
   type PortfolioRecommendation,
   type AllocationBucket,
+  type RegimeAssessment,
 } from "@/lib/portfolio-engine";
 
 // ─── Intake Questions ─────────────────────────────────────────────────────────
@@ -84,17 +85,57 @@ const QUESTIONS: Question[] = [
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function RegimeBadge({ regime }: { regime: { label: string; confidence: number; description: string } }) {
+function RegimeBadge({ regime }: { regime: RegimeAssessment }) {
+  const analogs = regime.analogs ?? [];
   return (
-    <div className="rounded-xl border border-amber-800/40 bg-amber-950/20 p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-mono font-bold text-amber-400">{regime.label}</span>
-        <span className="text-[10px] font-mono text-amber-600">{regime.confidence}% confidence</span>
+    <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 dark:border-amber-800/40 dark:bg-amber-950/20 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-mono font-bold text-amber-900 dark:text-amber-300">{regime.label}</span>
+        <span className="text-[10px] font-mono text-amber-800 dark:text-amber-400 whitespace-nowrap">
+          {regime.confidence}% confidence
+        </span>
       </div>
-      <p className="text-[11px] font-mono text-muted-foreground leading-relaxed">{regime.description}</p>
+      <p className="text-[11px] font-mono text-foreground/80 leading-relaxed">{regime.description}</p>
+
+      {analogs.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-amber-800 dark:text-amber-400">
+            Closest historical analogs
+          </p>
+          {analogs.map((a) => (
+            <div key={a.id} className="rounded-lg border border-border/60 bg-background/60 p-2 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-mono font-semibold text-foreground">
+                  {a.years} · {a.name}
+                </span>
+                <span className="text-[10px] font-mono text-foreground/70">{a.similarity}% match</span>
+              </div>
+              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-amber-500 dark:bg-amber-400"
+                  style={{ width: `${a.similarity}%` }}
+                />
+              </div>
+              {a.drivers.length > 0 && (
+                <p className="text-[9px] font-mono text-muted-foreground leading-relaxed">
+                  Matching: {a.drivers.join(" · ")}
+                </p>
+              )}
+              <p className="text-[9px] font-mono text-muted-foreground leading-relaxed">
+                Then: {a.outcome}
+              </p>
+            </div>
+          ))}
+          <p className="text-[9px] font-mono text-muted-foreground leading-relaxed pt-0.5">
+            Matches are scored across inflation, real rates, curve shape, energy stress, valuation,
+            volatility, geopolitics, gold bid, index concentration and credit stress — recomputed from live data.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function BucketCard({ bucket }: { bucket: AllocationBucket }) {
   const [expanded, setExpanded] = useState(false);
@@ -206,14 +247,32 @@ export function PortfolioAdvisor() {
       });
       setMacroCtx(macroData);
 
-      // Classify regime
+      // Pull the live macro indicator cache for the extra fingerprint dimensions
+      const { data: indicators } = await supabase.from("macro_indicators").select("*");
+      const ind: Record<string, any> = {};
+      for (const row of indicators ?? []) ind[row.indicator_key] = row;
+
+      const num = (k: string, f: string = "value") =>
+        ind[k]?.[f] != null ? Number(ind[k][f]) : null;
+
+      // Classify regime via the historical-analog engine
       const regime = classifyRegime(
         macroData.oilPrice,
         macroData.goldPrice,
         macroData.capeRatio,
         macroData.geoScore,
         macroData.bondYieldRising,
+        {
+          us10y: num("us10y") ?? Number(macroData.yield10yr) ?? null,
+          cpiYoY: num("cpi_yoy"),
+          fedFunds: num("fed_funds"),
+          curve10y2y: num("curve_10y2y"),
+          vix: num("vix"),
+          gold30dChange: num("gold", "change_30d"),
+          oil30dChange: num("wti", "change_30d"),
+        },
       );
+
 
       // Build allocation
       const buckets  = buildAllocation(regime, p);
@@ -227,7 +286,7 @@ export function PortfolioAdvisor() {
         totalPct: buckets.reduce((s, b) => s + b.pct, 0),
         reEntryTriggers: triggers,
         avoidList: avoid,
-        summary: `Based on the ${regime.label} regime and your ${p.horizon} horizon, an investor profile matching your inputs has historically been associated with a defensive-leaning allocation. ${regime.description} This is an illustrative educational model, not a recommendation.`,
+        summary: `Today's macro fingerprint matches ${regime.label} (${regime.confidence}% confidence). Combined with your ${p.horizon} horizon, comparable historical periods have been associated with roughly ${regime.equityBias}% equity exposure. ${regime.description} This is an illustrative educational model, not a recommendation.`,
         generatedAt: new Date().toISOString(),
       };
       setRec(rec);
@@ -239,6 +298,7 @@ tax-advantaged: ${p.taxAdvantaged}, can lock funds: ${p.canLockFunds},
 amount: ${p.amount ? `$${p.amount.toLocaleString()}` : "not specified"}
 
 Current regime: ${regime.label} (${regime.confidence}% confidence)
+Ranked historical analogs: ${(regime.analogs ?? []).map(a => `${a.years} ${a.name} ${a.similarity}%`).join(" | ")}
 Oil: $${macroData.oilPrice}, Gold: $${macroData.goldPrice}, CAPE: ${macroData.capeRatio}x, 
 Geo tension: ${macroData.geoScore}/100, Bond yields rising: ${macroData.bondYieldRising}
 
@@ -252,7 +312,9 @@ Search for any relevant current market news before responding.`;
         body: {
           action: "get_analysis",
           macroContext: macroData,
+          regime,
           profile: p,
+
           message: profileSummary,
           history: [],
         },
@@ -321,11 +383,12 @@ Search for any relevant current market news before responding.`;
           </h2>
         </div>
 
-        <div className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-4 space-y-3 text-[11px] font-mono text-amber-100/90 leading-relaxed">
-          <p className="font-semibold text-amber-200">
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 dark:border-amber-900/40 dark:bg-amber-950/20 p-4 space-y-3 text-[11px] font-mono text-foreground/85 leading-relaxed">
+          <p className="font-semibold text-amber-900 dark:text-amber-200">
             This tool is for educational and informational purposes only.
           </p>
-          <ul className="space-y-1.5 list-disc list-inside text-amber-100/80">
+          <ul className="space-y-1.5 list-disc list-inside text-foreground/75">
+
             <li>QuantForecast is <strong>not a registered investment adviser</strong>.</li>
             <li>Output is an <strong>illustrative model</strong>, not a personalized recommendation to buy, sell, or hold any security.</li>
             <li>Any dollar figures shown are purely for illustration math — not advice to invest that amount.</li>
@@ -453,7 +516,7 @@ Search for any relevant current market news before responding.`;
         <div className="flex flex-col gap-1.5 text-[10px] font-mono text-muted-foreground text-center">
           <p>🛢️ Checking oil price vs $100 threshold...</p>
           <p>🪙 Reading gold at all-time highs...</p>
-          <p>📊 Classifying 1970s+1999 hybrid regime...</p>
+          <p>📊 Matching today's fingerprint against 18 historical episodes...</p>
           <p>💼 Building your personalized allocation...</p>
           <p>🧠 QuantAgent analyzing with web search...</p>
         </div>
@@ -492,9 +555,10 @@ Search for any relevant current market news before responding.`;
               { label: "Gold", value: `$${Number(macroCtx.goldPrice).toLocaleString()}`, alert: Number(macroCtx.goldPrice) > 3000 },
               { label: "10yr Yield", value: `${macroCtx.yield10yr}%`, alert: Boolean(macroCtx.bondYieldRising) },
             ].map(item => (
-              <div key={item.label} className={`rounded-lg p-2.5 border ${item.alert ? "border-amber-800/40 bg-amber-950/20" : "border-border bg-card/60"}`}>
+              <div key={item.label} className={`rounded-lg p-2.5 border ${item.alert ? "border-amber-500/50 bg-amber-500/10 dark:border-amber-800/40 dark:bg-amber-950/20" : "border-border bg-card/60"}`}>
                 <p className="text-[9px] font-mono text-muted-foreground uppercase">{item.label}</p>
-                <p className={`text-sm font-mono font-bold ${item.alert ? "text-amber-400" : "text-foreground"}`}>{item.value}</p>
+                <p className={`text-sm font-mono font-bold ${item.alert ? "text-amber-900 dark:text-amber-300" : "text-foreground"}`}>{item.value}</p>
+
               </div>
             ))}
           </div>
@@ -615,8 +679,9 @@ Search for any relevant current market news before responding.`;
           </div>
         </div>
 
-        <p className="text-[9px] font-mono text-muted-foreground text-center leading-relaxed border border-amber-900/40 bg-amber-950/10 rounded-lg p-3">
-          <strong className="text-amber-300">Not investment advice.</strong> QuantForecast is not a registered
+        <p className="text-[9px] font-mono text-muted-foreground text-center leading-relaxed border border-amber-500/40 bg-amber-500/5 dark:border-amber-900/40 dark:bg-amber-950/10 rounded-lg p-3">
+          <strong className="text-amber-900 dark:text-amber-300">Not investment advice.</strong> QuantForecast is not a registered
+
           investment adviser. This is an illustrative educational model based on
           quantitative signals and macro regime analysis — not a recommendation to
           buy, sell, or hold any security. Any dollar figures are for illustration
