@@ -127,7 +127,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
 
   if (isLoading) {
     return (
-      <div className="flex-1 chart-surface flex items-center justify-center min-h-[300px]">
+      <div className="flex-1 chart-surface flex items-center justify-center min-h-[240px]">
         <div className="space-y-3 text-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-muted-foreground text-xs font-mono">Loading market data…</p>
@@ -138,7 +138,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
 
   if (!data.length) {
     return (
-      <div className="flex-1 chart-surface flex items-center justify-center min-h-[300px]">
+      <div className="flex-1 chart-surface flex items-center justify-center min-h-[240px]">
         <p className="text-muted-foreground text-sm">Enter a ticker to begin analysis</p>
       </div>
     );
@@ -170,7 +170,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 75%)";
 
   return (
-    <div className="flex-1 chart-surface min-h-[300px] p-4 lg:p-6">
+    <div className="flex-1 chart-surface min-h-[240px] p-3 lg:p-4">
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-wrap">
         <span className="flex items-center gap-1.5">
