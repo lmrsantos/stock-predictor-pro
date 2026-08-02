@@ -379,6 +379,7 @@ const Index = () => {
 
       <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto">
         <div className="flex flex-wrap items-end justify-between gap-6">
+          <div className="shrink-0">
           <StockHeader
             ticker={ticker}
             name={meta?.name || ""}
@@ -389,6 +390,7 @@ const Index = () => {
             website={website}
             irWebsite={irWebsite}
           />
+          </div>
           <ChartControls
             searchInput={searchInput}
             onSearchInputChange={setSearchInput}
