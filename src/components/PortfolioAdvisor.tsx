@@ -516,7 +516,7 @@ Search for any relevant current market news before responding.`;
         <div className="flex flex-col gap-1.5 text-[10px] font-mono text-muted-foreground text-center">
           <p>🛢️ Checking oil price vs $100 threshold...</p>
           <p>🪙 Reading gold at all-time highs...</p>
-          <p>📊 Classifying 1970s+1999 hybrid regime...</p>
+          <p>📊 Matching today's fingerprint against 18 historical episodes...</p>
           <p>💼 Building your personalized allocation...</p>
           <p>🧠 QuantAgent analyzing with web search...</p>
         </div>
