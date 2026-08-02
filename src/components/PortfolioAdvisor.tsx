@@ -9,6 +9,7 @@ import {
   type InvestorProfile,
   type PortfolioRecommendation,
   type AllocationBucket,
+  type RegimeAssessment,
 } from "@/lib/portfolio-engine";
 
 // ─── Intake Questions ─────────────────────────────────────────────────────────
