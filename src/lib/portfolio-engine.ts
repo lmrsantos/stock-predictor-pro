@@ -566,35 +566,43 @@ export function buildAllocation(
 
 export function getReEntryTriggers(regime: RegimeAssessment): string[] {
   const base = [
-    "NVIDIA Q1 FY2027 earnings beat (May 28, 2026) → add 15% tech allocation",
-    "Oil drops below $90 → reduce energy, add growth tech",
-    "10-year Treasury yield peaks and turns down → add IEF/TLT",
-    "Shiller CAPE drops below 30 → increase equity allocation to 30%",
-    "Geopolitical tension score drops below 50 → risk-on rotation",
+    "Oil rolling over from its 30-day high → energy risk premium decaying",
+    "10-year Treasury yield peaking and turning down → add duration (IEF, then TLT)",
+    "Shiller CAPE compressing back below 30x → step up equity allocation",
+    "Geopolitical tension score below 50 → risk-on rotation",
+    "Market breadth broadening beyond the mega-cap leaders → the rally is confirmed",
   ];
 
-  if (regime.regime === "hybrid_1970s_1999") {
-    return [
-      "🔑 PRIMARY: NVIDIA earnings — beat + raised guidance → 1999 analog dominant, add NVDA/RKLB/IONQ",
-      "🛢️ Oil below $90 → 1970s analog fading, reduce XLE, increase tech",
-      "📉 10yr yield peaks → add IEF then TLT as rates start falling",
-      "📊 CAPE drops below 32 → begin equity re-entry in quality names",
-      "🌍 Iran resolution → oil normalizes, geopolitical premium fades",
-      ...base.slice(4),
-    ];
-  }
-  return base;
+  const fromAnalogs = (regime.analogs ?? []).map(
+    (a, i) => `${i === 0 ? "🔑 PRIMARY" : "•"} ${a.years} analog (${a.similarity}% match) → ${a.reEntry}`,
+  );
+
+  return [...fromAnalogs, ...base].slice(0, 8);
 }
 
 export function getAvoidList(regime: RegimeAssessment, profile: InvestorProfile): string[] {
   const avoid: string[] = [];
-  if (regime.regime === "hybrid_1970s_1999") {
-    avoid.push("TLT / IEF — long-duration bonds (yields still rising, prices falling)");
-    avoid.push("High-multiple tech (NVDA P/E 57x, IONQ no earnings) — wait for earnings clarity");
-    avoid.push("Leveraged ETFs (TQQQ, UPRO) — decay kills in volatile sideways market");
-    avoid.push("HYG / JNK — high yield bonds (credit risk rises in stagflation)");
-    avoid.push("Crypto — high beta, no safe haven properties despite narrative");
+  const fams = new Set((regime.analogs ?? []).map((a) => a.family));
+
+  if (fams.has("inflation-shock")) {
+    avoid.push("Long-duration Treasuries (TLT / IEF) while inflation surprises are still to the upside");
+    avoid.push("High-multiple, no-earnings growth — the most rate-sensitive part of the market");
   }
+  if (fams.has("bubble-valuation")) {
+    avoid.push("Concentrated index exposure — cap-weighted funds are a single-theme bet in this regime");
+    avoid.push("Leveraged ETFs (TQQQ, UPRO) — volatility decay dominates in choppy, high-multiple markets");
+  }
+  if (fams.has("credit-crisis")) {
+    avoid.push("High-yield credit (HYG / JNK) — spreads lead equities in funding-driven drawdowns");
+    avoid.push("Illiquid or leveraged private vehicles — redemption risk peaks exactly when you need cash");
+  }
+  if (fams.has("policy-tightening")) {
+    avoid.push("Adding duration before the hiking cycle is clearly finished");
+  }
+  if (regime.equityBias <= 25) {
+    avoid.push("Crypto — high beta to liquidity, no reliable safe-haven behavior in defensive regimes");
+  }
+
   if (profile.horizon === "short") {
     avoid.push("VNQ — REITs sensitive to rates, need 2-3yr horizon");
     avoid.push("5-year CDs — lock-in risk if you need funds");
