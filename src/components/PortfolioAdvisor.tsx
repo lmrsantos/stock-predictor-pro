@@ -247,14 +247,31 @@ export function PortfolioAdvisor() {
       });
       setMacroCtx(macroData);
 
-      // Classify regime
+      // Pull the live macro indicator cache for the extra fingerprint dimensions
+      const { data: indicators } = await supabase.from("macro_indicators").select("*");
+      const ind: Record<string, any> = {};
+      for (const row of indicators ?? []) ind[(row as any).indicator_key ?? (row as any).key ?? (row as any).id] = row;
+      const num = (k: string, f: string = "value") =>
+        ind[k]?.[f] != null ? Number(ind[k][f]) : null;
+
+      // Classify regime via the historical-analog engine
       const regime = classifyRegime(
         macroData.oilPrice,
         macroData.goldPrice,
         macroData.capeRatio,
         macroData.geoScore,
         macroData.bondYieldRising,
+        {
+          us10y: num("us10y") ?? Number(macroData.yield10yr) ?? null,
+          cpiYoY: num("cpi_yoy"),
+          fedFunds: num("fed_funds"),
+          curve10y2y: num("curve_10y2y"),
+          vix: num("vix"),
+          gold30dChange: num("gold", "change_30d"),
+          oil30dChange: num("wti", "change_30d"),
+        },
       );
+
 
       // Build allocation
       const buckets  = buildAllocation(regime, p);
