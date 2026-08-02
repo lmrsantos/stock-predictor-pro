@@ -295,7 +295,7 @@ export default function Portfolio() {
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
   const [analysisOpen, setAnalysisOpen] = useState(false);
   const [backtestOpen, setBacktestOpen] = useState(false);
-  const [planVisible, setPlanVisible] = useState(false);
+  
 
 
   const { data: holdings = [], isLoading } = useQuery({
@@ -454,7 +454,7 @@ export default function Portfolio() {
               <button onClick={() => setBacktestOpen(true)} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2">
                 <History className="w-4 h-4" />Backtest 30d
               </button>
-              <button onClick={() => { setAnalysisOpen(true); setPlanVisible(true); }} disabled={!totals?.allLoaded} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 disabled:opacity-50">
+              <button onClick={() => setAnalysisOpen(true)} disabled={!totals?.allLoaded} className="px-4 py-2 bg-secondary border border-primary/30 text-primary rounded-lg text-sm font-mono font-bold hover:bg-primary/10 transition-colors flex items-center gap-2 disabled:opacity-50">
                 <Sparkles className="w-4 h-4" />Analyze Portfolio
               </button>
 
@@ -625,9 +625,6 @@ export default function Portfolio() {
           </div>
         )}
 
-        {holdings.length > 0 && planVisible && (
-          <TradePlanPanel holdings={holdings} onClose={() => setPlanVisible(false)} />
-        )}
 
 
         <div className="text-[10px] text-muted-foreground text-center">
@@ -642,7 +639,7 @@ export default function Portfolio() {
 
       {analysisOpen && analysis && totals && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAnalysisOpen(false)}>
-          <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-background border border-border rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
@@ -713,6 +710,8 @@ export default function Portfolio() {
                   </div>
                 </div>
               )}
+
+              {holdings.length > 0 && <TradePlanPanel holdings={holdings} />}
 
               <div className="border-t border-border pt-4 text-[10px] text-muted-foreground leading-relaxed">
                 <strong>Educational only.</strong> This analysis is based on the Enhanced-V2 linear regression model applied to each holding's 1-year price history.

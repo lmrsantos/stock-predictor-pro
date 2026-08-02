@@ -168,32 +168,41 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
   const mult = RISK_ATR[input.risk];
   const scale = HORIZON_SCALE[input.horizon];
 
-  // Entry zone widens with risk appetite
+  // Entry zone widens with risk appetite and horizon
   const entryLow = input.risk === "aggressive"
-    ? currentPrice - mult.stop * atr * 0.5
-    : Math.max(support, currentPrice - mult.stop * atr * 0.6);
-  const entryHigh = Math.max(entryLow * 1.001, currentPrice - 0.2 * atr);
+    ? currentPrice - mult.stop * atr * 0.5 * scale
+    : Math.max(support * (1 - 0.02 * (scale - 1)), currentPrice - mult.stop * atr * 0.6 * scale);
+  const entryHigh = Math.max(entryLow * 1.001, currentPrice - 0.2 * atr * scale);
 
-  // Stop: conservative keeps it tight (ATR only), wider profiles sit under support
+  // Stop: conservative keeps it tight (ATR only), wider profiles sit under support.
+  // The structural floor loosens with the horizon so longer holds tolerate more noise.
   const atrStop = currentPrice - mult.stop * atr * scale;
+  const structuralBuffer = input.risk === "aggressive" ? 0.04 : 0.015;
   const supportFloor =
-    input.risk === "conservative" ? Infinity : support * (input.risk === "aggressive" ? 0.96 : 0.985);
+    input.risk === "conservative" ? Infinity : support * (1 - structuralBuffer * scale);
   const stop = Math.max(0.01, Math.min(atrStop, supportFloor));
 
   const atrT1 = currentPrice + mult.t1 * atr * scale;
   const atrT2 = currentPrice + mult.t2 * atr * scale;
-  // Conservative books into resistance; moderate respects it loosely; aggressive runs past it
-  const target1 =
+  // Conservative books into resistance; moderate respects it loosely; aggressive runs past it.
+  // The resistance cap stretches with the horizon so swing/position/long differ.
+  const resistanceCap = resistance * (1 + 0.03 * (scale - 1));
+  const target1Base =
     input.risk === "conservative"
-      ? Math.min(atrT1, Math.max(resistance, currentPrice * 1.005))
+      ? Math.min(atrT1, Math.max(resistanceCap, currentPrice * 1.005))
       : input.risk === "moderate"
-        ? Math.min(atrT1, Math.max(resistance * 1.02, currentPrice * 1.01))
+        ? Math.min(atrT1, Math.max(resistanceCap * 1.02, currentPrice * 1.01))
         : atrT1;
-  const target2 = Math.max(atrT2, target1 * 1.02);
+  // Never let the structural clamp collapse the horizon difference entirely
+  const target1Floor = currentPrice + mult.t1 * atr * scale * 0.5;
+  const target1Final = Math.max(target1Base, target1Floor);
+  const target2 = Math.max(atrT2, target1Final * 1.02);
+
+
 
 
   const risk = currentPrice - stop;
-  const reward = target1 - currentPrice;
+  const reward = target1Final - currentPrice;
   const riskReward = risk > 0 ? reward / risk : 0;
 
   // ── Trend classification ──
@@ -249,8 +258,8 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
     entryHigh,
     stop,
     stopPct: (stop - currentPrice) / currentPrice,
-    target1,
-    target1Pct: (target1 - currentPrice) / currentPrice,
+    target1: target1Final,
+    target1Pct: (target1Final - currentPrice) / currentPrice,
     target2,
     target2Pct: (target2 - currentPrice) / currentPrice,
     riskReward,
