@@ -367,8 +367,8 @@ const Index = () => {
 
 
       <div className="flex-1 min-h-0 overflow-hidden">
-      <main className="p-6 lg:p-8 flex flex-col gap-6 overflow-y-auto h-full">
-        <div className="flex flex-wrap items-end justify-between gap-6">
+      <main className="p-4 lg:p-5 flex flex-col gap-3 overflow-y-auto h-full">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="shrink-0">
           <StockHeader
             ticker={ticker}

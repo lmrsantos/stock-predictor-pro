@@ -22,23 +22,24 @@ function Cell({
   sub?: React.ReactNode;
 }) {
   return (
-    <div className="flex-1 min-w-0 px-4 py-2.5 rounded-lg bg-secondary/60 border border-border/60 text-center">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center justify-center gap-0.5">
+    <div className="flex-1 min-w-0 px-3 py-1.5 rounded-md bg-secondary/60 border border-border/60 flex items-center justify-center gap-1.5 whitespace-nowrap">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-0.5">
         {label}
         {tooltip && <InfoTooltip {...tooltip} />}
-      </div>
-      <div className={`text-sm font-mono mt-0.5 ${valueClass}`}>{value}</div>
-      {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+      </span>
+      <span className={`text-sm font-mono ${valueClass}`}>{value}</span>
+      {sub && <span className="text-[10px] text-muted-foreground">{sub}</span>}
     </div>
   );
 }
+
 
 export function RegressionStatsBar({ regression, lastPrice, isLoading }: Props) {
   if (isLoading) {
     return (
       <div className="flex gap-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex-1 h-14 rounded-lg bg-secondary/40 border border-border/60 animate-pulse" />
+          <div key={i} className="flex-1 h-8 rounded-md bg-secondary/40 border border-border/60 animate-pulse" />
         ))}
       </div>
     );

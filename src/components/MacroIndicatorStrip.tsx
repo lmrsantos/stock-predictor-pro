@@ -78,9 +78,9 @@ export function MacroIndicatorStrip() {
 
   return (
     <div className="w-full border-b border-border bg-background/60 backdrop-blur-xl">
-      <div className="flex items-stretch gap-2 px-4 py-2 overflow-x-auto md:overflow-visible">
+      <div className="flex items-stretch gap-2 px-4 py-1.5 overflow-x-auto">
         <RegimeBadge badge={badge} />
-        <div className="hidden md:grid grid-cols-4 lg:grid-cols-8 gap-2 flex-1">
+        <div className="hidden md:grid grid-cols-8 gap-2 flex-1 min-w-0">
           {TILE_ORDER.map((t) => (
             <Tile
               key={t.key}
