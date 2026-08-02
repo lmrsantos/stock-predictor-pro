@@ -383,11 +383,12 @@ Search for any relevant current market news before responding.`;
           </h2>
         </div>
 
-        <div className="rounded-xl border border-amber-900/40 bg-amber-950/20 p-4 space-y-3 text-[11px] font-mono text-amber-100/90 leading-relaxed">
-          <p className="font-semibold text-amber-200">
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 dark:border-amber-900/40 dark:bg-amber-950/20 p-4 space-y-3 text-[11px] font-mono text-foreground/85 leading-relaxed">
+          <p className="font-semibold text-amber-900 dark:text-amber-200">
             This tool is for educational and informational purposes only.
           </p>
-          <ul className="space-y-1.5 list-disc list-inside text-amber-100/80">
+          <ul className="space-y-1.5 list-disc list-inside text-foreground/75">
+
             <li>QuantForecast is <strong>not a registered investment adviser</strong>.</li>
             <li>Output is an <strong>illustrative model</strong>, not a personalized recommendation to buy, sell, or hold any security.</li>
             <li>Any dollar figures shown are purely for illustration math — not advice to invest that amount.</li>
