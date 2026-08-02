@@ -193,7 +193,11 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
       : input.risk === "moderate"
         ? Math.min(atrT1, Math.max(resistanceCap * 1.02, currentPrice * 1.01))
         : atrT1;
-  const target2 = Math.max(atrT2, target1 * 1.02);
+  // Never let the structural clamp collapse the horizon difference entirely
+  const target1Floor = currentPrice + mult.t1 * atr * scale * 0.5;
+  const target1Final = Math.max(target1, target1Floor);
+  const target2 = Math.max(atrT2, target1Final * 1.02);
+
 
 
 
