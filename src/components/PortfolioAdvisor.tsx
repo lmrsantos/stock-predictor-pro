@@ -250,7 +250,8 @@ export function PortfolioAdvisor() {
       // Pull the live macro indicator cache for the extra fingerprint dimensions
       const { data: indicators } = await supabase.from("macro_indicators").select("*");
       const ind: Record<string, any> = {};
-      for (const row of indicators ?? []) ind[(row as any).indicator_key ?? (row as any).key ?? (row as any).id] = row;
+      for (const row of indicators ?? []) ind[row.indicator_key] = row;
+
       const num = (k: string, f: string = "value") =>
         ind[k]?.[f] != null ? Number(ind[k][f]) : null;
 
