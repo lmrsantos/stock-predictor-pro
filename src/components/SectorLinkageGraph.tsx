@@ -244,6 +244,23 @@ export default function SectorLinkageGraph({
     return Array.from(sectors);
   }, [links, membership]);
 
+  // Sectors that actually appear in at least one linkage — the graph only draws
+  // these, so unlinked sectors don't float around as orphan nodes.
+  const connectedSectors = useMemo(() => {
+    const sectors = new Set<SectorName>();
+    for (const l of links) {
+      sectors.add(l.follower);
+      if (!MACRO_NODES.includes(l.leader)) sectors.add(l.leader as SectorName);
+    }
+    return Array.from(sectors);
+  }, [links]);
+
+  const unlinkedSectors = useMemo(
+    () => sectorsInPlay.filter((s) => !connectedSectors.includes(s)),
+    [sectorsInPlay, connectedSectors],
+  );
+
+
   const linksBySector = useMemo(() => {
     const map = new Map<SectorName, { incoming: LinkageResult[]; outgoing: LinkageResult[] }>();
     for (const sector of sectorsInPlay) map.set(sector, { incoming: [], outgoing: [] });
