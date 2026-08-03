@@ -54,7 +54,21 @@ export interface ModelCalibration {
   directionCorrect: boolean;
   /** Slope refit on ALL data through today — used for the forward forecast. */
   forwardSlope: number;
+  /** Empirical shrink factor applied to the raw slope (0 = pure persistence, 1 = raw trend). */
+  lambda: number;
 }
+
+/** How far ahead this symbol can be forecast before expected error exceeds a target band. */
+export interface AccuracyHorizon {
+  /** Target accuracy band, in % (e.g. 2). */
+  targetPct: number;
+  /** Trading days over which the 1σ expected error stays inside the target band. */
+  days: number;
+  /** Expected 1σ error at the full forecast horizon, in %. */
+  expectedErrorAtHorizonPct: number;
+  message: string;
+}
+
 
 
 export interface ForecastResult {
