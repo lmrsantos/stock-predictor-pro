@@ -1,5 +1,13 @@
 import { TickerSearch } from "./TickerSearch";
 
+export type ForecastModel = "regression" | "calibration" | "cycle";
+
+export const forecastModels: { value: ForecastModel; label: string; hint: string }[] = [
+  { value: "regression", label: "Enhanced Regression V2", hint: "Log-linear weighted regression with volatility & risk adjustments" },
+  { value: "calibration", label: "Calibration Ensemble", hint: "5 SMA-smoothed regressions, winner picked by lowest historical error" },
+  { value: "cycle", label: "Cycle Projection", hint: "Zigzag peak/trough geometry projected forward" },
+];
+
 interface ChartControlsProps {
   searchInput: string;
   onSearchInputChange: (v: string) => void;
@@ -8,6 +16,8 @@ interface ChartControlsProps {
   onPeriodChange: (v: string) => void;
   forecastDays: number;
   onForecastDaysChange: (v: number) => void;
+  forecastModel: ForecastModel;
+  onForecastModelChange: (v: ForecastModel) => void;
 }
 
 const periods = [
@@ -29,7 +39,10 @@ export function ChartControls({
   onPeriodChange,
   forecastDays,
   onForecastDaysChange,
+  forecastModel,
+  onForecastModelChange,
 }: ChartControlsProps) {
+
   return (
     <div className="flex items-center gap-2 flex-nowrap shrink-0">
       <div className="flex items-center gap-1.5 w-[170px] shrink-0">
