@@ -319,7 +319,7 @@ export default function SectorLinkageGraph({
           selector: "node[kind='sector']",
           style: {
             shape: "round-rectangle",
-            "background-color": "hsl(var(--card))",
+            "background-color": "hsl(240 28% 12%)",
             "background-opacity": 1,
             "border-width": 1.5,
             "border-color": "hsl(263 70% 65%)",
@@ -333,7 +333,7 @@ export default function SectorLinkageGraph({
             "text-wrap": "wrap",
             "text-max-width": "200px",
             "text-outline-color": "hsl(240 40% 6%)",
-            "text-outline-width": 2,
+            "text-outline-width": 0.5,
             "line-height": 1.25,
             width: 170,
             height: 62,
@@ -357,14 +357,14 @@ export default function SectorLinkageGraph({
             height: 40,
             padding: "6px",
             "text-outline-color": "hsl(240 40% 6%)",
-            "text-outline-width": 2,
+            "text-outline-width": 0.5,
           },
         },
         {
           selector: "node[kind='macro']",
           style: {
             shape: "diamond",
-            "background-color": "hsl(var(--accent))",
+            "background-color": "hsl(263 45% 22%)",
             "border-width": 1.5,
             "border-color": "hsl(var(--border))",
             label: "data(label)",
@@ -378,7 +378,7 @@ export default function SectorLinkageGraph({
             width: 64,
             height: 64,
             "text-outline-color": "hsl(240 40% 6%)",
-            "text-outline-width": 3,
+            "text-outline-width": 1,
           },
         },
         {
