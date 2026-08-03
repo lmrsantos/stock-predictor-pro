@@ -40,7 +40,7 @@ export function StockHeader({
               {ticker}{" "}
               <span className="text-muted-foreground font-normal text-sm">{name}</span>
             </h1>
-            <span className="text-2xl lg:text-3xl font-mono font-bold">
+            <span className="text-xl lg:text-2xl font-mono font-bold">
               ${formatPrice(price)}
             </span>
             <InfoTooltip {...metricInfo.price} />
