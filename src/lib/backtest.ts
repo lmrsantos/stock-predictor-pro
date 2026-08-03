@@ -97,6 +97,10 @@ export interface ForecastResult {
   // Magnitude-only signal (valid even when direction is not credible)
   magnitudeSignal: MagnitudeSignal;
 
+  // Horizon over which a ±2% band is actually achievable for this symbol
+  accuracyHorizon: AccuracyHorizon;
+
+
   // Chart paths
   actualPath: BacktestDataPoint[];
 
