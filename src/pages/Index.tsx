@@ -51,19 +51,7 @@ const Index = () => {
   const [sentimentOpen, setSentimentOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
-  const lastScrollY = useRef(0);
-  const [headerHidden, setHeaderHidden] = useState(false);
 
-  const handleMainScroll = useCallback(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const y = el.scrollTop;
-    const delta = y - lastScrollY.current;
-    if (y < 24) setHeaderHidden(false);
-    else if (delta > 6) setHeaderHidden(true);
-    else if (delta < -6) setHeaderHidden(false);
-    lastScrollY.current = y;
-  }, []);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
   useEffect(() => {
@@ -380,11 +368,9 @@ const Index = () => {
       }} />
 
 
-      <div className="flex-1 min-h-0 overflow-hidden">
-      <main ref={mainRef} onScroll={handleMainScroll} className="p-4 lg:p-5 flex flex-col gap-3 overflow-y-auto h-full">
-        <div className={`sticky top-0 z-30 -mx-4 lg:-mx-5 px-4 lg:px-5 -mt-4 lg:-mt-5 bg-background border-b border-border/60 shadow-sm flex items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden transition-all duration-200 ${headerHidden ? "max-h-0 pt-0 pb-0 opacity-0 pointer-events-none border-b-0 shadow-none" : "max-h-24 pt-4 lg:pt-5 pb-2 opacity-100"}`}>
-          <div className="shrink-0">
-
+      {/* Symbol + controls — fixed row, never overlaps scrolling content */}
+      <div className="shrink-0 border-b border-border bg-background px-4 lg:px-5 py-2 flex items-center gap-2 flex-nowrap overflow-x-auto">
+        <div className="shrink-0">
           <StockHeader
             ticker={ticker}
             name={meta?.name || ""}
@@ -395,17 +381,21 @@ const Index = () => {
             website={website}
             irWebsite={irWebsite}
           />
-          </div>
-          <ChartControls
-            searchInput={searchInput}
-            onSearchInputChange={setSearchInput}
-            onSearch={handleSearch}
-            period={period}
-            onPeriodChange={setPeriod}
-            forecastDays={forecastDays}
-            onForecastDaysChange={setForecastDays}
-          />
         </div>
+        <ChartControls
+          searchInput={searchInput}
+          onSearchInputChange={setSearchInput}
+          onSearch={handleSearch}
+          period={period}
+          onPeriodChange={setPeriod}
+          forecastDays={forecastDays}
+          onForecastDaysChange={setForecastDays}
+        />
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-hidden">
+      <main ref={mainRef} className="p-4 lg:p-5 pt-3 flex flex-col gap-3 overflow-y-auto h-full">
+
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
             <div className="text-center space-y-2">
