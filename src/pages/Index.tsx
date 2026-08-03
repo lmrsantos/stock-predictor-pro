@@ -29,7 +29,7 @@ import {
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { QuantAgentGate } from "@/components/QuantAgentGate";
-import { PlanBadge } from "@/components/PlanBadge";
+
 import { BacktestModal } from "@/components/BacktestModal";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
 import { backtest, type BacktestResult } from "@/lib/backtest";
