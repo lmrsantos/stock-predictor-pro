@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Loader2, Check, X, Sparkles } from "lucide-react";
 import { usePlan } from "@/hooks/usePlan";
@@ -7,6 +7,7 @@ import { readCachedLinkages } from "@/lib/run-linkages";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { SECTOR_NAMES, MACRO_SERIES_NAMES, LeaderName, SectorName } from "@/lib/cross-sector-linkages";
 
 /**
  * Minimal entry point for custom linkage analyses.
@@ -96,24 +97,39 @@ export function CustomLinkageAnalysis() {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Enter any leader → follower pair from the standard map. Results are saved privately to your account.
+        Choose a leader → follower pair from the standard map. Results are saved privately to your account.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <input
-          value={leader}
-          onChange={(e) => setLeader(e.target.value)}
-          placeholder="Leader (e.g. Banks, US10Y)"
-          className="bg-secondary border border-border rounded px-3 py-2 text-sm font-mono input-focus"
-          disabled={gate.locked}
-        />
-        <input
-          value={follower}
-          onChange={(e) => setFollower(e.target.value)}
-          placeholder="Follower (e.g. Real Estate)"
-          className="bg-secondary border border-border rounded px-3 py-2 text-sm font-mono input-focus"
-          disabled={gate.locked}
-        />
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Leader</label>
+          <select
+            value={leader}
+            onChange={(e) => setLeader(e.target.value)}
+            className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm font-mono input-focus"
+            disabled={gate.locked}
+          >
+            <option value="" disabled>Choose leader…</option>
+            <optgroup label="Macro">
+              {MACRO_SERIES_NAMES.map((m) => <option key={m} value={m}>{m}</option>)}
+            </optgroup>
+            <optgroup label="Sectors">
+              {SECTOR_NAMES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </optgroup>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Follower</label>
+          <select
+            value={follower}
+            onChange={(e) => setFollower(e.target.value)}
+            className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm font-mono input-focus"
+            disabled={gate.locked}
+          >
+            <option value="" disabled>Choose follower…</option>
+            {SECTOR_NAMES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
       </div>
 
       {gate.locked ? (
