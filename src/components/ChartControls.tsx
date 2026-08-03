@@ -1,12 +1,14 @@
 import { TickerSearch } from "./TickerSearch";
 
-export type ForecastModel = "regression" | "calibration" | "cycle";
+export type ForecastModel = "regression" | "calibration" | "cycle" | "montecarlo";
 
 export const forecastModels: { value: ForecastModel; label: string; hint: string }[] = [
   { value: "regression", label: "Enhanced Regression V2", hint: "Log-linear weighted regression with volatility & risk adjustments" },
   { value: "calibration", label: "Calibration Ensemble", hint: "5 SMA-smoothed regressions, winner picked by lowest historical error" },
   { value: "cycle", label: "Cycle Projection", hint: "Zigzag peak/trough geometry projected forward" },
+  { value: "montecarlo", label: "Monte Carlo Simulation", hint: "4,000 block-bootstrap paths from historical log returns — median path with P16/P84 and P2.5/P97.5 bands" },
 ];
+
 
 interface ChartControlsProps {
   searchInput: string;
