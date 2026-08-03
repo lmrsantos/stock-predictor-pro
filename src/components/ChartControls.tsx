@@ -88,13 +88,13 @@ export function ChartControls({
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1.5 min-w-0">
         <label className="label-upper whitespace-nowrap">Model</label>
         <select
           value={forecastModel}
           onChange={(e) => onForecastModelChange(e.target.value as ForecastModel)}
           title={forecastModels.find((m) => m.value === forecastModel)?.hint}
-          className="bg-secondary border border-border rounded-lg px-2 py-1 text-sm input-focus max-w-[190px]"
+          className="bg-secondary border border-border rounded-lg pl-2 pr-6 py-1 text-sm input-focus min-w-0 max-w-[200px] truncate"
         >
           {forecastModels.map((m) => (
             <option key={m.value} value={m.value}>
