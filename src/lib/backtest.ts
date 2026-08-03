@@ -68,6 +68,12 @@ export interface ForecastResult {
   // Confidence score 0–100
   confidenceScore: number;
 
+  // Calibration reliability gate
+  calibration: CalibrationQuality;
+
+  // Magnitude-only signal (valid even when direction is not credible)
+  magnitudeSignal: MagnitudeSignal;
+
   // Chart paths
   actualPath: BacktestDataPoint[];
 
@@ -100,8 +106,32 @@ export interface RegimeResult {
   warning: string | null;
 }
 
+export interface CalibrationQuality {
+  winnerErrorPct: number;
+  bestErrorPct: number;
+  medianErrorPct: number;
+  grade: "good" | "fair" | "poor" | "failed";
+  /** True only when the winning model tracked today's price closely enough to trust its direction. */
+  directionCredible: boolean;
+  message: string;
+}
+
+export interface MagnitudeSignal {
+  /** Annualized realized vol over the last 20 bars. */
+  shortVol: number;
+  /** Annualized realized vol over the prior ~100 bars. */
+  baseVol: number;
+  /** shortVol / baseVol — below 0.7 means volatility is compressed (energy build-up). */
+  compressionRatio: number;
+  compressed: boolean;
+  /** 1σ expected absolute move over the forecast horizon, in %. */
+  expectedMovePct: number;
+  message: string;
+}
+
 // Keep BacktestResult as alias for compatibility
 export type BacktestResult = ForecastResult;
+
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
@@ -328,11 +358,65 @@ export function backtest(
   const regimePenalty      = regime.outsideDistribution
     ? (regime.ratio > 2.5 ? -25 : -12) : 20;
 
-  const confidenceScore = Math.min(100, Math.max(0,
+  let confidenceScore = Math.min(100, Math.max(0,
     winnerErrorScore + rSquaredScore + agreementScore + regimePenalty
   ));
 
+  // ── 9. Calibration reliability gate ─────────────────────────────────────────
+  // If even the best model missed today's price badly, the ensemble has NOT earned
+  // the right to claim a direction — no amount of R² or agreement rescues that.
+  const errorsSorted   = models.map(m => m.errorPct).sort((a, b) => a - b);
+  const medianErrorPct = errorsSorted[Math.floor(errorsSorted.length / 2)];
+  const e = winner.errorPct;
+  const grade: CalibrationQuality["grade"] =
+    e <= 3 ? "good" : e <= 8 ? "fair" : e <= 20 ? "poor" : "failed";
+  const directionCredible = e <= 8;
+
+  const calibration: CalibrationQuality = {
+    winnerErrorPct: e,
+    bestErrorPct:   errorsSorted[0],
+    medianErrorPct,
+    grade,
+    directionCredible,
+    message:
+      grade === "good"
+        ? `Calibration good — the winning model landed within ${e.toFixed(1)}% of today's price.`
+        : grade === "fair"
+        ? `Calibration fair — ${e.toFixed(1)}% miss on today's price. Treat direction as a lean, not a call.`
+        : grade === "poor"
+        ? `CALIBRATION POOR — the best model missed today's price by ${e.toFixed(1)}%. Direction is not reliable; use the magnitude signal instead.`
+        : `CALIBRATION FAILED — every model missed today's price by ${errorsSorted[0].toFixed(1)}%+ (winner ${e.toFixed(1)}%). No directional forecast is defensible for this symbol right now.`,
+  };
+
+  // Cap confidence when calibration failed to track reality
+  if (!directionCredible) {
+    confidenceScore = Math.min(confidenceScore, grade === "failed" ? 15 : 30);
+  }
+
+  // ── 10. Magnitude-only signal (valid regardless of direction credibility) ───
+  const returns  = prices.slice(1).map((p, i) => (p - prices[i]) / prices[i]);
+  const shortVol = stdDev(returns.slice(-20)) * Math.sqrt(252);
+  const baseVol  = stdDev(returns.slice(-120, -20)) * Math.sqrt(252) || shortVol;
+  const compressionRatio = baseVol > 0 ? shortVol / baseVol : 1;
+  const compressed = compressionRatio < 0.7;
+  const expectedMovePct = shortVol * Math.sqrt(forecastDays / 252) * 100;
+
+  const magnitudeSignal: MagnitudeSignal = {
+    shortVol,
+    baseVol,
+    compressionRatio,
+    compressed,
+    expectedMovePct,
+    message: compressed
+      ? `Volatility compressed to ${compressionRatio.toFixed(2)}× its 6-month baseline — a large move is more likely than usual over the next ${forecastDays} days, direction unknown. 1σ expected move ±${expectedMovePct.toFixed(1)}%.`
+      : compressionRatio > 1.4
+      ? `Volatility expanded to ${compressionRatio.toFixed(2)}× baseline — the move is already underway. 1σ expected move ±${expectedMovePct.toFixed(1)}% over ${forecastDays} days.`
+      : `Volatility near baseline (${compressionRatio.toFixed(2)}×). 1σ expected move ±${expectedMovePct.toFixed(1)}% over ${forecastDays} days, direction unknown.`,
+  };
+
   return {
+    calibration,
+    magnitudeSignal,
     forecastPoints,
     forecastPct:       Math.round(forecastPct * 10) / 10,
     forecastDirection,

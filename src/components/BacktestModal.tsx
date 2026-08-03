@@ -128,6 +128,43 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
   );
 }
 
+// ─── Calibration reliability banner ───────────────────────────────────────────
+
+function CalibrationBanner({ result }: { result: ForecastResult }) {
+  const { calibration, magnitudeSignal } = result;
+  if (calibration.directionCredible) return null;
+
+  const failed = calibration.grade === "failed";
+  const tone = failed
+    ? "border-red-500/40 bg-red-500/10 text-red-300"
+    : "border-amber-500/40 bg-amber-500/10 text-amber-300";
+
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col gap-2 ${tone}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-mono uppercase tracking-widest font-semibold">
+          {failed ? "⚠ Direction not forecastable" : "⚠ Direction unreliable"}
+        </span>
+        <span className="text-[10px] font-mono opacity-80">
+          winner error {calibration.winnerErrorPct.toFixed(1)}% · median {calibration.medianErrorPct.toFixed(1)}%
+        </span>
+      </div>
+      <p className="text-[11px] font-mono leading-relaxed text-foreground/90">{calibration.message}</p>
+      <div className="rounded-lg border border-border bg-card/60 p-3">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1">
+          Magnitude signal (direction-free)
+        </p>
+        <p className="text-[11px] font-mono leading-relaxed text-foreground/90">{magnitudeSignal.message}</p>
+        <p className="text-[10px] font-mono text-muted-foreground mt-1">
+          20d vol {(magnitudeSignal.shortVol * 100).toFixed(1)}% ann. vs baseline {(magnitudeSignal.baseVol * 100).toFixed(1)}% ann.
+          {magnitudeSignal.compressed ? " — compressed, expect expansion." : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Forecast + cone chart ────────────────────────────────────────────────────
 
 function ForecastChart({ result }: { result: ForecastResult }) {
@@ -281,6 +318,10 @@ The quantitative model shows:
 - Model confidence: ${result.confidenceScore}/100
 - Regime: ${result.regime.outsideDistribution ? "SHIFTED (elevated volatility)" : "NORMAL"}
 - Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
+- Calibration quality: ${result.calibration.grade.toUpperCase()} — ${result.calibration.message}
+- Magnitude signal: ${result.magnitudeSignal.message}${result.calibration.directionCredible ? "" : `
+
+IMPORTANT: calibration failed this symbol, so do NOT assert a direction. Frame the context around magnitude/volatility and catalysts only.`}
 
 Please search for current news, earnings calendar, analyst ratings, and macro factors for ${ticker}. Then give a concise 3-4 sentence market context that helps the user decide whether to act on this forecast. Focus on: upcoming catalysts, recent price drivers, and key risks. Be direct.`;
 
@@ -603,17 +644,25 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
           {result && !running && (
             <>
               <RegimeBanner regime={result.regime} />
+              <CalibrationBanner result={result} />
 
               {/* Key metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatCard label="Winning Model"
                   value={`${result.winningModel.errorPct.toFixed(2)}% err`}
-                  sub={result.winningModel.label}
-                  color={accentColor(result.winningModel.errorPct, 1, 3)} />
-                <StatCard label="30-Day Forecast"
-                  value={`${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}%`}
-                  sub={`Direction: ${result.forecastDirection.toUpperCase()}`}
-                  color={result.forecastDirection === "up" ? "#34d399" : "#f87171"} />
+                  sub={`${result.winningModel.label} · calibration ${result.calibration.grade}`}
+                  color={accentColor(result.winningModel.errorPct, 3, 8)} />
+                {result.calibration.directionCredible ? (
+                  <StatCard label="30-Day Forecast"
+                    value={`${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}%`}
+                    sub={`Direction: ${result.forecastDirection.toUpperCase()}`}
+                    color={result.forecastDirection === "up" ? "#34d399" : "#f87171"} />
+                ) : (
+                  <StatCard label="30-Day Expected Move"
+                    value={`±${result.magnitudeSignal.expectedMovePct.toFixed(1)}%`}
+                    sub="Direction not reliable (1σ magnitude)"
+                    color="#fbbf24" />
+                )}
                 <StatCard label="Model Agreement"
                   value={`${(result.ensembleAgreement * 100).toFixed(0)}%`}
                   sub={`${result.models.filter(m => m.winner || m.slope * (result.forecastDirection === "up" ? 1 : -1) > 0).length}/5 models agree`}
