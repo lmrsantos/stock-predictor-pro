@@ -224,8 +224,8 @@ const Index = () => {
           const proj = cyc.projection;
           const goingUp = proj.currentPosition === "near_trough" || proj.troughTrend === "rising";
           const target = goingUp ? proj.nextPeak : proj.nextTrough;
-          const horizon = Math.max(1, Math.round(proj.cycleLength / 2));
-          const band = Math.abs(target - lastPrice) * 0.5 + regression.standardDeviation;
+          const horizon = Math.max(forecastDays, Math.round(proj.cycleLength));
+          const band = regression.standardDeviation;
           forwardPoints = regression.predictions.map((p, i) => {
             const t = Math.min(1, (i + 1) / horizon);
             const mean = lastPrice + (target - lastPrice) * t;
