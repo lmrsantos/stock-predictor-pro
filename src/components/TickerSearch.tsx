@@ -146,7 +146,7 @@ export function TickerSearch({ value, onChange, onSelect }: TickerSearchProps) {
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 top-full mt-1 w-full bg-popover border border-border rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-[100] top-full mt-1 w-full min-w-[280px] bg-popover border border-border rounded-lg shadow-xl max-h-64 overflow-y-auto">
           {results.map((r, i) => (
             <button
               key={r.symbol}
