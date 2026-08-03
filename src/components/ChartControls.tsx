@@ -87,6 +87,23 @@ export function ChartControls({
           ))}
         </div>
       </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <label className="label-upper whitespace-nowrap">Model</label>
+        <select
+          value={forecastModel}
+          onChange={(e) => onForecastModelChange(e.target.value as ForecastModel)}
+          title={forecastModels.find((m) => m.value === forecastModel)?.hint}
+          className="bg-secondary border border-border rounded-lg px-2 py-1 text-sm input-focus max-w-[190px]"
+        >
+          {forecastModels.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
+
