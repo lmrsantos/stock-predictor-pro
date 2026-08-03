@@ -406,16 +406,19 @@ export function backtest(
   // Compute uncertainty from ensemble spread at each step
   for (let i = 0; i < forecastDays; i++) {
     const dayOffset = i + 1;
+    // Reversion is a level correction, phased in across the horizon
+    const revAtStep = reversionPull * (dayOffset / forecastDays);
 
-    // Each model's projected price at this future day
-    const modelPrices = models.map(m => currentPrice + m.forwardSlope * dayOffset);
+    // Each model's projected price at this future day (calibrated slopes)
+    const modelPrices = models.map(m => currentPrice + m.forwardSlope * dayOffset + revAtStep);
 
     // Winner's projection (primary forecast line)
-    const winnerPrice = currentPrice + winner.forwardSlope * dayOffset;
+    const winnerPrice = currentPrice + winner.forwardSlope * dayOffset + revAtStep;
 
 
     // Spread from ensemble for uncertainty bands
     const spreadSd = stdDev(modelPrices);
+
 
     const ts = currentTs + dayOffset * 86400000;
     forecastPoints.push({
