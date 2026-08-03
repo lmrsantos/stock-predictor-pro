@@ -181,26 +181,42 @@ export default function LinkagesPage() {
 
           {payload && (
             <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
                   Linkage Graph
+                  <span className="ml-2 normal-case tracking-normal text-foreground/70">
+                    {validatedCount}/{payload.results.length} validated
+                  </span>
                 </h2>
-                <label className="text-xs font-mono flex items-center gap-2">
+                <label
+                  className={`text-xs font-mono flex items-center gap-2 ${validatedCount === 0 ? "text-muted-foreground cursor-not-allowed" : ""}`}
+                  title={validatedCount === 0 ? "No pair passed BH correction + split-half agreement in this run" : undefined}
+                >
                   <input
                     type="checkbox"
-                    checked={onlyValidated}
+                    disabled={validatedCount === 0}
+                    checked={onlyValidated && validatedCount > 0}
                     onChange={(e) => setOnlyValidated(e.target.checked)}
                   />
                   Show validated linkages only
+                  {validatedCount === 0 && <span className="text-[10px]">(none yet)</span>}
                 </label>
               </div>
-              <SectorLinkageGraph
-                results={payload.results}
-                sectorMembership={SECTOR_MEMBERSHIP}
-                validatedOnly={onlyValidated}
-              />
+              {onlyValidated && validatedCount === 0 ? (
+                <div className="rounded border border-border bg-muted/30 p-6 text-center text-xs font-mono text-muted-foreground">
+                  No linkages are statistically validated in this run, so the filtered graph is empty.
+                  Uncheck the filter to inspect all tested pairs and their BH p-values.
+                </div>
+              ) : (
+                <SectorLinkageGraph
+                  results={payload.results}
+                  sectorMembership={SECTOR_MEMBERSHIP}
+                  validatedOnly={onlyValidated}
+                />
+              )}
             </div>
           )}
+
 
           <CustomLinkageAnalysis />
 
