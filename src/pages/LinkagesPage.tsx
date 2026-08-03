@@ -41,6 +41,8 @@ export default function LinkagesPage() {
     }
   };
 
+  const validatedCount = payload ? payload.results.filter((r) => r.validated).length : 0;
+
   const rows: LinkageResult[] = (() => {
     if (!payload) return [];
     let r = [...payload.results];
