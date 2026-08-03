@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
+import { simulateMonteCarlo } from "@/lib/monte-carlo";
+
 
 import { ChartControls, ForecastModel } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
