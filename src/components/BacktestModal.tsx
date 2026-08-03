@@ -132,9 +132,8 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
           Every row is a genuine forecast: the model saw nothing after {result.holdout?.asOfDate ?? "the cutoff"}. The lowest-error model earns the right to forecast the next 30 days from today.
         </p>
       </div>
-
-      </div>
     </div>
+
   );
 }
 
