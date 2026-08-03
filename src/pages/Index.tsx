@@ -50,6 +50,20 @@ const Index = () => {
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
   const [sentimentOpen, setSentimentOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const lastScrollY = useRef(0);
+  const [headerHidden, setHeaderHidden] = useState(false);
+
+  const handleMainScroll = useCallback(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const y = el.scrollTop;
+    const delta = y - lastScrollY.current;
+    if (y < 24) setHeaderHidden(false);
+    else if (delta > 6) setHeaderHidden(true);
+    else if (delta < -6) setHeaderHidden(false);
+    lastScrollY.current = y;
+  }, []);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
   useEffect(() => {
@@ -367,8 +381,8 @@ const Index = () => {
 
 
       <div className="flex-1 min-h-0 overflow-hidden">
-      <main className="p-4 lg:p-5 flex flex-col gap-3 overflow-y-auto h-full">
-        <div className="sticky top-0 z-20 -mx-4 lg:-mx-5 px-4 lg:px-5 -mt-4 lg:-mt-5 pt-4 lg:pt-5 pb-2 bg-background flex items-center gap-2 flex-nowrap overflow-x-auto">
+      <main ref={mainRef} onScroll={handleMainScroll} className="p-4 lg:p-5 flex flex-col gap-3 overflow-y-auto h-full">
+        <div className={`sticky top-0 z-20 -mx-4 lg:-mx-5 px-4 lg:px-5 -mt-4 lg:-mt-5 pt-4 lg:pt-5 pb-2 bg-background border-b border-border/60 flex items-center gap-2 flex-nowrap overflow-x-auto transition-transform duration-200 ${headerHidden ? "-translate-y-[130%]" : "translate-y-0"}`}>
           <div className="shrink-0">
 
           <StockHeader
