@@ -68,6 +68,12 @@ export interface ForecastResult {
   // Confidence score 0–100
   confidenceScore: number;
 
+  // Calibration reliability gate
+  calibration: CalibrationQuality;
+
+  // Magnitude-only signal (valid even when direction is not credible)
+  magnitudeSignal: MagnitudeSignal;
+
   // Chart paths
   actualPath: BacktestDataPoint[];
 
