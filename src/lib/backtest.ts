@@ -36,17 +36,26 @@ export interface ForecastPoint {
 }
 
 export interface ModelCalibration {
-  windowSize: number;         // days used for fitting
+  windowSize: number;         // days used for smoothing
   label: string;              // e.g. "10-day trend"
-  slope: number;              // daily price change ($/day)
+  slope: number;              // daily price change ($/day) fit on TRAIN data only
   intercept: number;
-  rSquared: number;           // how well it fit the training window
-  predictedTodayPrice: number; // where it said today's price would be
+  rSquared: number;           // fit quality on the training window
+  /** Out-of-sample: price this model predicted for today, standing `holdoutDays` bars ago. */
+  predictedTodayPrice: number;
   actualTodayPrice: number;
-  errorPct: number;           // abs % error vs actual current price
+  errorPct: number;           // abs % error vs actual current price (true out-of-sample)
   annualizedReturn: number;   // projected annual return from slope
   winner: boolean;            // true for the best-fitting model
+  /** Actual close on the as-of (cutoff) date the projection started from. */
+  asOfPrice: number;
+  asOfDate: string;
+  /** Whether the model got the direction of the realized move right. */
+  directionCorrect: boolean;
+  /** Slope refit on ALL data through today — used for the forward forecast. */
+  forwardSlope: number;
 }
+
 
 export interface ForecastResult {
   // The winning model's forward projection
