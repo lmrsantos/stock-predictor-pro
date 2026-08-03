@@ -490,7 +490,7 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, membership, sectorsInPlay]);
+  }, [links, mode, membership, connectedSectors]);
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
