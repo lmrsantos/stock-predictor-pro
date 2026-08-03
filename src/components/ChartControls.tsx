@@ -44,7 +44,7 @@ export function ChartControls({
 }: ChartControlsProps) {
 
   return (
-    <div className="flex items-center gap-2 flex-nowrap shrink-0">
+    <div className="flex items-center gap-2 gap-y-2 flex-wrap min-w-0">
       <div className="flex items-center gap-1.5 w-[170px] shrink-0">
         <label className="label-upper whitespace-nowrap">Ticker</label>
         <TickerSearch
