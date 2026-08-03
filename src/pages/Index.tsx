@@ -382,7 +382,7 @@ const Index = () => {
 
       <div className="flex-1 min-h-0 overflow-hidden">
       <main ref={mainRef} onScroll={handleMainScroll} className="p-4 lg:p-5 flex flex-col gap-3 overflow-y-auto h-full">
-        <div className={`sticky top-0 z-20 -mx-4 lg:-mx-5 px-4 lg:px-5 -mt-4 lg:-mt-5 pt-4 lg:pt-5 pb-2 bg-background border-b border-border/60 flex items-center gap-2 flex-nowrap overflow-x-auto transition-transform duration-200 ${headerHidden ? "-translate-y-[130%]" : "translate-y-0"}`}>
+        <div className={`sticky top-0 z-30 -mx-4 lg:-mx-5 px-4 lg:px-5 -mt-4 lg:-mt-5 bg-background border-b border-border/60 shadow-sm flex items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden transition-all duration-200 ${headerHidden ? "max-h-0 pt-0 pb-0 opacity-0 pointer-events-none border-b-0 shadow-none" : "max-h-24 pt-4 lg:pt-5 pb-2 opacity-100"}`}>
           <div className="shrink-0">
 
           <StockHeader
