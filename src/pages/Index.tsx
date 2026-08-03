@@ -9,7 +9,7 @@ import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } fro
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 
-import { ChartControls } from "@/components/ChartControls";
+import { ChartControls, ForecastModel } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
@@ -30,7 +30,8 @@ import { QuantAgentGate } from "@/components/QuantAgentGate";
 import { PlanBadge } from "@/components/PlanBadge";
 import { BacktestModal } from "@/components/BacktestModal";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
-import type { BacktestResult } from "@/lib/backtest";
+import { backtest, type BacktestResult } from "@/lib/backtest";
+import { analyzeCycles } from "@/lib/cycle-analysis";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
@@ -43,6 +44,7 @@ const Index = () => {
   const [searchInput, setSearchInput] = useState(initialTicker);
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
+  const [forecastModel, setForecastModel] = useState<ForecastModel>("regression");
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
@@ -165,6 +167,8 @@ const Index = () => {
     ? computeLinearRegression(stockData, forecastDays, riskContext)
     : null;
 
+  const lastPrice = stockData?.length ? stockData[stockData.length - 1].close : 0;
+
   // Build unified chart data
   const chartData: ChartDataPoint[] = [];
   if (regression) {
@@ -258,9 +262,6 @@ const Index = () => {
   }
 
 
-  const lastPrice = stockData?.length
-    ? stockData[stockData.length - 1].close
-    : 0;
   const prevPrice = stockData?.length && stockData.length > 1
     ? stockData[stockData.length - 2].close
     : lastPrice;
@@ -452,6 +453,8 @@ const Index = () => {
           onPeriodChange={setPeriod}
           forecastDays={forecastDays}
           onForecastDaysChange={setForecastDays}
+          forecastModel={forecastModel}
+          onForecastModelChange={setForecastModel}
         />
       </div>
 
