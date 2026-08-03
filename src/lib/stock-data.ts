@@ -39,6 +39,10 @@ export interface StockFetchResult {
   irWebsite: string | null;
 }
 
+export class SymbolNotFoundError extends Error {
+  code = "SYMBOL_NOT_FOUND";
+}
+
 export async function fetchAndStoreStockData(
   ticker: string,
   period: string = "1y"
@@ -47,8 +51,25 @@ export async function fetchAndStoreStockData(
     body: { ticker, period },
   });
 
-  if (error) throw new Error(`Failed to fetch stock data: ${error.message}`);
-  if (data?.error) throw new Error(data.error);
+  if (error) {
+    // supabase-js throws a generic message on non-2xx — read the real body.
+    let payload: { error?: string; code?: string } | null = null;
+    const res = (error as { context?: Response }).context;
+    if (res && typeof res.json === "function") {
+      payload = await res.json().catch(() => null);
+    }
+    if (payload?.code === "SYMBOL_NOT_FOUND" || res?.status === 404) {
+      throw new SymbolNotFoundError(
+        payload?.error || `"${ticker.toUpperCase()}" isn't a valid symbol. Check the ticker and try again.`
+      );
+    }
+    throw new Error(payload?.error || `Failed to fetch stock data: ${error.message}`);
+  }
+  if (data?.error) {
+    if (data.code === "SYMBOL_NOT_FOUND") throw new SymbolNotFoundError(data.error);
+    throw new Error(data.error);
+  }
+
 
   return {
     name: data.name,
