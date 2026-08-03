@@ -290,7 +290,7 @@ export default function SectorLinkageGraph({
     const elements: cytoscape.ElementDefinition[] = [];
 
     // --- Nodes ---
-    for (const s of sectorsInPlay) {
+    for (const s of connectedSectors) {
       elements.push({
         data: {
           id: `sec:${s}`,
