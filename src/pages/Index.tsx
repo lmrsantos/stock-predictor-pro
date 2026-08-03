@@ -9,7 +9,7 @@ import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } fro
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 
-import { ChartControls } from "@/components/ChartControls";
+import { ChartControls, ForecastModel } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
@@ -30,7 +30,8 @@ import { QuantAgentGate } from "@/components/QuantAgentGate";
 import { PlanBadge } from "@/components/PlanBadge";
 import { BacktestModal } from "@/components/BacktestModal";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
-import type { BacktestResult } from "@/lib/backtest";
+import { backtest, type BacktestResult } from "@/lib/backtest";
+import { analyzeCycles } from "@/lib/cycle-analysis";
 import { slopeToAnnualReturn } from "@/lib/regression";
 
 const Index = () => {
@@ -43,6 +44,7 @@ const Index = () => {
   const [searchInput, setSearchInput] = useState(initialTicker);
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
+  const [forecastModel, setForecastModel] = useState<ForecastModel>("regression");
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
@@ -165,6 +167,8 @@ const Index = () => {
     ? computeLinearRegression(stockData, forecastDays, riskContext)
     : null;
 
+  const lastPrice = stockData?.length ? stockData[stockData.length - 1].close : 0;
+
   // Build unified chart data
   const chartData: ChartDataPoint[] = [];
   if (regression) {
@@ -181,7 +185,68 @@ const Index = () => {
         isForecast: false,
       });
     });
-    regression.predictions.forEach((p) => {
+
+    // Forward path depends on the selected forecast model
+    let forwardPoints = regression.predictions.map((p) => ({
+      date: p.date,
+      timestamp: p.timestamp,
+      predicted: p.predicted,
+      upper1Sigma: p.upper1Sigma,
+      lower1Sigma: p.lower1Sigma,
+      upper2Sigma: p.upper2Sigma,
+      lower2Sigma: p.lower2Sigma,
+    }));
+
+    if (forecastModel !== "regression" && stockData?.length) {
+      try {
+        if (forecastModel === "calibration") {
+          const res = backtest(
+            stockData.map((d) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })),
+            6,
+            forecastDays
+          );
+          forwardPoints = res.forecastPoints.map((p) => ({
+            date: p.date,
+            timestamp: p.timestamp,
+            predicted: p.mean,
+            upper1Sigma: p.upper1,
+            lower1Sigma: p.lower1,
+            upper2Sigma: p.upper2,
+            lower2Sigma: p.lower2,
+          }));
+        } else {
+          // Cycle projection: interpolate toward the next projected turning point
+          const cyc = analyzeCycles(
+            ticker,
+            stockData.map((d) => d.close),
+            stockData.map((d) => d.date)
+          );
+          const proj = cyc.projection;
+          const goingUp = proj.currentPosition === "near_trough" || proj.troughTrend === "rising";
+          const target = goingUp ? proj.nextPeak : proj.nextTrough;
+          const horizon = Math.max(forecastDays, Math.round(proj.cycleLength));
+          const band = regression.standardDeviation;
+          forwardPoints = regression.predictions.map((p, i) => {
+            const t = Math.min(1, (i + 1) / horizon);
+            const mean = lastPrice + (target - lastPrice) * t;
+            const w = band * Math.sqrt((i + 1) / forecastDays);
+            return {
+              date: p.date,
+              timestamp: p.timestamp,
+              predicted: mean,
+              upper1Sigma: mean + w,
+              lower1Sigma: mean - w,
+              upper2Sigma: mean + 2 * w,
+              lower2Sigma: mean - 2 * w,
+            };
+          });
+        }
+      } catch {
+        // fall back to regression predictions
+      }
+    }
+
+    forwardPoints.forEach((p) => {
       chartData.push({
         date: p.date,
         timestamp: p.timestamp,
@@ -196,9 +261,7 @@ const Index = () => {
     });
   }
 
-  const lastPrice = stockData?.length
-    ? stockData[stockData.length - 1].close
-    : 0;
+
   const prevPrice = stockData?.length && stockData.length > 1
     ? stockData[stockData.length - 2].close
     : lastPrice;
@@ -390,6 +453,8 @@ const Index = () => {
           onPeriodChange={setPeriod}
           forecastDays={forecastDays}
           onForecastDaysChange={setForecastDays}
+          forecastModel={forecastModel}
+          onForecastModelChange={setForecastModel}
         />
       </div>
 
