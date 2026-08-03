@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
+import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB, SymbolNotFoundError } from "@/lib/stock-data";
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
 import { simulateMonteCarlo } from "@/lib/monte-carlo";
@@ -89,7 +89,7 @@ const Index = () => {
   const { data: meta, isLoading: isFetching, error: fetchError } = useQuery({
     queryKey: ["fetch-stock", ticker, period],
     queryFn: () => fetchAndStoreStockData(ticker, period),
-    retry: 1,
+    retry: (count, err) => !(err instanceof SymbolNotFoundError) && count < 1,
     staleTime: 0, // always fetch fresh data
   });
 
@@ -488,7 +488,9 @@ const Index = () => {
         {error ? (
           <div className="flex-1 chart-surface flex items-center justify-center">
             <div className="text-center space-y-2">
-              <p className="text-accent-danger text-sm font-mono">Error loading data</p>
+              <p className="text-accent-danger text-sm font-mono">
+                {error instanceof SymbolNotFoundError ? "Symbol not found" : "Error loading data"}
+              </p>
               <p className="text-muted-foreground text-xs">{(error as Error).message}</p>
             </div>
           </div>
