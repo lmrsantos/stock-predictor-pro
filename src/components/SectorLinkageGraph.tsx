@@ -244,6 +244,23 @@ export default function SectorLinkageGraph({
     return Array.from(sectors);
   }, [links, membership]);
 
+  // Sectors that actually appear in at least one linkage — the graph only draws
+  // these, so unlinked sectors don't float around as orphan nodes.
+  const connectedSectors = useMemo(() => {
+    const sectors = new Set<SectorName>();
+    for (const l of links) {
+      sectors.add(l.follower);
+      if (!MACRO_NODES.includes(l.leader)) sectors.add(l.leader as SectorName);
+    }
+    return Array.from(sectors);
+  }, [links]);
+
+  const unlinkedSectors = useMemo(
+    () => sectorsInPlay.filter((s) => !connectedSectors.includes(s)),
+    [sectorsInPlay, connectedSectors],
+  );
+
+
   const linksBySector = useMemo(() => {
     const map = new Map<SectorName, { incoming: LinkageResult[]; outgoing: LinkageResult[] }>();
     for (const sector of sectorsInPlay) map.set(sector, { incoming: [], outgoing: [] });
@@ -273,7 +290,7 @@ export default function SectorLinkageGraph({
     const elements: cytoscape.ElementDefinition[] = [];
 
     // --- Nodes ---
-    for (const s of sectorsInPlay) {
+    for (const s of connectedSectors) {
       elements.push({
         data: {
           id: `sec:${s}`,
@@ -426,8 +443,20 @@ export default function SectorLinkageGraph({
           },
         },
       ],
-      layout:
-        { name: "circle", padding: 60, fit: true },
+      layout: {
+        name: "fcose",
+        quality: "proof",
+        randomize: true,
+        animate: false,
+        fit: true,
+        padding: 50,
+        nodeSeparation: 140,
+        idealEdgeLength: 190,
+        nodeRepulsion: 9000,
+        gravity: 0.35,
+        gravityRangeCompound: 1.2,
+        numIter: 3000,
+      } as any,
       wheelSensitivity: 0.2,
       minZoom: 0.15,
       maxZoom: 2.5,
@@ -461,7 +490,7 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, membership, sectorsInPlay]);
+  }, [links, mode, membership, connectedSectors]);
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
@@ -521,6 +550,12 @@ export default function SectorLinkageGraph({
             <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
             <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
             <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+            {unlinkedSectors.length > 0 && (
+              <div className="mt-1 max-w-[22rem] text-[10px] leading-snug">
+                Not shown (no tested linkage): {unlinkedSectors.join(", ")}. Use the sector
+                cards view to inspect them.
+              </div>
+            )}
           </div>
         )}
         {mode === "ticker" ? (

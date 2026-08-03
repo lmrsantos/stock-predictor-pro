@@ -192,7 +192,7 @@ export default function LinkagesPage() {
                 </h2>
                 <label
                   className={`text-xs font-mono flex items-center gap-2 ${validatedCount === 0 ? "text-muted-foreground cursor-not-allowed" : ""}`}
-                  title={validatedCount === 0 ? "No pair passed BH correction + split-half agreement in this run" : undefined}
+                  title="When on, the graph draws only pairs that passed BH correction and agreed in both halves of the sample. When off, it draws every tested pair, including statistically weak ones."
                 >
                   <input
                     type="checkbox"
@@ -200,10 +200,15 @@ export default function LinkagesPage() {
                     checked={onlyValidated && validatedCount > 0}
                     onChange={(e) => setOnlyValidated(e.target.checked)}
                   />
-                  Show validated linkages only
+                  Hide weak pairs (show statistically validated linkages only)
                   {validatedCount === 0 && <span className="text-[10px]">(none yet)</span>}
                 </label>
               </div>
+              <p className="text-[11px] font-mono text-muted-foreground">
+                Off = every tested pair is drawn, weak ones included. On = only pairs that
+                survived multiple-testing correction and held their sign in both halves of the
+                sample.
+              </p>
               {onlyValidated && validatedCount === 0 ? (
                 <div className="rounded border border-border bg-muted/30 p-6 text-center text-xs font-mono text-muted-foreground">
                   No linkages are statistically validated in this run, so the filtered graph is empty.
