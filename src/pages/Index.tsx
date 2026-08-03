@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchAndStoreStockData, getStockDataFromDB, getFundamentalsFromDB } from "@/lib/stock-data";
 import { computeLinearRegression, RiskContext } from "@/lib/regression";
 import { ChartDataPoint } from "@/lib/types";
+import { simulateMonteCarlo } from "@/lib/monte-carlo";
+
 
 import { ChartControls, ForecastModel } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
@@ -199,7 +201,23 @@ const Index = () => {
 
     if (forecastModel !== "regression" && stockData?.length) {
       try {
-        if (forecastModel === "calibration") {
+        if (forecastModel === "montecarlo") {
+          const mc = simulateMonteCarlo(stockData.map((d) => d.close), forecastDays);
+          if (mc) {
+            forwardPoints = regression.predictions.map((p, i) => {
+              const m = mc.points[i];
+              return {
+                date: p.date,
+                timestamp: p.timestamp,
+                predicted: m.median,
+                upper1Sigma: m.p84,
+                lower1Sigma: m.p16,
+                upper2Sigma: m.p97_5,
+                lower2Sigma: m.p2_5,
+              };
+            });
+          }
+        } else if (forecastModel === "calibration") {
           const res = backtest(
             stockData.map((d) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })),
             6,
@@ -215,6 +233,7 @@ const Index = () => {
             lower2Sigma: p.lower2,
           }));
         } else {
+
           // Cycle projection: interpolate toward the next projected turning point
           const cyc = analyzeCycles(
             ticker,
