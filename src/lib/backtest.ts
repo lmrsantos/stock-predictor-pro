@@ -464,25 +464,36 @@ export function backtest(
     priceMin,
     priceMax,
 
-    // Compatibility fields for BacktestModal
+    // True holdout metadata
+    holdout: {
+      days: holdoutDays,
+      asOfDate,
+      asOfPrice,
+      predictedTodayPrice: winner.predictedTodayPrice,
+      directionHitRate:
+        (models.filter(m => m.directionCorrect).length / models.length) * 100,
+    },
+
+    // Compatibility fields for BacktestModal — the holdout path itself
     walkForward: {
-      actualPath:    normalizedData.slice(-30),
-      predictedPath: normalizedData.slice(-30).map((d, i) => ({
+      actualPath:    normalizedData.slice(asOfIdx),
+      predictedPath: normalizedData.slice(asOfIdx).map((d, i) => ({
         date:      d.date,
         timestamp: d.timestamp,
-        actual:    currentPrice + winner.slope * (i - 29),
+        actual:    Math.max(0, asOfPrice + winner.slope * i),
       })),
       mape:    winner.errorPct,
-      hitRate: ensembleAgreement * 100,
+      hitRate: (models.filter(m => m.directionCorrect).length / models.length) * 100,
     },
     mape:              winner.errorPct,
     finalForecastError: winner.errorPct,
     converged:         winner.errorPct < 2,
     epochsRun:         WINDOW_SIZES.length,
     latentVector:      [winner.slope, winner.rSquared, winner.errorPct, forecastPct],
-    reconstructedPath: normalizedData.slice(-60).map(d => ({
+    reconstructedPath: normalizedData.slice(asOfIdx).map((d, i) => ({
       date: d.date, timestamp: d.timestamp,
-      actual: winner.slope * (normalizedData.indexOf(d)) + winner.intercept,
+      actual: Math.max(0, asOfPrice + winner.slope * i),
     })),
   };
+
 }
