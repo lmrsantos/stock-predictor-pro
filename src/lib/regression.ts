@@ -187,8 +187,8 @@ export function computeLinearRegression(
   // R² of 0.9 → scale 1.0, R² of 0.5 → scale 0.5, R² of 0 → scale 0.1
   const r2ConfidenceScale = Math.max(0.1, Math.min(1.0, rSquared));
 
-  // IMPROVEMENT 5: Residual bias correction
-  const biasFraction = computeResidualBias(residuals, ys);
+  // IMPROVEMENT 5: Residual bias is now handled by the continuity anchor below
+  void computeResidualBias(residuals, ys);
 
   // Historical fit points (no adjustments applied)
   const historicalFit: FitPoint[] = data.map((d, i) => {
