@@ -181,7 +181,68 @@ const Index = () => {
         isForecast: false,
       });
     });
-    regression.predictions.forEach((p) => {
+
+    // Forward path depends on the selected forecast model
+    let forwardPoints = regression.predictions.map((p) => ({
+      date: p.date,
+      timestamp: p.timestamp,
+      predicted: p.predicted,
+      upper1Sigma: p.upper1Sigma,
+      lower1Sigma: p.lower1Sigma,
+      upper2Sigma: p.upper2Sigma,
+      lower2Sigma: p.lower2Sigma,
+    }));
+
+    if (forecastModel !== "regression" && stockData?.length) {
+      try {
+        if (forecastModel === "calibration") {
+          const res = backtest(
+            stockData.map((d) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })),
+            6,
+            forecastDays
+          );
+          forwardPoints = res.forecastPoints.map((p) => ({
+            date: p.date,
+            timestamp: p.timestamp,
+            predicted: p.mean,
+            upper1Sigma: p.upper1,
+            lower1Sigma: p.lower1,
+            upper2Sigma: p.upper2,
+            lower2Sigma: p.lower2,
+          }));
+        } else {
+          // Cycle projection: interpolate toward the next projected turning point
+          const cyc = analyzeCycles(
+            ticker,
+            stockData.map((d) => d.close),
+            stockData.map((d) => d.date)
+          );
+          const proj = cyc.projection;
+          const goingUp = proj.currentPosition === "near_trough" || proj.troughTrend === "rising";
+          const target = goingUp ? proj.nextPeak : proj.nextTrough;
+          const horizon = Math.max(1, Math.round(proj.cycleLength / 2));
+          const band = Math.abs(target - lastPrice) * 0.5 + regression.standardDeviation;
+          forwardPoints = regression.predictions.map((p, i) => {
+            const t = Math.min(1, (i + 1) / horizon);
+            const mean = lastPrice + (target - lastPrice) * t;
+            const w = band * Math.sqrt((i + 1) / forecastDays);
+            return {
+              date: p.date,
+              timestamp: p.timestamp,
+              predicted: mean,
+              upper1Sigma: mean + w,
+              lower1Sigma: mean - w,
+              upper2Sigma: mean + 2 * w,
+              lower2Sigma: mean - 2 * w,
+            };
+          });
+        }
+      } catch {
+        // fall back to regression predictions
+      }
+    }
+
+    forwardPoints.forEach((p) => {
       chartData.push({
         date: p.date,
         timestamp: p.timestamp,
@@ -195,6 +256,7 @@ const Index = () => {
       });
     });
   }
+
 
   const lastPrice = stockData?.length
     ? stockData[stockData.length - 1].close
