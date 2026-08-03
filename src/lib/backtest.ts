@@ -106,8 +106,32 @@ export interface RegimeResult {
   warning: string | null;
 }
 
+export interface CalibrationQuality {
+  winnerErrorPct: number;
+  bestErrorPct: number;
+  medianErrorPct: number;
+  grade: "good" | "fair" | "poor" | "failed";
+  /** True only when the winning model tracked today's price closely enough to trust its direction. */
+  directionCredible: boolean;
+  message: string;
+}
+
+export interface MagnitudeSignal {
+  /** Annualized realized vol over the last 20 bars. */
+  shortVol: number;
+  /** Annualized realized vol over the prior ~100 bars. */
+  baseVol: number;
+  /** shortVol / baseVol — below 0.7 means volatility is compressed (energy build-up). */
+  compressionRatio: number;
+  compressed: boolean;
+  /** 1σ expected absolute move over the forecast horizon, in %. */
+  expectedMovePct: number;
+  message: string;
+}
+
 // Keep BacktestResult as alias for compatibility
 export type BacktestResult = ForecastResult;
+
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
 
