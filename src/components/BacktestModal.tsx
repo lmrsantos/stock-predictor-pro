@@ -85,13 +85,18 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
     <div className="rounded-xl border border-border bg-card/60 overflow-hidden">
       <div className="px-4 py-2 border-b border-border">
         <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-          Model Calibration — which model best predicted today's price from {result.lookbackMonths} months ago
+          Out-of-sample holdout — fit on data up to {result.holdout?.asOfDate ?? "cutoff"} only, projected {result.holdout?.days ?? 30} bars blind to today
         </p>
+        {result.holdout && (
+          <p className="text-[10px] font-mono text-muted-foreground mt-1">
+            As-of close {fmtPrice(result.holdout.asOfPrice)} → actual today {fmtPrice(result.currentPrice)} · direction hit rate {result.holdout.directionHitRate.toFixed(0)}%
+          </p>
+        )}
       </div>
       <table className="w-full text-xs font-mono">
         <thead>
           <tr className="border-b border-border">
-            {["Model", "Trend", "Predicted Today", "Actual Today", "Error", "R²", "Status"].map(h => (
+            {["Model", "Trend", "Projected Today", "Actual Today", "Error", "Direction", "R²", "Status"].map(h => (
               <th key={h} className="text-left px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground">{h}</th>
             ))}
           </tr>
@@ -109,6 +114,9 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
               <td className="px-3 py-2" style={{ color: accentColor(m.errorPct, 1, 3) }}>
                 {m.errorPct.toFixed(2)}%
               </td>
+              <td className="px-3 py-2" style={{ color: m.directionCorrect ? "#34d399" : "#f87171" }}>
+                {m.directionCorrect ? "✓ right" : "✗ wrong"}
+              </td>
               <td className="px-3 py-2 text-muted-foreground">{m.rSquared.toFixed(3)}</td>
               <td className="px-3 py-2">
                 {m.winner
@@ -121,8 +129,10 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
       </table>
       <div className="px-4 py-2 bg-card/40 border-t border-border">
         <p className="text-[10px] font-mono text-muted-foreground">
-          The winning model had the lowest prediction error for today's price — it earned the right to forecast forward.
+          Every row is a genuine forecast: the model saw nothing after {result.holdout?.asOfDate ?? "the cutoff"}. The lowest-error model earns the right to forecast the next 30 days from today.
         </p>
+      </div>
+
       </div>
     </div>
   );
