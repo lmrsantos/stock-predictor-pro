@@ -51,19 +51,7 @@ const Index = () => {
   const [sentimentOpen, setSentimentOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
-  const lastScrollY = useRef(0);
-  const [headerHidden, setHeaderHidden] = useState(false);
 
-  const handleMainScroll = useCallback(() => {
-    const el = mainRef.current;
-    if (!el) return;
-    const y = el.scrollTop;
-    const delta = y - lastScrollY.current;
-    if (y < 24) setHeaderHidden(false);
-    else if (delta > 6) setHeaderHidden(true);
-    else if (delta < -6) setHeaderHidden(false);
-    lastScrollY.current = y;
-  }, []);
 
   // React to ?ticker= param changes (e.g. navigation from Portfolio)
   useEffect(() => {
