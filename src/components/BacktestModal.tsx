@@ -128,6 +128,43 @@ function CalibrationTable({ result }: { result: ForecastResult }) {
   );
 }
 
+// ─── Calibration reliability banner ───────────────────────────────────────────
+
+function CalibrationBanner({ result }: { result: ForecastResult }) {
+  const { calibration, magnitudeSignal } = result;
+  if (calibration.directionCredible) return null;
+
+  const failed = calibration.grade === "failed";
+  const tone = failed
+    ? "border-red-500/40 bg-red-500/10 text-red-300"
+    : "border-amber-500/40 bg-amber-500/10 text-amber-300";
+
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col gap-2 ${tone}`}>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-mono uppercase tracking-widest font-semibold">
+          {failed ? "⚠ Direction not forecastable" : "⚠ Direction unreliable"}
+        </span>
+        <span className="text-[10px] font-mono opacity-80">
+          winner error {calibration.winnerErrorPct.toFixed(1)}% · median {calibration.medianErrorPct.toFixed(1)}%
+        </span>
+      </div>
+      <p className="text-[11px] font-mono leading-relaxed text-foreground/90">{calibration.message}</p>
+      <div className="rounded-lg border border-border bg-card/60 p-3">
+        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-1">
+          Magnitude signal (direction-free)
+        </p>
+        <p className="text-[11px] font-mono leading-relaxed text-foreground/90">{magnitudeSignal.message}</p>
+        <p className="text-[10px] font-mono text-muted-foreground mt-1">
+          20d vol {(magnitudeSignal.shortVol * 100).toFixed(1)}% ann. vs baseline {(magnitudeSignal.baseVol * 100).toFixed(1)}% ann.
+          {magnitudeSignal.compressed ? " — compressed, expect expansion." : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Forecast + cone chart ────────────────────────────────────────────────────
 
 function ForecastChart({ result }: { result: ForecastResult }) {
