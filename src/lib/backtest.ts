@@ -36,17 +36,26 @@ export interface ForecastPoint {
 }
 
 export interface ModelCalibration {
-  windowSize: number;         // days used for fitting
+  windowSize: number;         // days used for smoothing
   label: string;              // e.g. "10-day trend"
-  slope: number;              // daily price change ($/day)
+  slope: number;              // daily price change ($/day) fit on TRAIN data only
   intercept: number;
-  rSquared: number;           // how well it fit the training window
-  predictedTodayPrice: number; // where it said today's price would be
+  rSquared: number;           // fit quality on the training window
+  /** Out-of-sample: price this model predicted for today, standing `holdoutDays` bars ago. */
+  predictedTodayPrice: number;
   actualTodayPrice: number;
-  errorPct: number;           // abs % error vs actual current price
+  errorPct: number;           // abs % error vs actual current price (true out-of-sample)
   annualizedReturn: number;   // projected annual return from slope
   winner: boolean;            // true for the best-fitting model
+  /** Actual close on the as-of (cutoff) date the projection started from. */
+  asOfPrice: number;
+  asOfDate: string;
+  /** Whether the model got the direction of the realized move right. */
+  directionCorrect: boolean;
+  /** Slope refit on ALL data through today — used for the forward forecast. */
+  forwardSlope: number;
 }
+
 
 export interface ForecastResult {
   // The winning model's forward projection
@@ -83,7 +92,17 @@ export interface ForecastResult {
   priceMin: number;
   priceMax: number;
 
+  // True out-of-sample holdout metadata
+  holdout?: {
+    days: number;
+    asOfDate: string;
+    asOfPrice: number;
+    predictedTodayPrice: number;
+    directionHitRate: number;
+  };
+
   // Compatibility fields
+
   walkForward?: {
     actualPath: BacktestDataPoint[];
     predictedPath: BacktestDataPoint[];
@@ -235,51 +254,71 @@ export function backtest(
   const priceMin        = Math.min(...prices);
   const priceMax        = Math.max(...prices);
 
-  // ── 2. Calibrate each model ─────────────────────────────────────────────────
-  // Each model looks at a window ending at the LOOKBACK point,
-  // projects forward to today, compares to actual current price.
+  // ── 2. Calibrate each model — TRUE OUT-OF-SAMPLE HOLDOUT ────────────────────
+  // Stand `forecastDays` bars in the past (the "as-of" cutoff). Each model may
+  // only see data up to that bar. It then projects `forecastDays` forward,
+  // blind, and we score its predicted price against today's ACTUAL close.
+  // Nothing after the cutoff touches the fit — this is a real forecast test.
 
-  // Use full available history for lookback (up to 2 years = 504 trading days)
-  // More data = better trend capture, especially for strongly trending stocks
-  const lookbackCount = Math.min(lookbackMonths * 21 * 2, normalizedData.length - 20);
-  const startIndex    = Math.max(0, normalizedData.length - lookbackCount - 1);
+  const lastIdx    = normalizedData.length - 1;
+  const holdoutDays = Math.min(forecastDays, Math.max(5, Math.floor(normalizedData.length / 4)));
+  const asOfIdx    = lastIdx - holdoutDays;
+  const asOfPrice  = normalizedData[asOfIdx].actual;
+  const asOfDate   = normalizedData[asOfIdx].date;
+  const realizedMove = currentPrice - asOfPrice;
 
-  // For each model:
-  // - Use the FULL lookback window as training data (not just first N days)
-  // - Apply a moving average of `days` width to smooth the regression input
-  //   (this is what the window size controls — smoothing, not data amount)
-  // - Fit regression on smoothed prices from lookback start → today
-  // - The predicted price at "today" is where the regression line ends
+  // Training history available at the as-of date (up to ~2 years of bars)
+  const lookbackCount = Math.min(lookbackMonths * 21 * 2, asOfIdx);
+  const trainStart    = Math.max(0, asOfIdx - lookbackCount);
+
+  // Simple moving average of width `days` — the window size controls smoothing
+  const smooth = (series: number[], days: number) => {
+    const out: number[] = [];
+    for (let i = days - 1; i < series.length; i++) {
+      const w = series.slice(i - days + 1, i + 1);
+      out.push(w.reduce((a, b) => a + b, 0) / w.length);
+    }
+    return out;
+  };
 
   const models: ModelCalibration[] = WINDOW_SIZES.map(({ days, label }) => {
-    // Full lookback slice — all data from lookback start to today
-    const fullSlice = normalizedData.slice(startIndex).map(d => d.actual);
+    // TRAIN slice: strictly data at or before the as-of cutoff
+    const trainSlice = normalizedData.slice(trainStart, asOfIdx + 1).map(d => d.actual);
 
-    if (fullSlice.length < days + 5) {
+    if (trainSlice.length < days + 5) {
       return {
         windowSize: days, label,
-        slope: 0, intercept: fullSlice[0] ?? currentPrice,
-        rSquared: 0, predictedTodayPrice: currentPrice,
-        actualTodayPrice: currentPrice, errorPct: 100,
+        slope: 0, intercept: trainSlice[0] ?? asOfPrice,
+        rSquared: 0, predictedTodayPrice: asOfPrice,
+        actualTodayPrice: currentPrice,
+        errorPct: Math.abs((asOfPrice - currentPrice) / currentPrice) * 100,
         annualizedReturn: 0, winner: false,
+        asOfPrice, asOfDate,
+        directionCorrect: false,
+        forwardSlope: 0,
       };
     }
 
-    // Apply simple moving average of `days` width to smooth the price series
-    // This lets each model capture trend at its own smoothing level
-    const smoothed: number[] = [];
-    for (let i = days - 1; i < fullSlice.length; i++) {
-      const window = fullSlice.slice(i - days + 1, i + 1);
-      smoothed.push(window.reduce((a, b) => a + b, 0) / window.length);
-    }
+    const smoothedTrain = smooth(trainSlice, days);
+    const reg = linReg(smoothedTrain);
 
-    // Fit linear regression on the smoothed series
-    const reg = linReg(smoothed);
-
-    // The last point of the smoothed series is close to today
-    // Project the regression line to the very last data point
-    const predictedTodayPrice = reg.slope * (smoothed.length - 1) + reg.intercept;
+    // Where the fitted line sits at the as-of bar, then extended `holdoutDays`
+    // forward. Anchor on the actual as-of close so we score the projected MOVE,
+    // not the smoothing lag of the moving average.
+    const predictedTodayPrice = Math.max(0, asOfPrice + reg.slope * holdoutDays);
     const errorPct = Math.abs((predictedTodayPrice - currentPrice) / currentPrice) * 100;
+    const predictedMove = predictedTodayPrice - asOfPrice;
+    const directionCorrect =
+      Math.sign(predictedMove) === Math.sign(realizedMove) || realizedMove === 0;
+
+    // Refit the same model on ALL data through today — this is the slope used
+    // for the forward-looking forecast (never for scoring).
+    const fullSlice = normalizedData
+      .slice(Math.max(0, lastIdx - Math.min(lookbackMonths * 21 * 2, lastIdx)), lastIdx + 1)
+      .map(d => d.actual);
+    const forwardReg = fullSlice.length >= days + 5
+      ? linReg(smooth(fullSlice, days))
+      : reg;
 
     return {
       windowSize: days,
@@ -292,16 +331,21 @@ export function backtest(
       errorPct,
       annualizedReturn: reg.annualizedReturn,
       winner: false,
+      asOfPrice,
+      asOfDate,
+      directionCorrect,
+      forwardSlope: forwardReg.slope,
     };
   });
 
-  // ── 3. Pick the winner ──────────────────────────────────────────────────────
+  // ── 3. Pick the winner — lowest true out-of-sample error ────────────────────
   const sortedByError = [...models].sort((a, b) => a.errorPct - b.errorPct);
   const winner = sortedByError[0];
   models.forEach(m => { m.winner = m.windowSize === winner.windowSize; });
 
   // ── 4. Generate forecast from winning model ─────────────────────────────────
-  // Anchor to actual current price, project forward using winning slope
+  // Anchor to actual current price, project forward using the winner's
+  // full-history (forward) slope.
   const forecastPoints: ForecastPoint[] = [];
 
   // Compute uncertainty from ensemble spread at each step
@@ -309,13 +353,11 @@ export function backtest(
     const dayOffset = i + 1;
 
     // Each model's projected price at this future day
-    const modelPrices = models.map(m => {
-      // Anchor each model at current price, project with its own slope
-      return currentPrice + m.slope * dayOffset;
-    });
+    const modelPrices = models.map(m => currentPrice + m.forwardSlope * dayOffset);
 
     // Winner's projection (primary forecast line)
-    const winnerPrice = currentPrice + winner.slope * dayOffset;
+    const winnerPrice = currentPrice + winner.forwardSlope * dayOffset;
+
 
     // Spread from ensemble for uncertainty bands
     const spreadSd = stdDev(modelPrices);
@@ -432,25 +474,36 @@ export function backtest(
     priceMin,
     priceMax,
 
-    // Compatibility fields for BacktestModal
+    // True holdout metadata
+    holdout: {
+      days: holdoutDays,
+      asOfDate,
+      asOfPrice,
+      predictedTodayPrice: winner.predictedTodayPrice,
+      directionHitRate:
+        (models.filter(m => m.directionCorrect).length / models.length) * 100,
+    },
+
+    // Compatibility fields for BacktestModal — the holdout path itself
     walkForward: {
-      actualPath:    normalizedData.slice(-30),
-      predictedPath: normalizedData.slice(-30).map((d, i) => ({
+      actualPath:    normalizedData.slice(asOfIdx),
+      predictedPath: normalizedData.slice(asOfIdx).map((d, i) => ({
         date:      d.date,
         timestamp: d.timestamp,
-        actual:    currentPrice + winner.slope * (i - 29),
+        actual:    Math.max(0, asOfPrice + winner.slope * i),
       })),
       mape:    winner.errorPct,
-      hitRate: ensembleAgreement * 100,
+      hitRate: (models.filter(m => m.directionCorrect).length / models.length) * 100,
     },
     mape:              winner.errorPct,
     finalForecastError: winner.errorPct,
     converged:         winner.errorPct < 2,
     epochsRun:         WINDOW_SIZES.length,
     latentVector:      [winner.slope, winner.rSquared, winner.errorPct, forecastPct],
-    reconstructedPath: normalizedData.slice(-60).map(d => ({
+    reconstructedPath: normalizedData.slice(asOfIdx).map((d, i) => ({
       date: d.date, timestamp: d.timestamp,
-      actual: winner.slope * (normalizedData.indexOf(d)) + winner.intercept,
+      actual: Math.max(0, asOfPrice + winner.slope * i),
     })),
   };
+
 }
