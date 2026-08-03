@@ -246,6 +246,11 @@ const Index = () => {
       }
     }
 
+    // Join the forecast line to the last actual bar so it doesn't appear to gap
+    if (chartData.length && forwardPoints.length) {
+      chartData[chartData.length - 1].predicted = chartData[chartData.length - 1].actual;
+    }
+
     forwardPoints.forEach((p) => {
       chartData.push({
         date: p.date,
