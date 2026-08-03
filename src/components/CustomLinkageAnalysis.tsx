@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Loader2, Check, X, Sparkles } from "lucide-react";
 import { usePlan } from "@/hooks/usePlan";
@@ -7,6 +7,7 @@ import { readCachedLinkages } from "@/lib/run-linkages";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { SECTOR_NAMES, MACRO_SERIES_NAMES, LeaderName, SectorName } from "@/lib/cross-sector-linkages";
 
 /**
  * Minimal entry point for custom linkage analyses.
