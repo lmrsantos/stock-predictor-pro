@@ -38,7 +38,25 @@ export type SectorName =
   | "Quantum Computing"
   | "Aerospace & Space";
 
+export const SECTOR_NAMES: SectorName[] = [
+  "Aerospace & Space",
+  "Banks",
+  "Biotech & Pharma",
+  "Consumer Discretionary",
+  "Consumer Staples",
+  "Energy",
+  "Industrials & Defense",
+  "Mega-cap Tech",
+  "Quantum Computing",
+  "Real Estate",
+  "Semiconductors",
+  "Software",
+  "Utilities",
+];
+
 export type MacroSeriesName = "OIL" | "GOLD" | "US10Y" | "XLY_XLP_RATIO";
+
+export const MACRO_SERIES_NAMES: MacroSeriesName[] = ["GOLD", "OIL", "US10Y", "XLY_XLP_RATIO"];
 
 export type LeaderName = SectorName | MacroSeriesName;
 
