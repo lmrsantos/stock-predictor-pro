@@ -217,6 +217,13 @@ export function computeLinearRegression(
   const lastDate = new Date(data[n - 1].date);
   const predictions: PredictionPoint[] = [];
 
+  // Continuity anchor: the regression line at the last observed day usually sits
+  // above/below the last close. Projecting straight off the line creates a visible
+  // gap-up/gap-down on day 1. We start the path at the last close and let it
+  // re-converge to the regression line as the horizon extends.
+  const anchorFit = Math.exp(logSlope * (n - 1) + logIntercept);
+  const anchorGap = anchorFit > 0 ? lastPrice / anchorFit : 1;
+
   for (let i = 1; i <= forecastDays; i++) {
     const dayIndex = n - 1 + i;
 
@@ -224,10 +231,12 @@ export function computeLinearRegression(
     const dampeningFactor = Math.exp(-0.693 * i / baseHalfLife);
     const dampenedLogSlope = logSlope * dampeningFactor;
 
-    // Base prediction from regression
-    let predicted = Math.exp(
-      logSlope * (n - 1) + logIntercept + dampenedLogSlope * i
-    );
+    // Base prediction from regression, anchored at the last close so the
+    // forecast line joins the price line continuously.
+    const gapDecay = Math.exp(-0.693 * (i - 1) / (baseHalfLife * 2));
+    let predicted =
+      Math.exp(logSlope * (n - 1) + logIntercept + dampenedLogSlope * i) *
+      Math.pow(anchorGap, gapDecay);
 
     // IMPROVEMENT 1: Apply momentum adjustment
     // Momentum pulls prediction in the direction of recent trend
@@ -237,12 +246,6 @@ export function computeLinearRegression(
     // IMPROVEMENT 3: R² confidence scaling
     // Blend predicted with lastPrice based on R² confidence
     predicted = lastPrice + (predicted - lastPrice) * r2ConfidenceScale;
-
-    // IMPROVEMENT 5: Bias correction
-    // Residuals are (actual - fitted): a positive mean bias means the fit sits
-    // BELOW recent prices, so the projection must be nudged up, not down.
-    // Applied to the projected move only, never to the price level.
-    predicted = lastPrice + (predicted - lastPrice) + lastPrice * biasFraction * dampeningFactor;
 
     // Risk discount — pulls the projection toward the last known price.
     // Must shrink the projected move, not the price level, otherwise a flat
