@@ -92,7 +92,17 @@ export interface ForecastResult {
   priceMin: number;
   priceMax: number;
 
+  // True out-of-sample holdout metadata
+  holdout?: {
+    days: number;
+    asOfDate: string;
+    asOfPrice: number;
+    predictedTodayPrice: number;
+    directionHitRate: number;
+  };
+
   // Compatibility fields
+
   walkForward?: {
     actualPath: BacktestDataPoint[];
     predictedPath: BacktestDataPoint[];
