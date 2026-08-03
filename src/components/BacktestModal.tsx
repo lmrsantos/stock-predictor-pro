@@ -318,6 +318,10 @@ The quantitative model shows:
 - Model confidence: ${result.confidenceScore}/100
 - Regime: ${result.regime.outsideDistribution ? "SHIFTED (elevated volatility)" : "NORMAL"}
 - Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
+- Calibration quality: ${result.calibration.grade.toUpperCase()} — ${result.calibration.message}
+- Magnitude signal: ${result.magnitudeSignal.message}${result.calibration.directionCredible ? "" : `
+
+IMPORTANT: calibration failed this symbol, so do NOT assert a direction. Frame the context around magnitude/volatility and catalysts only.`}
 
 Please search for current news, earnings calendar, analyst ratings, and macro factors for ${ticker}. Then give a concise 3-4 sentence market context that helps the user decide whether to act on this forecast. Focus on: upcoming catalysts, recent price drivers, and key risks. Be direct.`;
 
