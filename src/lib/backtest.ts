@@ -514,9 +514,29 @@ export function backtest(
       : `Volatility near baseline (${compressionRatio.toFixed(2)}×). 1σ expected move ±${expectedMovePct.toFixed(1)}% over ${forecastDays} days, direction unknown.`,
   };
 
+  // ── 11. ±2% accuracy horizon ────────────────────────────────────────────────
+  // No 30-day point forecast can hold ±2% on a volatile name — the floor is the
+  // stock's own realized move. Solve σ·√(H/252) = 2% for H to get the honest
+  // horizon over which a ±2% band is achievable for THIS symbol.
+  const TARGET_PCT = 2;
+  const horizonDays = shortVol > 0
+    ? Math.max(1, Math.min(forecastDays, Math.floor(252 * ((TARGET_PCT / 100) / shortVol) ** 2)))
+    : forecastDays;
+  const accuracyHorizon: AccuracyHorizon = {
+    targetPct: TARGET_PCT,
+    days: horizonDays,
+    expectedErrorAtHorizonPct: expectedMovePct,
+    message:
+      horizonDays >= forecastDays
+        ? `±${TARGET_PCT}% is achievable across the full ${forecastDays}-day horizon at this volatility (${(shortVol * 100).toFixed(0)}% ann.).`
+        : `At ${(shortVol * 100).toFixed(0)}% annualized volatility, a ±${TARGET_PCT}% band only holds for about ${horizonDays} trading day${horizonDays === 1 ? "" : "s"}. Over ${forecastDays} days the irreducible 1σ error is ±${expectedMovePct.toFixed(1)}%.`,
+  };
+
   return {
     calibration,
     magnitudeSignal,
+    accuracyHorizon,
+
     forecastPoints,
     forecastPct:       Math.round(forecastPct * 10) / 10,
     forecastDirection,
