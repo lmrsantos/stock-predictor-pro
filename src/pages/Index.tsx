@@ -416,7 +416,7 @@ const Index = () => {
             <Briefcase className="w-4 h-4" />
             My Portfolio
           </Link>
-          <PlanBadge />
+          
           <Link
             to="/pricing"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity"
