@@ -437,7 +437,7 @@ const Index = () => {
 
 
       {/* Symbol + controls — fixed row, never overlaps scrolling content */}
-      <div className="shrink-0 border-b border-border bg-background px-4 lg:px-5 py-2 flex items-center gap-2 flex-nowrap overflow-visible relative z-30">
+      <div className="shrink-0 border-b border-border bg-background px-4 lg:px-5 py-2 flex items-center gap-2 gap-y-2 flex-wrap overflow-visible relative z-30">
         <div className="shrink-0">
           <StockHeader
             ticker={ticker}
