@@ -21,6 +21,7 @@ import cytoscape, { Core, EventObject } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
 import { CURATED_SECTOR_UNIVERSES } from "@/lib/sector-universes";
+import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 
 // Register the compound-aware layout once.
 if (!(cytoscape as any).__fcoseRegistered) {
@@ -215,6 +216,7 @@ export default function SectorLinkageGraph({
   const cyRef = useRef<Core | null>(null);
   const [mode, setMode] = useState<ViewMode>(initialMode);
   const [expandedSectors, setExpandedSectors] = useState<Set<SectorName>>(new Set());
+  const [detail, setDetail] = useState<{ symbol: string; sector?: SectorName } | null>(null);
   const [selected, setSelected] = useState<
     | { kind: "sector"; sector: SectorName }
     | { kind: "ticker"; ticker: string; sector: SectorName }
@@ -700,6 +702,12 @@ export default function SectorLinkageGraph({
           </div>
         )}
       </div>
+      <SymbolDetailModal
+        isOpen={!!detail}
+        onClose={() => setDetail(null)}
+        symbol={detail?.symbol ?? ""}
+        sector={detail?.sector}
+      />
     </div>
   );
 }
