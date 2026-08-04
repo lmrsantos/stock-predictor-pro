@@ -405,16 +405,49 @@ export function backtest(
   const fwdSeries = normalizedData.map(d => d.actual);
   const reversionPull = REVERSION_BETA * (sma(fwdSeries, 50) - currentPrice);
 
+  // ── Rolling-window validation — replaces single-endpoint winner selection ───
+  const priceSeries = normalizedData.map(d => d.actual);
+  const makeProjector = (days: number): ProjectFn => (train, steps) => {
+    if (train.length < days + 5) {
+      return Array(steps).fill(train[train.length - 1]);
+    }
+    const reg = linReg(smooth(train, days));
+    const anchor = train[train.length - 1];
+    const lambda = shrink(reg.rSquared, annVol(train, 20));
+    const revTarget = sma(train, 50);
+    return Array.from({ length: steps }, (_, i) => {
+      const step = i + 1;
+      const rev = REVERSION_BETA * (revTarget - anchor) * (step / steps);
+      return Math.max(0, anchor + reg.slope * step * lambda + rev);
+    });
+  };
 
-  // ── 3. Pick the winner — lowest true out-of-sample error ────────────────────
+  const rollingValidations = WINDOW_SIZES.map(({ days, label }) =>
+    validateModelRolling(priceSeries, days, label, holdoutDays, makeProjector(days))
+  );
+  const selection = selectWinner(rollingValidations);
+  const validation = summarizeValidation(selection);
+
+  // ── 3. Winner only when rolling validation found one decisively ─────────────
+  // Otherwise use the median-scoring model but flag it as non-decisive —
+  // the forecast will be presented as an ensemble, not a single model's call.
   const sortedByError = [...models].sort((a, b) => a.errorPct - b.errorPct);
-  const winner = sortedByError[0];
-  models.forEach(m => { m.winner = m.windowSize === winner.windowSize; });
+  const decisiveWinner = selection.decisive
+    ? models.find(m => m.windowSize === selection.winnerWindowSize)
+    : null;
+  const winner = decisiveWinner ?? sortedByError[0];
+  models.forEach(m => {
+    m.winner = selection.decisive && m.windowSize === winner.windowSize;
+  });
 
-  // ── 4. Generate forecast from winning model ─────────────────────────────────
-  // Anchor to actual current price, project forward using the winner's
-  // full-history (forward) slope.
+  // ── 4. Generate forecast ────────────────────────────────────────────────────
+  // Anchor to actual current price. When no model validated decisively, the
+  // forward slope is the ensemble mean rather than one model's call.
   const forecastPoints: ForecastPoint[] = [];
+
+  const effectiveForwardSlope = selection.decisive
+    ? winner.forwardSlope
+    : models.reduce((s, m) => s + m.forwardSlope, 0) / models.length;
 
   // Compute uncertainty from ensemble spread at each step
   for (let i = 0; i < forecastDays; i++) {
@@ -425,8 +458,9 @@ export function backtest(
     // Each model's projected price at this future day (calibrated slopes)
     const modelPrices = models.map(m => currentPrice + m.forwardSlope * dayOffset + revAtStep);
 
-    // Winner's projection (primary forecast line)
-    const winnerPrice = currentPrice + winner.forwardSlope * dayOffset + revAtStep;
+    // Primary forecast line
+    const winnerPrice = currentPrice + effectiveForwardSlope * dayOffset + revAtStep;
+
 
 
     // Spread from ensemble for uncertainty bands
