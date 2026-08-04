@@ -5,6 +5,8 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
+import { SymbolDetailModal } from "@/components/SymbolDetailModal";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
