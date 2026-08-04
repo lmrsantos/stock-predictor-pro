@@ -585,6 +585,8 @@ export function backtest(
     calibration,
     magnitudeSignal,
     accuracyHorizon,
+    validation,
+
 
     forecastPoints,
     forecastPct:       Math.round(forecastPct * 10) / 10,
