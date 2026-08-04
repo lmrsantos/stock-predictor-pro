@@ -545,7 +545,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       {visible.length > 0 && (
         <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
           {visible.map((stock, i) => (
-            <button key={stock.symbol} onClick={() => onSelectTicker(stock.symbol)}
+            <button key={stock.symbol} onClick={() => setDetail({ symbol: stock.symbol, sector: stock.sector })}
               className={`w-full text-left p-3 rounded-lg border transition-all group ${
                 stock.hot
                   ? "bg-card/50 border-border hover:border-primary/40 hover:bg-card"
