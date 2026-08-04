@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
