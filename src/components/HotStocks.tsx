@@ -33,7 +33,14 @@ interface HotStock {
   reason: string;
   linkageTilt?: number;
   linkageNote?: string;
+  // Rolling-window validation
+  validationDecisive: boolean;
+  dirHitRate: number;
+  dirHits: number;
+  windowCount: number;
+  expectedMovePct: number;
 }
+
 
 interface SymbolData {
   symbol: string;
