@@ -495,19 +495,21 @@ export function backtest(
   const regime = detectRegime(prices);
 
   // ── 8. Confidence score ─────────────────────────────────────────────────────
-  // Winner error score: 0% error = 30pts, 5%+ = 0pts
-  const winnerErrorScore   = Math.max(0, 1 - winner.errorPct / 5) * 30;
-  // R² score: trend reliability of the winning model
-  const rSquaredScore      = winner.rSquared * 25;
-  // Direction agreement across all 5 models
-  const agreementScore     = (ensembleAgreement - 0.5) * 2 * 25; // 0.5→0pts, 1.0→25pts
-  // Regime: no shift = 20pts bonus
-  const regimePenalty      = regime.outsideDistribution
-    ? (regime.ratio > 2.5 ? -25 : -12) : 20;
+  // Direction hit rate across rolling windows is the primary credibility
+  // signal — path error and R² are secondary.
+  const dirHitScore = Math.max(0, (validation.directionHitRate - 0.5)) * 2 * 60;
+  const pathScore   = Math.max(0, 1 - validation.medianPathMape / 15) * 25;
+  const regimePenalty = regime.outsideDistribution
+    ? (regime.ratio > 2.5 ? -25 : -12) : 15;
 
   let confidenceScore = Math.min(100, Math.max(0,
-    winnerErrorScore + rSquaredScore + agreementScore + regimePenalty
-  ));
+    dirHitScore + pathScore + regimePenalty));
+
+  // Hard cap when direction hit rate is at or below chance
+  if (validation.directionHitRate <= 0.55) {
+    confidenceScore = Math.min(confidenceScore, 25);
+  }
+
 
   // ── 9. Calibration reliability gate ─────────────────────────────────────────
   // If even the best model missed today's price badly, the ensemble has NOT earned
