@@ -47,6 +47,7 @@ const Index = () => {
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [forecastModel, setForecastModel] = useState<ForecastModel>("regression");
+  const [session, setSession] = useState<MarketSession>("regular");
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
