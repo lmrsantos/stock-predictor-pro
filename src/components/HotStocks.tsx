@@ -423,7 +423,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       setStocks(finalSorted);
       setHasScanned(true);
       const hotCount = finalSorted.filter(s => s.hot).length;
-      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} hot (BUY) · ${finalSorted.length - hotCount} not hot`);
+      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} setup matches · ${finalSorted.length - hotCount} no match`);
 
     } catch (e) {
       toast.error((e as Error).message);
@@ -534,7 +534,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       {hasScanned && visible.length === 0 && !isScanning && (
         <p className="text-xs text-muted-foreground text-center py-2">
           {filter === "hot"
-            ? "No hot BUY signals in this scan. Switch to 'All results' to see what the model saw."
+            ? "No setup matches in this scan. Switch to 'All results' to see what the model saw."
             : "No results."}
         </p>
       )}
@@ -560,15 +560,19 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {stock.hot ? (
+                  {stock.hot && stock.dirHitRate > 0.55 ? (
                     <>
                       <span className={`text-xs font-mono font-bold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
                         {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
                       </span>
                       <span className="text-[10px] text-muted-foreground font-mono">
-                        {stock.forecastLabel}
+                        1σ {(stock.forecastPct - stock.expectedMovePct).toFixed(0)}% to {stock.forecastPct + stock.expectedMovePct >= 0 ? "+" : ""}{(stock.forecastPct + stock.expectedMovePct).toFixed(0)}%
                       </span>
                     </>
+                  ) : stock.hot ? (
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      ±{stock.expectedMovePct.toFixed(1)}% expected move
+                    </span>
                   ) : (
                     <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">
                       {stock.signal}
@@ -587,11 +591,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                   {stock.hot && (
                     <>
                       <span className="text-[10px] font-mono text-muted-foreground">
-                        Conf {stock.confidence.toFixed(1)}%
+                        Model fit {Math.round(stock.confidence)}/100
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground">
-                        Agree {stock.hitRate}%
+                        {stock.validationDecisive
+                          ? `Direction correct in ${stock.dirHits} of ${stock.windowCount} windows`
+                          : "No single model validated — ensemble mean"}
                       </span>
+
                     </>
                   )}
                   {stock.breakout && (
