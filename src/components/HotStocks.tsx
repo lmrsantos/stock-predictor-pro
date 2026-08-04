@@ -106,7 +106,8 @@ function toBacktestPoints(series: { date: string; close: number }[]): BacktestDa
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface HotStocksProps {
-  onSelectTicker: (ticker: string) => void;
+  /** Optional — kept for callers that still want the terminal chart to follow. */
+  onSelectTicker?: (ticker: string) => void;
 }
 
 export function HotStocks({ onSelectTicker }: HotStocksProps) {
@@ -115,7 +116,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [hasScanned, setHasScanned]   = useState(false);
   const [scanStatus, setScanStatus]   = useState("");
   const [filter, setFilter]           = useState<"all" | "hot">("hot");
+  const [detail, setDetail]           = useState<{ symbol: string; sector?: string } | null>(null);
   const autoRan = useRef(false);
+
 
   const discover = useCallback(async () => {
     setIsScanning(true);
