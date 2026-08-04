@@ -477,11 +477,10 @@ export default function SectorLinkageGraph({
       setSelected({ kind: "sector", sector });
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
-      setSelected({
-        kind: "ticker",
-        ticker: e.target.data("label"),
-        sector: e.target.data("sector"),
-      });
+      const tkr = e.target.data("label") as string;
+      const sec = e.target.data("sector") as SectorName;
+      setSelected({ kind: "ticker", ticker: tkr, sector: sec });
+      setDetail({ symbol: tkr, sector: sec });
     });
     cy.on("tap", "edge", (e: EventObject) => {
       const link = links[e.target.data("linkIndex") as number];
@@ -634,9 +633,12 @@ export default function SectorLinkageGraph({
             <div className="mb-1 text-xs font-medium">Ticker members</div>
             <div className="flex flex-wrap gap-1">
               {(membership[panelSector] ?? []).map((ticker) => (
-                <span key={ticker} className="rounded border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                <button
+                  key={ticker}
+                  onClick={() => setDetail({ symbol: ticker, sector: panelSector })}
+                  className="rounded border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
                   {ticker}
-                </span>
+                </button>
               ))}
             </div>
           </div>
