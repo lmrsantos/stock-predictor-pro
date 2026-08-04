@@ -119,6 +119,29 @@ export function ChartControls({
           ))}
         </select>
       </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <label className="label-upper whitespace-nowrap">Session</label>
+        <div className="flex gap-1 flex-nowrap">
+          {sessionOptions.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => onSessionChange(s.value)}
+              title={s.hint}
+              className={`px-2 py-1 rounded-md text-xs font-mono transition-colors ${
+                session === s.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-accent"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {sessionNote && (
+          <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{sessionNote}</span>
+        )}
+      </div>
     </div>
   );
 }
