@@ -221,6 +221,11 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           breakout: boolean;
           linkageTilt?: number;
           linkageNote?: string;
+          validationDecisive?: boolean;
+          dirHitRate?: number;
+          dirHits?: number;
+          windowCount?: number;
+          expectedMovePct?: number;
         }
       ): HotStock => {
         const prof = PROFILE_BY_TIER[c.riskTier] ?? PROFILE_BY_TIER[4];
@@ -249,6 +254,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           reason: opts.reason,
           linkageTilt: opts.linkageTilt,
           linkageNote: opts.linkageNote,
+          validationDecisive: opts.validationDecisive ?? false,
+          dirHitRate: opts.dirHitRate ?? 0,
+          dirHits: opts.dirHits ?? 0,
+          windowCount: opts.windowCount ?? 0,
+          expectedMovePct: opts.expectedMovePct ?? 0,
+        };
+
         };
       };
 
