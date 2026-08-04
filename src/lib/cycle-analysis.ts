@@ -115,20 +115,23 @@ function detectZigzag(
     }
   }
 
-  // Add final point
-  if (lastType === "trough") {
+  // Add final (still-unconfirmed) point.
+  // `lastType` is the type of the extreme currently being tracked and not yet
+  // pushed, so the tail pivot must be pushed with that same type.
+  if (lastType === "peak") {
     let maxPrice = lastExtreme, maxIdx = lastIndex;
     for (let j = lastIndex; j < prices.length; j++) {
       if (prices[j] > maxPrice) { maxPrice = prices[j]; maxIdx = j; }
     }
-    if (maxIdx > lastIndex) points.push({ index: maxIdx, price: maxPrice, type: "peak" });
+    points.push({ index: maxIdx, price: maxPrice, type: "peak" });
   } else {
     let minPrice = lastExtreme, minIdx = lastIndex;
     for (let j = lastIndex; j < prices.length; j++) {
       if (prices[j] < minPrice) { minPrice = prices[j]; minIdx = j; }
     }
-    if (minIdx > lastIndex) points.push({ index: minIdx, price: minPrice, type: "trough" });
+    points.push({ index: minIdx, price: minPrice, type: "trough" });
   }
+
 
   return points;
 }
