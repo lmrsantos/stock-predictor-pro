@@ -526,7 +526,11 @@ const Index = () => {
           onForecastDaysChange={setForecastDays}
           forecastModel={forecastModel}
           onForecastModelChange={setForecastModel}
+          session={session}
+          onSessionChange={setSession}
+          sessionNote={sessionNote}
         />
+
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
