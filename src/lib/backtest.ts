@@ -18,6 +18,11 @@
 // Models: 5 window sizes (10, 15, 20, 30, 40 days)
 // Each model: linear regression on its window slice → project to today
 // ─────────────────────────────────────────────────────────────────────────────
+import {
+  validateModelRolling, selectWinner, summarizeValidation,
+  type ProjectFn, type ValidationSummary,
+} from './model-validation';
+
 
 export interface BacktestDataPoint {
   date: string;
@@ -99,6 +104,10 @@ export interface ForecastResult {
 
   // Horizon over which a ±2% band is actually achievable for this symbol
   accuracyHorizon: AccuracyHorizon;
+
+  // Rolling-window validation across multiple holdout windows
+  validation: ValidationSummary;
+
 
 
   // Chart paths
