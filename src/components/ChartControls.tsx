@@ -28,6 +28,9 @@ interface ChartControlsProps {
   onForecastDaysChange: (v: number) => void;
   forecastModel: ForecastModel;
   onForecastModelChange: (v: ForecastModel) => void;
+  session: MarketSession;
+  onSessionChange: (v: MarketSession) => void;
+  sessionNote?: string;
 }
 
 const periods = [
