@@ -472,7 +472,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
           <span className="text-3xl">{emoji}</span>
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Model Recommendation for {ticker}
+              Model read for {ticker}
             </p>
             <p className="text-3xl font-mono font-bold mt-0.5" style={{ color: signalColor }}>
               {signal}
@@ -708,7 +708,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                 <div className="rounded-xl border border-border bg-card/60 p-5 flex flex-col items-center justify-center min-w-[180px]">
                   <ConfidenceRing score={result.confidenceScore} />
                   <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider mt-3 text-center leading-relaxed">
-                    Forecast<br />Confidence
+                    Model<br />Fit
                   </p>
                 </div>
                 <div className="flex-1">
