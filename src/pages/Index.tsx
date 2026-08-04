@@ -102,7 +102,53 @@ const Index = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  const stockData = dbStockData?.length ? dbStockData : meta?.prices;
+  const baseStockData = dbStockData?.length ? dbStockData : meta?.prices;
+
+  // Step 2b: Extended-session (pre-market / after-hours) last print.
+  const { data: extended } = useQuery({
+    queryKey: ["extended-hours", ticker],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-extended-hours", {
+        body: { ticker },
+      });
+      if (error) throw error;
+      return data as {
+        regularClose: number | null;
+        pre: { price: number; time: number } | null;
+        post: { price: number; time: number } | null;
+      };
+    },
+    enabled: session !== "regular" && !!ticker,
+    staleTime: 60 * 1000,
+    refetchInterval: session !== "regular" ? 60 * 1000 : false,
+    retry: false,
+  });
+
+  const extendedPrint = session === "pre" ? extended?.pre : session === "post" ? extended?.post : null;
+
+  // Replace the most recent regular close with the extended-session print so
+  // every model (regression, calibration, cycle, Monte Carlo) runs on it.
+  const stockData = useMemo(() => {
+    if (session === "regular" || !baseStockData?.length || !extendedPrint?.price) return baseStockData;
+    const copy = baseStockData.slice();
+    const last = copy[copy.length - 1];
+    const p = extendedPrint.price;
+    copy[copy.length - 1] = {
+      ...last,
+      close: p,
+      high: Math.max(last.high, p),
+      low: Math.min(last.low, p),
+    };
+    return copy;
+  }, [baseStockData, session, extendedPrint?.price]);
+
+  const sessionNote =
+    session === "regular"
+      ? undefined
+      : extendedPrint?.price
+        ? `${session === "pre" ? "Pre" : "AH"} $${extendedPrint.price.toFixed(2)}`
+        : "no extended print";
+
 
   // Step 3: Read fundamentals from DB
   const { data: dbFundamentals } = useQuery({
