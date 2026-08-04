@@ -12,6 +12,7 @@ const ua =
 interface Result {
   ticker: string;
   regularClose: number | null;
+  marketState: string | null;
   pre: { price: number; time: number } | null;
   post: { price: number; time: number } | null;
 }
@@ -74,6 +75,7 @@ serve(async (req) => {
       ticker: raw,
       regularClose:
         meta.regularMarketPrice ?? meta.chartPreviousClose ?? null,
+      marketState: meta.marketState ?? null,
       pre,
       post,
     };
