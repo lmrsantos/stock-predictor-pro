@@ -640,6 +640,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           </p>
         </div>
       )}
+
+      <SymbolDetailModal
+        isOpen={!!detail}
+        onClose={() => setDetail(null)}
+        symbol={detail?.symbol ?? ""}
+        sector={detail?.sector}
+      />
     </div>
+
   );
 }
