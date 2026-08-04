@@ -18,6 +18,11 @@
 // Models: 5 window sizes (10, 15, 20, 30, 40 days)
 // Each model: linear regression on its window slice → project to today
 // ─────────────────────────────────────────────────────────────────────────────
+import {
+  validateModelRolling, selectWinner, summarizeValidation,
+  type ProjectFn, type ValidationSummary,
+} from './model-validation';
+
 
 export interface BacktestDataPoint {
   date: string;
@@ -99,6 +104,10 @@ export interface ForecastResult {
 
   // Horizon over which a ±2% band is actually achievable for this symbol
   accuracyHorizon: AccuracyHorizon;
+
+  // Rolling-window validation across multiple holdout windows
+  validation: ValidationSummary;
+
 
 
   // Chart paths
@@ -396,16 +405,49 @@ export function backtest(
   const fwdSeries = normalizedData.map(d => d.actual);
   const reversionPull = REVERSION_BETA * (sma(fwdSeries, 50) - currentPrice);
 
+  // ── Rolling-window validation — replaces single-endpoint winner selection ───
+  const priceSeries = normalizedData.map(d => d.actual);
+  const makeProjector = (days: number): ProjectFn => (train, steps) => {
+    if (train.length < days + 5) {
+      return Array(steps).fill(train[train.length - 1]);
+    }
+    const reg = linReg(smooth(train, days));
+    const anchor = train[train.length - 1];
+    const lambda = shrink(reg.rSquared, annVol(train, 20));
+    const revTarget = sma(train, 50);
+    return Array.from({ length: steps }, (_, i) => {
+      const step = i + 1;
+      const rev = REVERSION_BETA * (revTarget - anchor) * (step / steps);
+      return Math.max(0, anchor + reg.slope * step * lambda + rev);
+    });
+  };
 
-  // ── 3. Pick the winner — lowest true out-of-sample error ────────────────────
+  const rollingValidations = WINDOW_SIZES.map(({ days, label }) =>
+    validateModelRolling(priceSeries, days, label, holdoutDays, makeProjector(days))
+  );
+  const selection = selectWinner(rollingValidations);
+  const validation = summarizeValidation(selection);
+
+  // ── 3. Winner only when rolling validation found one decisively ─────────────
+  // Otherwise use the median-scoring model but flag it as non-decisive —
+  // the forecast will be presented as an ensemble, not a single model's call.
   const sortedByError = [...models].sort((a, b) => a.errorPct - b.errorPct);
-  const winner = sortedByError[0];
-  models.forEach(m => { m.winner = m.windowSize === winner.windowSize; });
+  const decisiveWinner = selection.decisive
+    ? models.find(m => m.windowSize === selection.winnerWindowSize)
+    : null;
+  const winner = decisiveWinner ?? sortedByError[0];
+  models.forEach(m => {
+    m.winner = selection.decisive && m.windowSize === winner.windowSize;
+  });
 
-  // ── 4. Generate forecast from winning model ─────────────────────────────────
-  // Anchor to actual current price, project forward using the winner's
-  // full-history (forward) slope.
+  // ── 4. Generate forecast ────────────────────────────────────────────────────
+  // Anchor to actual current price. When no model validated decisively, the
+  // forward slope is the ensemble mean rather than one model's call.
   const forecastPoints: ForecastPoint[] = [];
+
+  const effectiveForwardSlope = selection.decisive
+    ? winner.forwardSlope
+    : models.reduce((s, m) => s + m.forwardSlope, 0) / models.length;
 
   // Compute uncertainty from ensemble spread at each step
   for (let i = 0; i < forecastDays; i++) {
@@ -416,8 +458,9 @@ export function backtest(
     // Each model's projected price at this future day (calibrated slopes)
     const modelPrices = models.map(m => currentPrice + m.forwardSlope * dayOffset + revAtStep);
 
-    // Winner's projection (primary forecast line)
-    const winnerPrice = currentPrice + winner.forwardSlope * dayOffset + revAtStep;
+    // Primary forecast line
+    const winnerPrice = currentPrice + effectiveForwardSlope * dayOffset + revAtStep;
+
 
 
     // Spread from ensemble for uncertainty bands
@@ -452,19 +495,21 @@ export function backtest(
   const regime = detectRegime(prices);
 
   // ── 8. Confidence score ─────────────────────────────────────────────────────
-  // Winner error score: 0% error = 30pts, 5%+ = 0pts
-  const winnerErrorScore   = Math.max(0, 1 - winner.errorPct / 5) * 30;
-  // R² score: trend reliability of the winning model
-  const rSquaredScore      = winner.rSquared * 25;
-  // Direction agreement across all 5 models
-  const agreementScore     = (ensembleAgreement - 0.5) * 2 * 25; // 0.5→0pts, 1.0→25pts
-  // Regime: no shift = 20pts bonus
-  const regimePenalty      = regime.outsideDistribution
-    ? (regime.ratio > 2.5 ? -25 : -12) : 20;
+  // Direction hit rate across rolling windows is the primary credibility
+  // signal — path error and R² are secondary.
+  const dirHitScore = Math.max(0, (validation.directionHitRate - 0.5)) * 2 * 60;
+  const pathScore   = Math.max(0, 1 - validation.medianPathMape / 15) * 25;
+  const regimePenalty = regime.outsideDistribution
+    ? (regime.ratio > 2.5 ? -25 : -12) : 15;
 
   let confidenceScore = Math.min(100, Math.max(0,
-    winnerErrorScore + rSquaredScore + agreementScore + regimePenalty
-  ));
+    dirHitScore + pathScore + regimePenalty));
+
+  // Hard cap when direction hit rate is at or below chance
+  if (validation.directionHitRate <= 0.55) {
+    confidenceScore = Math.min(confidenceScore, 25);
+  }
+
 
   // ── 9. Calibration reliability gate ─────────────────────────────────────────
   // If even the best model missed today's price badly, the ensemble has NOT earned
@@ -540,6 +585,8 @@ export function backtest(
     calibration,
     magnitudeSignal,
     accuracyHorizon,
+    validation,
+
 
     forecastPoints,
     forecastPct:       Math.round(forecastPct * 10) / 10,

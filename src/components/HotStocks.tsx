@@ -5,6 +5,8 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
+import { SymbolDetailModal } from "@/components/SymbolDetailModal";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,7 +35,14 @@ interface HotStock {
   reason: string;
   linkageTilt?: number;
   linkageNote?: string;
+  // Rolling-window validation
+  validationDecisive: boolean;
+  dirHitRate: number;
+  dirHits: number;
+  windowCount: number;
+  expectedMovePct: number;
 }
+
 
 interface SymbolData {
   symbol: string;
@@ -99,7 +108,8 @@ function toBacktestPoints(series: { date: string; close: number }[]): BacktestDa
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface HotStocksProps {
-  onSelectTicker: (ticker: string) => void;
+  /** Optional — kept for callers that still want the terminal chart to follow. */
+  onSelectTicker?: (ticker: string) => void;
 }
 
 export function HotStocks({ onSelectTicker }: HotStocksProps) {
@@ -108,7 +118,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [hasScanned, setHasScanned]   = useState(false);
   const [scanStatus, setScanStatus]   = useState("");
   const [filter, setFilter]           = useState<"all" | "hot">("hot");
+  const [detail, setDetail]           = useState<{ symbol: string; sector?: string } | null>(null);
   const autoRan = useRef(false);
+
 
   const discover = useCallback(async () => {
     setIsScanning(true);
@@ -214,6 +226,11 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           breakout: boolean;
           linkageTilt?: number;
           linkageNote?: string;
+          validationDecisive?: boolean;
+          dirHitRate?: number;
+          dirHits?: number;
+          windowCount?: number;
+          expectedMovePct?: number;
         }
       ): HotStock => {
         const prof = PROFILE_BY_TIER[c.riskTier] ?? PROFILE_BY_TIER[4];
@@ -242,8 +259,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           reason: opts.reason,
           linkageTilt: opts.linkageTilt,
           linkageNote: opts.linkageNote,
+          validationDecisive: opts.validationDecisive ?? false,
+          dirHitRate: opts.dirHitRate ?? 0,
+          dirHits: opts.dirHits ?? 0,
+          windowCount: opts.windowCount ?? 0,
+          expectedMovePct: opts.expectedMovePct ?? 0,
         };
       };
+
 
       // Add pre-filter rejects
       for (const s of allScored) {
@@ -317,42 +340,52 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           ? Math.min(100, bt.confidenceScore * tilt.factor)
           : bt.confidenceScore;
 
-        // Signal mapping — same intent as the modal's verdict:
-        //   • extreme regime or very low confidence → STAY OUT
-        //   • confident + up-forecast + models agree → BUY
-        //   • confident + down-forecast + models agree → SELL
+        // Signal mapping — descriptive, never a trade decision:
+        //   • extreme regime or very low fit → STAY OUT
+        //   • fit above threshold + up-forecast + models agree → SETUP MATCH
+        //   • same with down-forecast → BEARISH SETUP
         //   • otherwise → WAIT
         const minConf = c.riskTier === 1 ? 55 : c.riskTier === 2 ? 50 : c.riskTier === 3 ? 45 : 40;
         const stayOutConf = c.riskTier === 1 ? 25 : c.riskTier === 2 ? 22 : 20;
         const agree = bt.ensembleAgreement >= 0.6;
+        const v = bt.validation;
+        const dirReliable = v.directionHitRate > 0.55;
+        const dirHits = Math.round(v.directionHitRate * v.windowCount);
+        const band = bt.magnitudeSignal.expectedMovePct;
+        const withBand = (pct: number) =>
+          `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}% over 30d (1σ range ${(pct - band).toFixed(0)}% to ${pct + band >= 0 ? "+" : ""}${(pct + band).toFixed(0)}%)`;
+        const validationLine = v.decisive
+          ? `Direction correct in ${dirHits} of ${v.windowCount} windows`
+          : "No single model validated — showing ensemble mean";
 
-        let signal: "BUY"|"SELL"|"WAIT"|"STAY OUT" = "WAIT";
+        let signal: "SETUP MATCH"|"BEARISH SETUP"|"WAIT"|"STAY OUT" = "WAIT";
         if (regime === "EXTREME" || tiltedConfidence < stayOutConf) {
           signal = "STAY OUT";
-        } else if (tiltedConfidence >= minConf && agree && bt.forecastPct > 0.5) {
-          signal = "BUY";
-        } else if (tiltedConfidence >= minConf && agree && bt.forecastPct < -0.5) {
-          signal = "SELL";
+        } else if (dirReliable && tiltedConfidence >= minConf && agree && bt.forecastPct > 0.5) {
+          signal = "SETUP MATCH";
+        } else if (dirReliable && tiltedConfidence >= minConf && agree && bt.forecastPct < -0.5) {
+          signal = "BEARISH SETUP";
         }
 
-        const hot = signal === "BUY";
+        const hot = signal === "SETUP MATCH";
         const winnerErr = bt.winningModel.errorPct;
-        const winnerR2  = bt.winningModel.rSquared;
 
         let reason = "";
-        if (hot) {
-          reason = `BUY · ${bt.winningModel.label} won (err ${winnerErr.toFixed(1)}%, R² ${winnerR2.toFixed(2)}) · ${bt.forecastPct >= 0 ? "+" : ""}${bt.forecastPct}% over 30d · ${Math.round(bt.ensembleAgreement*100)}% model agreement`;
+        if (!dirReliable) {
+          reason = `Direction not reliable (${dirHits} of ${v.windowCount} windows). Expected move ±${band.toFixed(1)}%.`;
+        } else if (hot) {
+          reason = `Setup match · ${validationLine} · ${withBand(bt.forecastPct)} · model fit ${Math.round(tiltedConfidence)}/100`;
         } else if (signal === "STAY OUT") {
           reason = regime === "EXTREME"
             ? `Stay out — extreme volatility regime (${bt.regime.ratio.toFixed(1)}× normal)`
-            : `Stay out — confidence ${Math.round(tiltedConfidence)}% below threshold`;
-        } else if (signal === "SELL") {
-          reason = `Bearish — ${bt.winningModel.label} projects ${bt.forecastPct}% over 30d, confidence ${Math.round(tiltedConfidence)}%`;
+            : `Stay out — model fit ${Math.round(tiltedConfidence)}/100 below threshold`;
+        } else if (signal === "BEARISH SETUP") {
+          reason = `Bearish setup — ${withBand(bt.forecastPct)} · ${validationLine}`;
         } else {
           const bits: string[] = [];
-          if (tiltedConfidence < minConf) bits.push(`confidence ${Math.round(tiltedConfidence)}% < ${minConf}% threshold`);
+          if (tiltedConfidence < minConf) bits.push(`model fit ${Math.round(tiltedConfidence)}/100 < ${minConf} threshold`);
           if (!agree) bits.push(`only ${Math.round(bt.ensembleAgreement*100)}% of models agree on direction`);
-          if (Math.abs(bt.forecastPct) <= 0.5) bits.push(`flat forecast (${bt.forecastPct}%)`);
+          if (Math.abs(bt.forecastPct) <= 0.5) bits.push(`flat forecast (${withBand(bt.forecastPct)})`);
           reason = `Wait — ${bits.join("; ") || "signal not strong enough"}`;
         }
 
@@ -371,7 +404,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           breakout: c.qs!.breakout && winnerErr < 2 && bt.forecastPct > 0,
           linkageTilt: tilt?.factor,
           linkageNote: tilt?.note,
+          validationDecisive: v.decisive,
+          dirHitRate: v.directionHitRate,
+          dirHits,
+          windowCount: v.windowCount,
+          expectedMovePct: band,
         }));
+
 
         // Live update
         const sorted = [...results].sort((a, b) => {
@@ -389,7 +428,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       setStocks(finalSorted);
       setHasScanned(true);
       const hotCount = finalSorted.filter(s => s.hot).length;
-      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} hot (BUY) · ${finalSorted.length - hotCount} not hot`);
+      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} setup matches · ${finalSorted.length - hotCount} no match`);
 
     } catch (e) {
       toast.error((e as Error).message);
@@ -500,7 +539,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       {hasScanned && visible.length === 0 && !isScanning && (
         <p className="text-xs text-muted-foreground text-center py-2">
           {filter === "hot"
-            ? "No hot BUY signals in this scan. Switch to 'All results' to see what the model saw."
+            ? "No setup matches in this scan. Switch to 'All results' to see what the model saw."
             : "No results."}
         </p>
       )}
@@ -508,7 +547,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       {visible.length > 0 && (
         <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
           {visible.map((stock, i) => (
-            <button key={stock.symbol} onClick={() => onSelectTicker(stock.symbol)}
+            <button key={stock.symbol} onClick={() => setDetail({ symbol: stock.symbol, sector: stock.sector })}
               className={`w-full text-left p-3 rounded-lg border transition-all group ${
                 stock.hot
                   ? "bg-card/50 border-border hover:border-primary/40 hover:bg-card"
@@ -526,15 +565,19 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {stock.hot ? (
+                  {stock.hot && stock.dirHitRate > 0.55 ? (
                     <>
                       <span className={`text-xs font-mono font-bold ${stock.forecastPct >= 0 ? "price-positive" : "price-negative"}`}>
                         {stock.forecastPct >= 0 ? "+" : ""}{stock.forecastPct.toFixed(1)}%
                       </span>
                       <span className="text-[10px] text-muted-foreground font-mono">
-                        {stock.forecastLabel}
+                        1σ {(stock.forecastPct - stock.expectedMovePct).toFixed(0)}% to {stock.forecastPct + stock.expectedMovePct >= 0 ? "+" : ""}{(stock.forecastPct + stock.expectedMovePct).toFixed(0)}%
                       </span>
                     </>
+                  ) : stock.hot ? (
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      ±{stock.expectedMovePct.toFixed(1)}% expected move
+                    </span>
                   ) : (
                     <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wide">
                       {stock.signal}
@@ -553,11 +596,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                   {stock.hot && (
                     <>
                       <span className="text-[10px] font-mono text-muted-foreground">
-                        Conf {stock.confidence.toFixed(1)}%
+                        Model fit {Math.round(stock.confidence)}/100
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground">
-                        Agree {stock.hitRate}%
+                        {stock.validationDecisive
+                          ? `Direction correct in ${stock.dirHits} of ${stock.windowCount} windows`
+                          : "No single model validated — ensemble mean"}
                       </span>
+
                     </>
                   )}
                   {stock.breakout && (
@@ -596,6 +642,14 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           </p>
         </div>
       )}
+
+      <SymbolDetailModal
+        isOpen={!!detail}
+        onClose={() => setDetail(null)}
+        symbol={detail?.symbol ?? ""}
+        sector={detail?.sector}
+      />
     </div>
+
   );
 }

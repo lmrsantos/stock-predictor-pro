@@ -21,6 +21,7 @@ import cytoscape, { Core, EventObject } from "cytoscape";
 import fcose from "cytoscape-fcose";
 import type { LinkageResult, SectorName, LeaderName } from "@/lib/cross-sector-linkages";
 import { CURATED_SECTOR_UNIVERSES } from "@/lib/sector-universes";
+import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 
 // Register the compound-aware layout once.
 if (!(cytoscape as any).__fcoseRegistered) {
@@ -215,6 +216,7 @@ export default function SectorLinkageGraph({
   const cyRef = useRef<Core | null>(null);
   const [mode, setMode] = useState<ViewMode>(initialMode);
   const [expandedSectors, setExpandedSectors] = useState<Set<SectorName>>(new Set());
+  const [detail, setDetail] = useState<{ symbol: string; sector?: SectorName } | null>(null);
   const [selected, setSelected] = useState<
     | { kind: "sector"; sector: SectorName }
     | { kind: "ticker"; ticker: string; sector: SectorName }
@@ -477,11 +479,10 @@ export default function SectorLinkageGraph({
       setSelected({ kind: "sector", sector });
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
-      setSelected({
-        kind: "ticker",
-        ticker: e.target.data("label"),
-        sector: e.target.data("sector"),
-      });
+      const tkr = e.target.data("label") as string;
+      const sec = e.target.data("sector") as SectorName;
+      setSelected({ kind: "ticker", ticker: tkr, sector: sec });
+      setDetail({ symbol: tkr, sector: sec });
     });
     cy.on("tap", "edge", (e: EventObject) => {
       const link = links[e.target.data("linkIndex") as number];
@@ -634,9 +635,12 @@ export default function SectorLinkageGraph({
             <div className="mb-1 text-xs font-medium">Ticker members</div>
             <div className="flex flex-wrap gap-1">
               {(membership[panelSector] ?? []).map((ticker) => (
-                <span key={ticker} className="rounded border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                <button
+                  key={ticker}
+                  onClick={() => setDetail({ symbol: ticker, sector: panelSector })}
+                  className="rounded border bg-background px-1.5 py-0.5 text-[11px] text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors">
                   {ticker}
-                </span>
+                </button>
               ))}
             </div>
           </div>
@@ -698,6 +702,12 @@ export default function SectorLinkageGraph({
           </div>
         )}
       </div>
+      <SymbolDetailModal
+        isOpen={!!detail}
+        onClose={() => setDetail(null)}
+        symbol={detail?.symbol ?? ""}
+        sector={detail?.sector}
+      />
     </div>
   );
 }

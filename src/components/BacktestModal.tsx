@@ -310,7 +310,7 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
     ticker,
     price: result.currentPrice,
     backtestResult: {
-      signal:              result.forecastDirection === "up" ? "BUY" : "SELL",
+      signal:              result.forecastDirection === "up" ? "SETUP MATCH" : "BEARISH SETUP",
       confidenceScore:     result.confidenceScore,
       walkForwardAccuracy: Math.max(0, 100 - result.winningModel.errorPct),
       hitRate:             result.ensembleAgreement * 100,
@@ -323,9 +323,10 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
   const message = `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
 
 The quantitative model shows:
-- Forecast: ${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}% over 30 days (${result.forecastDirection.toUpperCase()})
-- Winning model: ${result.winningModel.label} with ${result.winningModel.errorPct.toFixed(2)}% calibration error
-- Model confidence: ${result.confidenceScore}/100
+- Forecast: ${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}% over 30 days (1σ range ${(result.forecastPct - result.magnitudeSignal.expectedMovePct).toFixed(0)}% to ${(result.forecastPct + result.magnitudeSignal.expectedMovePct).toFixed(0)}%)
+- Rolling validation: ${result.validation.message}
+- Direction correct in ${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} rolling windows
+- Model fit: ${result.confidenceScore}/100
 - Regime: ${result.regime.outsideDistribution ? "SHIFTED (elevated volatility)" : "NORMAL"}
 - Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
 - Calibration quality: ${result.calibration.grade.toUpperCase()} — ${result.calibration.message}
@@ -414,35 +415,51 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
   const regime     = result.regime;
   const agreement  = result.ensembleAgreement;
 
-  let signal: "BUY" | "SELL" | "WAIT" | "STAY OUT" = "WAIT";
+  const v          = result.validation;
+  const band       = result.magnitudeSignal.expectedMovePct;
+  const dirHits    = Math.round(v.directionHitRate * v.windowCount);
+  const dirReliable = v.directionHitRate > 0.55;
+  const bandText   = `${result.forecastPct >= 0 ? "+" : ""}${result.forecastPct}% over 30d (1σ range ${(result.forecastPct - band).toFixed(0)}% to ${result.forecastPct + band >= 0 ? "+" : ""}${(result.forecastPct + band).toFixed(0)}%)`;
+
+  let signal: "SETUP MATCH" | "BEARISH SETUP" | "WAIT" | "STAY OUT" = "WAIT";
   let signalColor = "#fbbf24";
   let emoji       = "⏳";
 
   if (regime.ratio > 2.5) {
     signal = "STAY OUT"; signalColor = "#f87171"; emoji = "🚫";
-  } else if (agreement < 0.6) {
+  } else if (agreement < 0.6 || !dirReliable) {
     signal = "WAIT";     signalColor = "#fbbf24"; emoji = "⏳";
   } else if (confidence >= 50 && up) {
-    signal = "BUY";      signalColor = "#34d399"; emoji = "✅";
+    signal = "SETUP MATCH";   signalColor = "#34d399"; emoji = "📈";
   } else if (confidence >= 50 && !up) {
-    signal = "SELL";     signalColor = "#f87171"; emoji = "🔴";
+    signal = "BEARISH SETUP"; signalColor = "#f87171"; emoji = "📉";
   }
 
   let positionSize = "Stay flat";
-  if (signal === "BUY" || signal === "SELL") {
+  if (signal === "SETUP MATCH" || signal === "BEARISH SETUP") {
     if (confidence >= 75 && !regime.outsideDistribution)      positionSize = "Full position";
     else if (confidence >= 50 && !regime.outsideDistribution) positionSize = "Half position";
     else                                                       positionSize = "Quarter position";
   }
 
-  const reasons = [
-    { text: `Winning model (${result.winningModel.label}) calibrated with only ${result.winningModel.errorPct.toFixed(2)}% error on today's price`, positive: result.winningModel.errorPct < 3 },
-    { text: `Forecast: ${up ? "+" : ""}${result.forecastPct}% over 30 days — model projects price ${up ? "higher" : "lower"}`, positive: up },
-    { text: `${(agreement * 100).toFixed(0)}% of models agree on direction — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 },
-    { text: `R² of winning model: ${result.winningModel.rSquared.toFixed(3)} — ${result.winningModel.rSquared >= 0.7 ? "high trend reliability" : result.winningModel.rSquared >= 0.4 ? "moderate reliability" : "low reliability"}`, positive: result.winningModel.rSquared >= 0.4 },
-    { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
-    { text: `Confidence score: ${confidence}/100`, positive: confidence >= 50 },
-  ];
+  const reasons = dirReliable
+    ? [
+        { text: v.decisive
+            ? `Direction correct in ${dirHits} of ${v.windowCount} rolling windows`
+            : "No single model validated — showing ensemble mean", positive: v.decisive },
+        { text: `Forecast: ${bandText}`, positive: up },
+        { text: `Median path error across windows: ${v.medianPathMape.toFixed(1)}%`, positive: v.medianPathMape < 8 },
+        { text: `${(agreement * 100).toFixed(0)}% of models agree on direction — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 },
+        { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
+        { text: `Model fit ${confidence}/100`, positive: confidence >= 50 },
+      ]
+    : [
+        { text: `Direction not reliable (${dirHits} of ${v.windowCount} windows). Expected move ±${band.toFixed(1)}%.`, positive: false },
+        { text: `Median path error across windows: ${v.medianPathMape.toFixed(1)}%`, positive: v.medianPathMape < 8 },
+        { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
+        { text: `Model fit ${confidence}/100`, positive: confidence >= 50 },
+      ];
+
 
   const signalBg     = `${signalColor}08`;
   const signalBorder = `${signalColor}30`;
@@ -455,7 +472,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
           <span className="text-3xl">{emoji}</span>
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Model Recommendation for {ticker}
+              Model read for {ticker}
             </p>
             <p className="text-3xl font-mono font-bold mt-0.5" style={{ color: signalColor }}>
               {signal}
@@ -658,21 +675,24 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
 
               {/* Key metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="Winning Model"
-                  value={`${result.winningModel.errorPct.toFixed(2)}% err`}
-                  sub={`${result.winningModel.label} · calibration ${result.calibration.grade}`}
-                  color={accentColor(result.winningModel.errorPct, 3, 8)} />
-                {result.calibration.directionCredible ? (
+                <StatCard label="Rolling Validation"
+                  value={`Model fit ${result.confidenceScore}/100`}
+                  sub={result.validation.decisive
+                    ? `Direction correct in ${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} windows`
+                    : "No single model validated — showing ensemble mean"}
+                  color={accentColor(result.validation.medianPathMape, 5, 12)} />
+                {result.validation.directionHitRate > 0.55 ? (
                   <StatCard label="30-Day Forecast"
                     value={`${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}%`}
-                    sub={`Direction: ${result.forecastDirection.toUpperCase()}`}
+                    sub={`1σ range ${(result.forecastPct - result.magnitudeSignal.expectedMovePct).toFixed(0)}% to ${(result.forecastPct + result.magnitudeSignal.expectedMovePct).toFixed(0)}%`}
                     color={result.forecastDirection === "up" ? "#34d399" : "#f87171"} />
                 ) : (
                   <StatCard label="30-Day Expected Move"
                     value={`±${result.magnitudeSignal.expectedMovePct.toFixed(1)}%`}
-                    sub="Direction not reliable (1σ magnitude)"
+                    sub={`Direction not reliable (${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} windows)`}
                     color="#fbbf24" />
                 )}
+
                 <StatCard label="Model Agreement"
                   value={`${(result.ensembleAgreement * 100).toFixed(0)}%`}
                   sub={`${result.models.filter(m => m.winner || m.slope * (result.forecastDirection === "up" ? 1 : -1) > 0).length}/5 models agree`}
@@ -688,7 +708,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                 <div className="rounded-xl border border-border bg-card/60 p-5 flex flex-col items-center justify-center min-w-[180px]">
                   <ConfidenceRing score={result.confidenceScore} />
                   <p className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider mt-3 text-center leading-relaxed">
-                    Forecast<br />Confidence
+                    Model<br />Fit
                   </p>
                 </div>
                 <div className="flex-1">
