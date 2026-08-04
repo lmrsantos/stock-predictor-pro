@@ -2,6 +2,14 @@ import { TickerSearch } from "./TickerSearch";
 
 export type ForecastModel = "regression" | "calibration" | "cycle" | "montecarlo";
 
+export type MarketSession = "regular" | "pre" | "post";
+
+export const sessionOptions: { value: MarketSession; label: string; hint: string }[] = [
+  { value: "regular", label: "RTH", hint: "Regular trading hours — official daily closes" },
+  { value: "pre", label: "PRE", hint: "Use the latest pre-market print as the most recent price" },
+  { value: "post", label: "AH", hint: "Use the latest after-hours print as the most recent price" },
+];
+
 export const forecastModels: { value: ForecastModel; label: string; hint: string }[] = [
   { value: "regression", label: "Enhanced Regression V2", hint: "Log-linear weighted regression with volatility & risk adjustments" },
   { value: "calibration", label: "Calibration Ensemble", hint: "5 SMA-smoothed regressions, winner picked by lowest historical error" },
@@ -20,6 +28,9 @@ interface ChartControlsProps {
   onForecastDaysChange: (v: number) => void;
   forecastModel: ForecastModel;
   onForecastModelChange: (v: ForecastModel) => void;
+  session: MarketSession;
+  onSessionChange: (v: MarketSession) => void;
+  sessionNote?: string;
 }
 
 const periods = [
@@ -43,6 +54,9 @@ export function ChartControls({
   onForecastDaysChange,
   forecastModel,
   onForecastModelChange,
+  session,
+  onSessionChange,
+  sessionNote,
 }: ChartControlsProps) {
 
   return (
@@ -104,6 +118,29 @@ export function ChartControls({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <label className="label-upper whitespace-nowrap">Session</label>
+        <div className="flex gap-1 flex-nowrap">
+          {sessionOptions.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => onSessionChange(s.value)}
+              title={s.hint}
+              className={`px-2 py-1 rounded-md text-xs font-mono transition-colors ${
+                session === s.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-accent"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {sessionNote && (
+          <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{sessionNote}</span>
+        )}
       </div>
     </div>
   );

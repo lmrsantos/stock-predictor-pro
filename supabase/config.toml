@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.fetch-ipo-intelligence]
 verify_jwt = false
+
+[functions.fetch-extended-hours]
+verify_jwt = false
