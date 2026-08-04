@@ -54,6 +54,9 @@ export function ChartControls({
   onForecastDaysChange,
   forecastModel,
   onForecastModelChange,
+  session,
+  onSessionChange,
+  sessionNote,
 }: ChartControlsProps) {
 
   return (
