@@ -3,6 +3,13 @@ import { ThemeToggle } from "./ThemeToggle";
 import { formatPrice } from "@/lib/regression";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 
+interface ExtendedQuote {
+  label: string;
+  price: number;
+  change: number;
+  changePct: number;
+}
+
 interface StockHeaderProps {
   ticker: string;
   name: string;
@@ -12,6 +19,7 @@ interface StockHeaderProps {
   isLoading: boolean;
   website?: string | null;
   irWebsite?: string | null;
+  extendedQuote?: ExtendedQuote | null;
 }
 
 export function StockHeader({
@@ -23,8 +31,10 @@ export function StockHeader({
   isLoading,
   website,
   irWebsite,
+  extendedQuote,
 }: StockHeaderProps) {
   const isPositive = change >= 0;
+  const extPositive = (extendedQuote?.change ?? 0) >= 0;
 
   return (
     <header className="flex items-center gap-3 flex-nowrap shrink-0">
@@ -48,6 +58,20 @@ export function StockHeader({
               {isPositive ? "+" : ""}{formatPrice(change)} ({isPositive ? "+" : ""}{(changePct * 100).toFixed(2)}%)
             </span>
             <InfoTooltip {...metricInfo.dailyChange} />
+            {extendedQuote && (
+              <span
+                className="flex items-center gap-1 text-xs font-mono text-muted-foreground whitespace-nowrap"
+                title={`${extendedQuote.label} price (outside regular trading hours)`}
+              >
+                <span className="uppercase tracking-wide text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">
+                  {extendedQuote.label}
+                </span>
+                ${formatPrice(extendedQuote.price)}
+                <span className={extPositive ? "price-positive" : "price-negative"}>
+                  {extPositive ? "+" : ""}{formatPrice(extendedQuote.change)} ({extPositive ? "+" : ""}{(extendedQuote.changePct * 100).toFixed(2)}%)
+                </span>
+              </span>
+            )}
             {(website || irWebsite) && (
               <div className="flex items-center gap-1.5">
                 {website && (

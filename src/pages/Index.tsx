@@ -11,7 +11,7 @@ import { ChartDataPoint } from "@/lib/types";
 import { simulateMonteCarlo } from "@/lib/monte-carlo";
 
 
-import { ChartControls, ForecastModel, MarketSession } from "@/components/ChartControls";
+import { ChartControls, ForecastModel } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
@@ -47,7 +47,7 @@ const Index = () => {
   const [period, setPeriod] = useState("1y");
   const [forecastDays, setForecastDays] = useState(30);
   const [forecastModel, setForecastModel] = useState<ForecastModel>("regression");
-  const [session, setSession] = useState<MarketSession>("regular");
+  
   const [showTable, setShowTable] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
@@ -104,7 +104,9 @@ const Index = () => {
 
   const baseStockData = dbStockData?.length ? dbStockData : meta?.prices;
 
-  // Step 2b: Extended-session (pre-market / after-hours) last print.
+  // Step 2b: Extended-session quote. Yahoo's marketState decides whether a
+  // pre-market or after-hours print is the relevant "latest" price. During the
+  // regular session neither is shown.
   const { data: extended } = useQuery({
     queryKey: ["extended-hours", ticker],
     queryFn: async () => {
@@ -114,40 +116,41 @@ const Index = () => {
       if (error) throw error;
       return data as {
         regularClose: number | null;
+        marketState: string | null;
         pre: { price: number; time: number } | null;
         post: { price: number; time: number } | null;
       };
     },
-    enabled: session !== "regular" && !!ticker,
+    enabled: !!ticker,
     staleTime: 60 * 1000,
-    refetchInterval: session !== "regular" ? 60 * 1000 : false,
+    refetchInterval: 60 * 1000,
     retry: false,
   });
 
-  const extendedPrint = session === "pre" ? extended?.pre : session === "post" ? extended?.post : null;
+  const stockData = baseStockData;
 
-  // Replace the most recent regular close with the extended-session print so
-  // every model (regression, calibration, cycle, Monte Carlo) runs on it.
-  const stockData = useMemo(() => {
-    if (session === "regular" || !baseStockData?.length || !extendedPrint?.price) return baseStockData;
-    const copy = baseStockData.slice();
-    const last = copy[copy.length - 1];
-    const p = extendedPrint.price;
-    copy[copy.length - 1] = {
-      ...last,
-      close: p,
-      high: Math.max(last.high, p),
-      low: Math.min(last.low, p),
+  // marketState: PRE / PREPRE (before open), REGULAR (open), POST / POSTPOST / CLOSED (after close)
+  const extendedQuote = useMemo(() => {
+    const state = (extended?.marketState || "").toUpperCase();
+    if (!state || state === "REGULAR") return null;
+
+    const isPre = state === "PRE" || state === "PREPRE";
+    const print = isPre ? extended?.pre : extended?.post;
+    if (!print?.price) return null;
+
+    const ref = extended?.regularClose;
+    const change = ref ? print.price - ref : 0;
+    const changePct = ref ? change / ref : 0;
+
+    return {
+      label: isPre ? "Pre-market" : "After hours",
+      price: print.price,
+      change,
+      changePct,
     };
-    return copy;
-  }, [baseStockData, session, extendedPrint?.price]);
+  }, [extended]);
 
-  const sessionNote =
-    session === "regular"
-      ? undefined
-      : extendedPrint?.price
-        ? `${session === "pre" ? "Pre" : "AH"} $${extendedPrint.price.toFixed(2)}`
-        : "no extended print";
+
 
 
   // Step 3: Read fundamentals from DB
@@ -514,6 +517,7 @@ const Index = () => {
             isLoading={isLoading}
             website={website}
             irWebsite={irWebsite}
+            extendedQuote={extendedQuote}
           />
         </div>
         <ChartControls
@@ -526,9 +530,6 @@ const Index = () => {
           onForecastDaysChange={setForecastDays}
           forecastModel={forecastModel}
           onForecastModelChange={setForecastModel}
-          session={session}
-          onSessionChange={setSession}
-          sessionNote={sessionNote}
         />
 
       </div>

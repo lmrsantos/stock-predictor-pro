@@ -12,6 +12,7 @@ const ua =
 interface Result {
   ticker: string;
   regularClose: number | null;
+  marketState: string | null;
   pre: { price: number; time: number } | null;
   post: { price: number; time: number } | null;
 }
@@ -70,10 +71,21 @@ serve(async (req) => {
       }
     }
 
+    // Yahoo's chart meta doesn't always carry marketState — derive it from the
+    // current trading period so the client can decide PRE vs REGULAR vs POST.
+    const nowSec = Math.floor(Date.now() / 1000);
+    let marketState: string | null = meta.marketState ?? null;
+    if (!marketState && regularStart != null && regularEnd != null) {
+      if (nowSec < regularStart) marketState = "PRE";
+      else if (nowSec <= regularEnd) marketState = "REGULAR";
+      else marketState = "POST";
+    }
+
     const out: Result = {
       ticker: raw,
       regularClose:
         meta.regularMarketPrice ?? meta.chartPreviousClose ?? null,
+      marketState,
       pre,
       post,
     };
