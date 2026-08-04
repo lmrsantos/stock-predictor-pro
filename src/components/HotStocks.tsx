@@ -260,9 +260,8 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           windowCount: opts.windowCount ?? 0,
           expectedMovePct: opts.expectedMovePct ?? 0,
         };
-
-        };
       };
+
 
       // Add pre-filter rejects
       for (const s of allScored) {
