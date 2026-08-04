@@ -675,21 +675,24 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
 
               {/* Key metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="Winning Model"
-                  value={`${result.winningModel.errorPct.toFixed(2)}% err`}
-                  sub={`${result.winningModel.label} · calibration ${result.calibration.grade}`}
-                  color={accentColor(result.winningModel.errorPct, 3, 8)} />
-                {result.calibration.directionCredible ? (
+                <StatCard label="Rolling Validation"
+                  value={`Model fit ${result.confidenceScore}/100`}
+                  sub={result.validation.decisive
+                    ? `Direction correct in ${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} windows`
+                    : "No single model validated — showing ensemble mean"}
+                  color={accentColor(result.validation.medianPathMape, 5, 12)} />
+                {result.validation.directionHitRate > 0.55 ? (
                   <StatCard label="30-Day Forecast"
                     value={`${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}%`}
-                    sub={`Direction: ${result.forecastDirection.toUpperCase()}`}
+                    sub={`1σ range ${(result.forecastPct - result.magnitudeSignal.expectedMovePct).toFixed(0)}% to ${(result.forecastPct + result.magnitudeSignal.expectedMovePct).toFixed(0)}%`}
                     color={result.forecastDirection === "up" ? "#34d399" : "#f87171"} />
                 ) : (
                   <StatCard label="30-Day Expected Move"
                     value={`±${result.magnitudeSignal.expectedMovePct.toFixed(1)}%`}
-                    sub="Direction not reliable (1σ magnitude)"
+                    sub={`Direction not reliable (${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} windows)`}
                     color="#fbbf24" />
                 )}
+
                 <StatCard label="Model Agreement"
                   value={`${(result.ensembleAgreement * 100).toFixed(0)}%`}
                   sub={`${result.models.filter(m => m.winner || m.slope * (result.forecastDirection === "up" ? 1 : -1) > 0).length}/5 models agree`}
