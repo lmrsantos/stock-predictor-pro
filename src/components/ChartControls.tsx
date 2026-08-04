@@ -2,13 +2,6 @@ import { TickerSearch } from "./TickerSearch";
 
 export type ForecastModel = "regression" | "calibration" | "cycle" | "montecarlo";
 
-export type MarketSession = "regular" | "pre" | "post";
-
-export const sessionOptions: { value: MarketSession; label: string; hint: string }[] = [
-  { value: "regular", label: "RTH", hint: "Regular trading hours — official daily closes" },
-  { value: "pre", label: "PRE", hint: "Use the latest pre-market print as the most recent price" },
-  { value: "post", label: "AH", hint: "Use the latest after-hours print as the most recent price" },
-];
 
 export const forecastModels: { value: ForecastModel; label: string; hint: string }[] = [
   { value: "regression", label: "Enhanced Regression V2", hint: "Log-linear weighted regression with volatility & risk adjustments" },
