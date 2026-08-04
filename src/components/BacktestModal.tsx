@@ -310,7 +310,7 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
     ticker,
     price: result.currentPrice,
     backtestResult: {
-      signal:              result.forecastDirection === "up" ? "BUY" : "SELL",
+      signal:              result.forecastDirection === "up" ? "SETUP MATCH" : "BEARISH SETUP",
       confidenceScore:     result.confidenceScore,
       walkForwardAccuracy: Math.max(0, 100 - result.winningModel.errorPct),
       hitRate:             result.ensembleAgreement * 100,
@@ -323,9 +323,10 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
   const message = `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
 
 The quantitative model shows:
-- Forecast: ${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}% over 30 days (${result.forecastDirection.toUpperCase()})
-- Winning model: ${result.winningModel.label} with ${result.winningModel.errorPct.toFixed(2)}% calibration error
-- Model confidence: ${result.confidenceScore}/100
+- Forecast: ${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}% over 30 days (1σ range ${(result.forecastPct - result.magnitudeSignal.expectedMovePct).toFixed(0)}% to ${(result.forecastPct + result.magnitudeSignal.expectedMovePct).toFixed(0)}%)
+- Rolling validation: ${result.validation.message}
+- Direction correct in ${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} rolling windows
+- Model fit: ${result.confidenceScore}/100
 - Regime: ${result.regime.outsideDistribution ? "SHIFTED (elevated volatility)" : "NORMAL"}
 - Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
 - Calibration quality: ${result.calibration.grade.toUpperCase()} — ${result.calibration.message}
