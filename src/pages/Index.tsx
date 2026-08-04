@@ -517,6 +517,7 @@ const Index = () => {
             isLoading={isLoading}
             website={website}
             irWebsite={irWebsite}
+            extendedQuote={extendedQuote}
           />
         </div>
         <ChartControls
@@ -529,9 +530,6 @@ const Index = () => {
           onForecastDaysChange={setForecastDays}
           forecastModel={forecastModel}
           onForecastModelChange={setForecastModel}
-          session={session}
-          onSessionChange={setSession}
-          sessionNote={sessionNote}
         />
 
       </div>
