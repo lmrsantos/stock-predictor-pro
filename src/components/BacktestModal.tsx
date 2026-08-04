@@ -415,35 +415,51 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
   const regime     = result.regime;
   const agreement  = result.ensembleAgreement;
 
-  let signal: "BUY" | "SELL" | "WAIT" | "STAY OUT" = "WAIT";
+  const v          = result.validation;
+  const band       = result.magnitudeSignal.expectedMovePct;
+  const dirHits    = Math.round(v.directionHitRate * v.windowCount);
+  const dirReliable = v.directionHitRate > 0.55;
+  const bandText   = `${result.forecastPct >= 0 ? "+" : ""}${result.forecastPct}% over 30d (1σ range ${(result.forecastPct - band).toFixed(0)}% to ${result.forecastPct + band >= 0 ? "+" : ""}${(result.forecastPct + band).toFixed(0)}%)`;
+
+  let signal: "SETUP MATCH" | "BEARISH SETUP" | "WAIT" | "STAY OUT" = "WAIT";
   let signalColor = "#fbbf24";
   let emoji       = "⏳";
 
   if (regime.ratio > 2.5) {
     signal = "STAY OUT"; signalColor = "#f87171"; emoji = "🚫";
-  } else if (agreement < 0.6) {
+  } else if (agreement < 0.6 || !dirReliable) {
     signal = "WAIT";     signalColor = "#fbbf24"; emoji = "⏳";
   } else if (confidence >= 50 && up) {
-    signal = "BUY";      signalColor = "#34d399"; emoji = "✅";
+    signal = "SETUP MATCH";   signalColor = "#34d399"; emoji = "📈";
   } else if (confidence >= 50 && !up) {
-    signal = "SELL";     signalColor = "#f87171"; emoji = "🔴";
+    signal = "BEARISH SETUP"; signalColor = "#f87171"; emoji = "📉";
   }
 
   let positionSize = "Stay flat";
-  if (signal === "BUY" || signal === "SELL") {
+  if (signal === "SETUP MATCH" || signal === "BEARISH SETUP") {
     if (confidence >= 75 && !regime.outsideDistribution)      positionSize = "Full position";
     else if (confidence >= 50 && !regime.outsideDistribution) positionSize = "Half position";
     else                                                       positionSize = "Quarter position";
   }
 
-  const reasons = [
-    { text: `Winning model (${result.winningModel.label}) calibrated with only ${result.winningModel.errorPct.toFixed(2)}% error on today's price`, positive: result.winningModel.errorPct < 3 },
-    { text: `Forecast: ${up ? "+" : ""}${result.forecastPct}% over 30 days — model projects price ${up ? "higher" : "lower"}`, positive: up },
-    { text: `${(agreement * 100).toFixed(0)}% of models agree on direction — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 },
-    { text: `R² of winning model: ${result.winningModel.rSquared.toFixed(3)} — ${result.winningModel.rSquared >= 0.7 ? "high trend reliability" : result.winningModel.rSquared >= 0.4 ? "moderate reliability" : "low reliability"}`, positive: result.winningModel.rSquared >= 0.4 },
-    { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
-    { text: `Confidence score: ${confidence}/100`, positive: confidence >= 50 },
-  ];
+  const reasons = dirReliable
+    ? [
+        { text: v.decisive
+            ? `Direction correct in ${dirHits} of ${v.windowCount} rolling windows`
+            : "No single model validated — showing ensemble mean", positive: v.decisive },
+        { text: `Forecast: ${bandText}`, positive: up },
+        { text: `Median path error across windows: ${v.medianPathMape.toFixed(1)}%`, positive: v.medianPathMape < 8 },
+        { text: `${(agreement * 100).toFixed(0)}% of models agree on direction — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 },
+        { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
+        { text: `Model fit ${confidence}/100`, positive: confidence >= 50 },
+      ]
+    : [
+        { text: `Direction not reliable (${dirHits} of ${v.windowCount} windows). Expected move ±${band.toFixed(1)}%.`, positive: false },
+        { text: `Median path error across windows: ${v.medianPathMape.toFixed(1)}%`, positive: v.medianPathMape < 8 },
+        { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
+        { text: `Model fit ${confidence}/100`, positive: confidence >= 50 },
+      ];
+
 
   const signalBg     = `${signalColor}08`;
   const signalBorder = `${signalColor}30`;
