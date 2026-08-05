@@ -607,12 +607,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       )}
 
       {hasScanned && visible.length === 0 && !isScanning && (
-        <p className="text-xs text-muted-foreground text-center py-2">
+        <p className="text-xs text-muted-foreground text-center py-2 leading-relaxed">
           {filter === "hot"
             ? "No setup matches in this scan. Switch to 'All results' to see what the model saw."
-            : "No results."}
+            : filter === "conservative"
+              ? baseRatesLoading
+                ? "Computing historical base rates…"
+                : "No symbol currently matches a setup that passes the conservative gate. That is a normal outcome — the gate is strict by design."
+              : "No results."}
         </p>
       )}
+
 
       {visible.length > 0 && (
         <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
