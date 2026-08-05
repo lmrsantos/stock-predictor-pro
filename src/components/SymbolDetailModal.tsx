@@ -223,7 +223,15 @@ export function SymbolDetailModal({
                       Direction not reliable ({dirHits} of {v.windowCount} windows). Expected move ±{band.toFixed(1)}%.
                     </p>
                   )}
-                  <p className="text-muted-foreground">Model fit {result.confidenceScore}/100</p>
+                  <p className="text-muted-foreground">
+                    Model fit {result.confidenceScore}/100
+                    {profile && (
+                      <span className="text-muted-foreground"> · {profile.forecastabilityNote.split(/(?<=\.)\s/)[0]}</span>
+                    )}
+                    <Link to="/methodology" target="_blank" className="text-primary hover:underline ml-2">
+                      How is this calculated?
+                    </Link>
+                  </p>
                   <p className="text-muted-foreground">
                     {v.decisive
                       ? `Direction correct in ${dirHits} of ${v.windowCount} rolling windows`
@@ -232,7 +240,15 @@ export function SymbolDetailModal({
                 </div>
               </section>
 
-              {/* 3 — VALIDATION DETAIL */}
+              {/* 3 — HISTORICAL BASE RATES */}
+              <BaseRateSection
+                symbol={symbol}
+                sector={sector}
+                dates={priceDates}
+                closes={priceCloses}
+              />
+
+              {/* 4 — VALIDATION DETAIL */}
               <section className="rounded-xl border border-border bg-card/40">
                 <button
                   onClick={() => setShowValidation(s => !s)}
