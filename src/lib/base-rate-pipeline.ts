@@ -130,7 +130,7 @@ function alignComposite(series: SymbolSeries, composite: ReturnSeries | undefine
   if (!composite) return null;
   const map = new Map<string, number>();
   for (let i = 0; i < composite.dates.length; i++) {
-    map.set(composite.dates[i], composite.returns[i]);
+    map.set(composite.dates[i], composite.values[i]);
   }
   const out = series.dates.map(d => map.get(d) ?? 0);
   return out.some(v => v !== 0) ? out : null;
