@@ -16,10 +16,13 @@ import {
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import { X, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { backtest, type ForecastResult, type BacktestDataPoint } from "@/lib/backtest";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { readCachedLinkages } from "@/lib/run-linkages";
+import { BaseRateSection } from "@/components/BaseRateSection";
+import { useForecastability } from "@/hooks/useForecastability";
 
 interface SymbolDetailModalProps {
   isOpen: boolean;
@@ -115,6 +118,10 @@ export function SymbolDetailModal({
     if (!cache?.results?.length) return [];
     return cache.results.filter(r => r.validated && r.follower === sector);
   }, [sector]);
+
+  const priceDates  = useMemo(() => points.map(p => p.date), [points]);
+  const priceCloses = useMemo(() => points.map(p => p.actual), [points]);
+  const profile     = useForecastability(symbol, priceDates, priceCloses, sector);
 
   const v            = result?.validation;
   const band         = result?.magnitudeSignal.expectedMovePct ?? 0;
@@ -216,7 +223,15 @@ export function SymbolDetailModal({
                       Direction not reliable ({dirHits} of {v.windowCount} windows). Expected move ±{band.toFixed(1)}%.
                     </p>
                   )}
-                  <p className="text-muted-foreground">Model fit {result.confidenceScore}/100</p>
+                  <p className="text-muted-foreground">
+                    Model fit {result.confidenceScore}/100
+                    {profile && (
+                      <span className="text-muted-foreground"> · {profile.forecastabilityNote.split(/(?<=\.)\s/)[0]}</span>
+                    )}
+                    <Link to="/methodology" target="_blank" className="text-primary hover:underline ml-2">
+                      How is this calculated?
+                    </Link>
+                  </p>
                   <p className="text-muted-foreground">
                     {v.decisive
                       ? `Direction correct in ${dirHits} of ${v.windowCount} rolling windows`
@@ -225,7 +240,15 @@ export function SymbolDetailModal({
                 </div>
               </section>
 
-              {/* 3 — VALIDATION DETAIL */}
+              {/* 3 — HISTORICAL BASE RATES */}
+              <BaseRateSection
+                symbol={symbol}
+                sector={sector}
+                dates={priceDates}
+                closes={priceCloses}
+              />
+
+              {/* 4 — VALIDATION DETAIL */}
               <section className="rounded-xl border border-border bg-card/40">
                 <button
                   onClick={() => setShowValidation(s => !s)}

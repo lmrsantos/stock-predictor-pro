@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, TrendingUp, Download } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -6,6 +7,11 @@ import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
+import {
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries,
+  type SymbolBaseRates,
+} from "@/lib/base-rate-pipeline";
+
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,8 +123,11 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [isScanning, setIsScanning]   = useState(false);
   const [hasScanned, setHasScanned]   = useState(false);
   const [scanStatus, setScanStatus]   = useState("");
-  const [filter, setFilter]           = useState<"all" | "hot">("hot");
+  const [filter, setFilter]           = useState<"all" | "hot" | "conservative">("hot");
   const [detail, setDetail]           = useState<{ symbol: string; sector?: string } | null>(null);
+  const [baseRates, setBaseRates]     = useState<Record<string, SymbolBaseRates | null>>({});
+  const [baseRatesLoading, setBaseRatesLoading] = useState(false);
+  const seriesRef = useRef<Record<string, { dates: string[]; closes: number[]; sector: string }>>({});
   const autoRan = useRef(false);
 
 
@@ -146,6 +155,18 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         closes: s.series.map(p => p.close),
         qs: quickScore(s.series.map(p => p.close)),
       }));
+
+      // Keep raw series around so the base-rate pipeline can profile every row
+      const seriesMap: Record<string, { dates: string[]; closes: number[]; sector: string }> = {};
+      for (const s of symbolData) {
+        seriesMap[s.symbol] = {
+          dates: s.series.map(p => p.date),
+          closes: s.series.map(p => p.close),
+          sector: s.sector,
+        };
+      }
+      seriesRef.current = seriesMap;
+
 
       const preRanked = allScored
         .filter(s => s.qs !== null && s.qs.recentReturn > -0.05)
@@ -444,8 +465,40 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
     discover();
   }, [discover]);
 
-  const visible = filter === "hot" ? stocks.filter(s => s.hot) : stocks;
+  // ── Conditioned base rates for every scored symbol ──────────────────────────
+  useEffect(() => {
+    if (isScanning || !hasScanned || stocks.length === 0) return;
+    let cancelled = false;
+    setBaseRatesLoading(true);
+    (async () => {
+      try {
+        const pipeline = await runBaseRatePipeline();
+        const out: Record<string, SymbolBaseRates | null> = {};
+        for (const s of stocks) {
+          const raw = seriesRef.current[s.symbol];
+          const series = raw
+            ? makeSymbolSeries(s.symbol, raw.dates, raw.closes, raw.sector)
+            : null;
+          out[s.symbol] = baseRatesForSymbol(pipeline, s.symbol, series);
+        }
+        if (!cancelled) setBaseRates(out);
+      } catch (e) {
+        console.warn("base-rate pipeline failed", e);
+      } finally {
+        if (!cancelled) setBaseRatesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isScanning, hasScanned, stocks]);
+
+  const conservativeCount = stocks.filter(s => baseRates[s.symbol]?.anyConservative).length;
+
+  const visible =
+    filter === "hot"          ? stocks.filter(s => s.hot)
+    : filter === "conservative" ? stocks.filter(s => baseRates[s.symbol]?.anyConservative)
+    : stocks;
   const hotCount = stocks.filter(s => s.hot).length;
+
 
   const exportToExcel = useCallback(() => {
     if (!visible.length) return;
@@ -485,6 +538,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-end">
+        <Link to="/methodology" target="_blank"
+          className="text-[10px] font-mono text-primary hover:underline">
+          How is this calculated?
+        </Link>
+      </div>
+
       <button onClick={() => discover()} disabled={isScanning}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-70">
         {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
@@ -492,7 +552,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       </button>
 
       {hasScanned && stocks.length > 0 && (
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setFilter("conservative")}
+            className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
+              filter === "conservative"
+                ? "bg-primary text-primary-foreground border-transparent"
+                : "bg-card/50 border-border text-muted-foreground hover:text-foreground"
+            }`}>
+            {baseRatesLoading ? "Conservative only (…)" : `Conservative only (${conservativeCount})`}
+          </button>
+
           <button
             onClick={() => setFilter("hot")}
             className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
@@ -537,12 +607,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       )}
 
       {hasScanned && visible.length === 0 && !isScanning && (
-        <p className="text-xs text-muted-foreground text-center py-2">
+        <p className="text-xs text-muted-foreground text-center py-2 leading-relaxed">
           {filter === "hot"
             ? "No setup matches in this scan. Switch to 'All results' to see what the model saw."
-            : "No results."}
+            : filter === "conservative"
+              ? baseRatesLoading
+                ? "Computing historical base rates…"
+                : "No symbol currently matches a setup that passes the conservative gate. That is a normal outcome — the gate is strict by design."
+              : "No results."}
         </p>
       )}
+
 
       {visible.length > 0 && (
         <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
@@ -634,7 +709,44 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 <p className={`text-[10px] font-mono leading-relaxed pt-0.5 ${stock.hot ? "text-foreground/80" : "text-muted-foreground"}`}>
                   {stock.hot ? "✓ " : "· "}{stock.reason}
                 </p>
+                {(() => {
+                  const br = baseRates[stock.symbol];
+                  if (!br) return null;
+                  const b = br.best;
+                  if (!b) {
+                    return (
+                      <p className="text-[10px] font-mono text-muted-foreground pt-0.5">
+                        No historical setup match · {br.profile.volBucket} volatility
+                      </p>
+                    );
+                  }
+                  const r = b.rate;
+                  const excess = r.excessHitRatePp;
+                  const thin = r.symbolOccurrences < 10;
+                  return (
+                    <p className="text-[10px] font-mono text-muted-foreground pt-0.5">
+                      <span className="text-foreground/80">{b.name}</span>
+                      {excess != null && (
+                        <> · <span className={excess >= 5 ? "text-green-600 dark:text-green-400" : ""}>
+                          {excess >= 0 ? "+" : ""}{excess.toFixed(1)}pp vs {br.profile.volBucket}-vol baseline
+                        </span></>
+                      )}
+                      {" · "}{r.stats?.n ?? 0} occurrences
+                      {r.meetsConservativeCriteria && (
+                        <span className="ml-1.5 px-1 py-px rounded bg-green-500/15 text-green-600 dark:text-green-400 font-semibold">
+                          conservative
+                        </span>
+                      )}
+                      {thin && (
+                        <span className="ml-1.5 opacity-80">
+                          only {r.symbolOccurrences} for {stock.symbol} itself — too few to mean anything
+                        </span>
+                      )}
+                    </p>
+                  );
+                })()}
               </div>
+
             </button>
           ))}
           <p className="text-[9px] text-muted-foreground text-center mt-2 leading-relaxed">

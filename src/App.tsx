@@ -19,6 +19,7 @@ import Terms from "./pages/Terms.tsx";
 import Disclaimer from "./pages/Disclaimer.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
+import Methodology from "./pages/Methodology.tsx";
 import { DisclaimerBar } from "@/components/DisclaimerBar";
 import { LinkageAutoRunner } from "@/components/LinkageAutoRunner";
 
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/account" element={<Account />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/methodology" element={<Methodology />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
