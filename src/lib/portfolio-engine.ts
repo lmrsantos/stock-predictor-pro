@@ -561,31 +561,50 @@ export function buildAllocation(
     });
   }
 
-  return finalizeBuckets(buckets, amount);
+  return finalizeBuckets(buckets, profile);
 }
 
-// Guards two failure modes seen in the hybrid branch:
-//  1. the same ticker appearing in two different buckets (e.g. BIL in both
+// Guards three failure modes:
+//  1. locked instruments (CDs) appearing when the investor needs 100% liquidity;
+//  2. the same ticker appearing in two different buckets (e.g. BIL in both
 //     Capital Preservation and Dry Powder), which makes the plan look wrong;
-//  2. bucket percentages summing to something other than 100.
+//  3. bucket percentages summing to something other than 100.
 function finalizeBuckets(
   buckets: AllocationBucket[],
-  amount: number | null,
+  profile: InvestorProfile,
 ): AllocationBucket[] {
-  // ── 1. De-duplicate tickers across buckets ────────────────────────────────
-  const CASH_POOL = ["BIL", "SGOV", "SHV", "USFR"].filter((k) => INSTRUMENTS[k]);
+  const amount = profile.amount;
+  const ALL = Object.values(INSTRUMENTS);
+  const CASH_POOL = ["BIL", "SGOV", "SHV"].map((k) => INSTRUMENTS[k]).filter(Boolean);
+
+  // ── 1. Liquidity constraint — no locked vehicles when funds must stay liquid ─
+  if (!profile.canLockFunds) {
+    for (const b of buckets) {
+      for (const slot of b.instruments) {
+        if (slot.instrument.liquidity === "locked") {
+          slot.instrument = CASH_POOL[0];
+        }
+      }
+    }
+  }
+
+  // ── 2. De-duplicate tickers across buckets ────────────────────────────────
   const seen = new Set<string>();
   for (const b of buckets) {
     for (const slot of b.instruments) {
       const t = slot.instrument.ticker;
       if (!seen.has(t)) { seen.add(t); continue; }
       // duplicate — swap for an unused equivalent in the same asset class
-      const alt = CASH_POOL.map((k) => INSTRUMENTS[k]).find(
-        (i) => i.assetClass === slot.instrument.assetClass && !seen.has(i.ticker),
+      const alt = ALL.find(
+        (i) =>
+          i.assetClass === slot.instrument.assetClass &&
+          !seen.has(i.ticker) &&
+          (profile.canLockFunds || i.liquidity !== "locked"),
       );
       if (alt) { slot.instrument = alt; seen.add(alt.ticker); }
     }
   }
+
 
   // ── 2. Renormalize so the plan always sums to 100% ────────────────────────
   const total = buckets.reduce((s, b) => s + b.pct, 0);
