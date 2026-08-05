@@ -561,8 +561,52 @@ export function buildAllocation(
     });
   }
 
+  return finalizeBuckets(buckets, amount);
+}
+
+// Guards two failure modes seen in the hybrid branch:
+//  1. the same ticker appearing in two different buckets (e.g. BIL in both
+//     Capital Preservation and Dry Powder), which makes the plan look wrong;
+//  2. bucket percentages summing to something other than 100.
+function finalizeBuckets(
+  buckets: AllocationBucket[],
+  amount: number | null,
+): AllocationBucket[] {
+  // ── 1. De-duplicate tickers across buckets ────────────────────────────────
+  const CASH_POOL = ["BIL", "SGOV", "SHV", "USFR"].filter((k) => INSTRUMENTS[k]);
+  const seen = new Set<string>();
+  for (const b of buckets) {
+    for (const slot of b.instruments) {
+      const t = slot.instrument.ticker;
+      if (!seen.has(t)) { seen.add(t); continue; }
+      // duplicate — swap for an unused equivalent in the same asset class
+      const alt = CASH_POOL.map((k) => INSTRUMENTS[k]).find(
+        (i) => i.assetClass === slot.instrument.assetClass && !seen.has(i.ticker),
+      );
+      if (alt) { slot.instrument = alt; seen.add(alt.ticker); }
+    }
+  }
+
+  // ── 2. Renormalize so the plan always sums to 100% ────────────────────────
+  const total = buckets.reduce((s, b) => s + b.pct, 0);
+  if (total > 0 && Math.abs(total - 100) > 0.5) {
+    const k = 100 / total;
+    const r = (p: number) => Math.round(p * k * 10) / 10;
+    const a = (p: number) => (amount ? Math.round(amount * r(p) / 100) : null);
+    for (const b of buckets) {
+      b.instruments = b.instruments.map((s) => ({
+        instrument: s.instrument,
+        pct: r(s.pct),
+        amount: a(s.pct),
+      }));
+      b.amount = a(b.pct);
+      b.pct = r(b.pct);
+    }
+  }
+
   return buckets;
 }
+
 
 // ─── Re-entry triggers ────────────────────────────────────────────────────────
 
