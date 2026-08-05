@@ -119,6 +119,10 @@ export function SymbolDetailModal({
     return cache.results.filter(r => r.validated && r.follower === sector);
   }, [sector]);
 
+  const priceDates  = useMemo(() => points.map(p => p.date), [points]);
+  const priceCloses = useMemo(() => points.map(p => p.actual), [points]);
+  const profile     = useForecastability(symbol, priceDates, priceCloses, sector);
+
   const v            = result?.validation;
   const band         = result?.magnitudeSignal.expectedMovePct ?? 0;
   const dirHits      = v ? Math.round(v.directionHitRate * v.windowCount) : 0;
