@@ -19,6 +19,7 @@ import Terms from "./pages/Terms.tsx";
 import Disclaimer from "./pages/Disclaimer.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
+import Methodology from "./pages/Methodology.tsx";
 import { DisclaimerBar } from "@/components/DisclaimerBar";
 import { LinkageAutoRunner } from "@/components/LinkageAutoRunner";
 
