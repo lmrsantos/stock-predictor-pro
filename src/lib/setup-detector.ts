@@ -15,9 +15,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import {
-  buildProfile, annualizedVol, bucketVol, bucketListing,
-  type Occurrence, type VolBucket, type ListingBucket,
-} from './conditioned-base-rates';
+  buildProfile,
+  annualizedVol,
+  bucketVol,
+  bucketListing,
+  type Occurrence,
+  type VolBucket,
+  type ListingBucket,
+} from "./conditioned-base-rates";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,8 +89,8 @@ function slopeAt(closes: number[], i: number, n: number): number {
   const y = closes.slice(start, i + 1);
   const len = y.length;
   if (len < 3) return 0;
-  const sx = (len - 1) * len / 2;
-  const sxx = (len - 1) * len * (2 * len - 1) / 6;
+  const sx = ((len - 1) * len) / 2;
+  const sxx = ((len - 1) * len * (2 * len - 1)) / 6;
   const sy = y.reduce((a, b) => a + b, 0);
   const sxy = y.reduce((s, v, k) => s + k * v, 0);
   const d = len * sxx - sx * sx;
@@ -99,11 +104,11 @@ function slopeAt(closes: number[], i: number, n: number): number {
 
 export const SETUPS: SetupDefinition[] = [
   {
-    name: 'Compressed pullback in uptrend',
+    name: "Compressed pullback in uptrend",
     rationale:
-      'Volatility compression historically precedes expansion (vol clusters and ' +
-      'mean-reverts). Combined with an intact longer-term uptrend, the expansion ' +
-      'has historically resolved upward slightly more often than chance.',
+      "Volatility compression historically precedes expansion (vol clusters and " +
+      "mean-reverts). Combined with an intact longer-term uptrend, the expansion " +
+      "has historically resolved upward slightly more often than chance.",
     minBars: 220,
     test: (c, i) => {
       const high60 = highest(c, i, 60);
@@ -113,16 +118,16 @@ export const SETUPS: SetupDefinition[] = [
       if (!Number.isFinite(vShort) || !Number.isFinite(vLong) || vLong === 0) return false;
       const compression = vShort / vLong;
       const longSlope = slopeAt(c, i, 200);
-      return drawdown >= 0.15 && drawdown <= 0.40 && compression < 0.70 && longSlope > 0;
+      return drawdown >= 0.15 && drawdown <= 0.4 && compression < 0.7 && longSlope > 0;
     },
   },
   {
-    name: 'Short-term oversold in uptrend',
+    name: "Short-term oversold in uptrend",
     rationale:
-      'Short-horizon reversal is one of the more replicated anomalies: prices that ' +
-      'fall sharply over about a week tend to bounce slightly more often than chance, ' +
-      'attributed to liquidity provision being compensated. Restricted to names whose ' +
-      'longer trend is still up, to avoid catching falling knives.',
+      "Short-horizon reversal is one of the more replicated anomalies: prices that " +
+      "fall sharply over about a week tend to bounce slightly more often than chance, " +
+      "attributed to liquidity provision being compensated. Restricted to names whose " +
+      "longer trend is still up, to avoid catching falling knives.",
     minBars: 220,
     test: (c, i) => {
       if (i < 6) return false;
@@ -132,12 +137,12 @@ export const SETUPS: SetupDefinition[] = [
     },
   },
   {
-    name: 'Breakout from range',
+    name: "Breakout from range",
     rationale:
-      'Time-series momentum: a move above a multi-month high after a period of ' +
-      'range-bound trade has historically continued more often than it reversed, ' +
-      'at horizons of weeks to months. Requires prior contraction to distinguish ' +
-      'a genuine range break from ongoing trend continuation.',
+      "Time-series momentum: a move above a multi-month high after a period of " +
+      "range-bound trade has historically continued more often than it reversed, " +
+      "at horizons of weeks to months. Requires prior contraction to distinguish " +
+      "a genuine range break from ongoing trend continuation.",
     minBars: 140,
     test: (c, i) => {
       if (i < 130) return false;
@@ -149,12 +154,12 @@ export const SETUPS: SetupDefinition[] = [
     },
   },
   {
-    name: 'Trend pullback to moving average',
+    name: "Trend pullback to moving average",
     rationale:
-      'Trend-following logic: in an established uptrend, pullbacks toward a ' +
-      'medium-term moving average have historically been continuation points more ' +
-      'often than reversal points. Weakest of the four — included to test whether ' +
-      'the widely-believed pattern survives measurement.',
+      "Trend-following logic: in an established uptrend, pullbacks toward a " +
+      "medium-term moving average have historically been continuation points more " +
+      "often than reversal points. Weakest of the four — included to test whether " +
+      "the widely-believed pattern survives measurement.",
     minBars: 220,
     test: (c, i) => {
       const ma50 = sma(c, i, 50);
@@ -165,20 +170,18 @@ export const SETUPS: SetupDefinition[] = [
     },
   },
   {
-    name: 'Sector-supported dip',
+    name: "Sector-supported dip",
     rationale:
-      'Cross-sectional: a name drawing down while its own sector composite is ' +
-      'holding up suggests idiosyncratic weakness rather than sector-wide repricing, ' +
-      'which historically mean-reverts more reliably than a broad sector decline.',
+      "Cross-sectional: a name drawing down while its own sector composite is " +
+      "holding up suggests idiosyncratic weakness rather than sector-wide repricing, " +
+      "which historically mean-reverts more reliably than a broad sector decline.",
     minBars: 220,
     test: (c, i, ctx) => {
       if (!ctx.sectorCompositeReturns || i < 20) return false;
       const start = Math.max(0, i - 19);
-      const sectorSum = ctx.sectorCompositeReturns
-        .slice(start, i + 1)
-        .reduce((a, b) => a + b, 0);
+      const sectorSum = ctx.sectorCompositeReturns.slice(start, i + 1).reduce((a, b) => a + b, 0);
       const ownRet20 = (c[i] - c[i - 20]) / c[i - 20];
-      return ownRet20 <= -0.10 && sectorSum > 0;
+      return ownRet20 <= -0.1 && sectorSum > 0;
     },
   },
 ];
@@ -198,8 +201,8 @@ export interface DetectionConfig {
 
 export const DEFAULT_DETECTION: DetectionConfig = {
   horizonDays: 20,
-  cooldownBars: 15,
-  volCuts: { calmMax: 0.28, normalMax: 0.50 },
+  cooldownBars: 25,
+  volCuts: { calmMax: 0.28, normalMax: 0.5 },
 };
 
 /**
@@ -283,14 +286,12 @@ export function detectOccurrencesForUniverse(
  * Note this uses the final bar, where no forward return exists — that is the
  * point: it is the live signal, evaluated against historical base rates.
  */
-export function detectCurrentSetups(
-  series: SymbolSeries,
-  ctx: DetectorContext,
-): { name: string; rationale: string }[] {
+export function detectCurrentSetups(series: SymbolSeries, ctx: DetectorContext): { name: string; rationale: string }[] {
   const i = series.closes.length - 1;
-  return SETUPS
-    .filter(s => i >= s.minBars && s.test(series.closes, i, ctx))
-    .map(s => ({ name: s.name, rationale: s.rationale }));
+  return SETUPS.filter((s) => i >= s.minBars && s.test(series.closes, i, ctx)).map((s) => ({
+    name: s.name,
+    rationale: s.rationale,
+  }));
 }
 
 /**
@@ -312,7 +313,7 @@ export function sampleBaselineReturns(
   stride = 5,
 ): number[] {
   const out: number[] = [];
-  const minBar = Math.min(...SETUPS.map(s => s.minBars));
+  const minBar = Math.min(...SETUPS.map((s) => s.minBars));
 
   for (const series of universe) {
     const { closes } = series;
@@ -341,15 +342,10 @@ export function sampleBaselineReturns(
 
 /** Universe volatilities as of the last bar — feed to deriveVolCuts(). */
 export function universeVolatilities(universe: SymbolSeries[]): number[] {
-  return universe
-    .map(s => annualizedVol(s.closes, 60))
-    .filter(v => Number.isFinite(v) && v > 0);
+  return universe.map((s) => annualizedVol(s.closes, 60)).filter((v) => Number.isFinite(v) && v > 0);
 }
 
 /** Convenience: profile for a symbol as of its last bar. */
-export function profileForSymbol(
-  series: SymbolSeries,
-  volCuts: { calmMax: number; normalMax: number },
-) {
+export function profileForSymbol(series: SymbolSeries, volCuts: { calmMax: number; normalMax: number }) {
   return buildProfile(series.closes, series.listingYears, volCuts);
 }
