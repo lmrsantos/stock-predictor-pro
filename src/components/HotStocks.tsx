@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, TrendingUp, Download } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -6,6 +7,11 @@ import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
+import {
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries,
+  type SymbolBaseRates,
+} from "@/lib/base-rate-pipeline";
+
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
