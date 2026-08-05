@@ -16,10 +16,13 @@ import {
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import { X, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { backtest, type ForecastResult, type BacktestDataPoint } from "@/lib/backtest";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { readCachedLinkages } from "@/lib/run-linkages";
+import { BaseRateSection } from "@/components/BaseRateSection";
+import { useForecastability } from "@/hooks/useForecastability";
 
 interface SymbolDetailModalProps {
   isOpen: boolean;
