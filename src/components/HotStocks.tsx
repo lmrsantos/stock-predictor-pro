@@ -726,7 +726,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                           {excess >= 0 ? "+" : ""}{excess.toFixed(1)}pp vs {br.profile.volBucket}-vol baseline
                         </span></>
                       )}
-                      {" · "}{r.n} occurrences
+                      {" · "}{r.stats?.n ?? 0} occurrences
                       {r.meetsConservativeCriteria && (
                         <span className="ml-1.5 px-1 py-px rounded bg-green-500/15 text-green-600 dark:text-green-400 font-semibold">
                           conservative
