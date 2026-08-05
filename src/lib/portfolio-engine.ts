@@ -447,7 +447,8 @@ export function buildAllocation(
       });
     }
 
-    // Dry powder
+    // Dry powder — deliberately a DIFFERENT vehicle from the preservation
+    // sleeve so the two buckets are never the same instrument twice.
     const dryPct = 10;
     buckets.push({
       name: "Dry Powder",
@@ -455,11 +456,12 @@ export function buildAllocation(
       pct: pct(dryPct),
       amount: amt(dryPct),
       color: "text-sky-400",
-      rationale: "Cash reserved for deployment when NVIDIA earnings clarify the regime. Don't invest this until you have a clear signal.",
+      rationale: "Held in a separate ultra-short sleeve so it stays visibly distinct from the preservation ladder. Historically deployed only after a regime signal confirms.",
       instruments: [
-        { instrument: INSTRUMENTS.BIL, pct: pct(dryPct), amount: amt(dryPct) },
+        { instrument: INSTRUMENTS.SHV, pct: pct(dryPct), amount: amt(dryPct) },
       ],
     });
+
 
     // Equities (minimal)
     if (equityPct > 0) {
