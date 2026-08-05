@@ -538,6 +538,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-end">
+        <Link to="/methodology" target="_blank"
+          className="text-[10px] font-mono text-primary hover:underline">
+          How is this calculated?
+        </Link>
+      </div>
+
       <button onClick={() => discover()} disabled={isScanning}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-all disabled:opacity-70">
         {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
@@ -545,7 +552,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       </button>
 
       {hasScanned && stocks.length > 0 && (
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setFilter("conservative")}
+            className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
+              filter === "conservative"
+                ? "bg-primary text-primary-foreground border-transparent"
+                : "bg-card/50 border-border text-muted-foreground hover:text-foreground"
+            }`}>
+            {baseRatesLoading ? "Conservative only (…)" : `Conservative only (${conservativeCount})`}
+          </button>
+
           <button
             onClick={() => setFilter("hot")}
             className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
