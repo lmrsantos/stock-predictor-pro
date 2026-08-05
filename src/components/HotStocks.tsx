@@ -125,6 +125,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [scanStatus, setScanStatus]   = useState("");
   const [filter, setFilter]           = useState<"all" | "hot">("hot");
   const [detail, setDetail]           = useState<{ symbol: string; sector?: string } | null>(null);
+  const [baseRates, setBaseRates]     = useState<Record<string, SymbolBaseRates | null>>({});
+  const [baseRatesLoading, setBaseRatesLoading] = useState(false);
+  const seriesRef = useRef<Record<string, { dates: string[]; closes: number[]; sector: string }>>({});
   const autoRan = useRef(false);
 
 
