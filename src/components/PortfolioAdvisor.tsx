@@ -177,12 +177,15 @@ function BucketCard({ bucket }: { bucket: AllocationBucket }) {
                     <p className="text-[10px] font-mono text-foreground">{instrument.name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       {instrument.yield && (
-                        <span className="text-[9px] font-mono text-emerald-400">{instrument.yield}% yield</span>
+                        <span className="text-[9px] font-mono text-emerald-400">{instrument.yield}% annual yield</span>
                       )}
                       {instrument.fdic && (
                         <span className="text-[9px] font-mono text-sky-400 px-1 py-0.5 rounded bg-sky-500/10">FDIC</span>
                       )}
-                      <span className="text-[9px] font-mono text-muted-foreground">{instrument.liquidity}</span>
+                      <span className="text-[9px] font-mono text-muted-foreground">
+                        {instrument.liquidity === "locked" ? "locked (term)" : `${instrument.liquidity} liquidity`}
+                      </span>
+
                     </div>
                   </div>
                 </div>
