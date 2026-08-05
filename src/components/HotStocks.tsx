@@ -123,7 +123,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [isScanning, setIsScanning]   = useState(false);
   const [hasScanned, setHasScanned]   = useState(false);
   const [scanStatus, setScanStatus]   = useState("");
-  const [filter, setFilter]           = useState<"all" | "hot">("hot");
+  const [filter, setFilter]           = useState<"all" | "hot" | "conservative">("hot");
   const [detail, setDetail]           = useState<{ symbol: string; sector?: string } | null>(null);
   const [baseRates, setBaseRates]     = useState<Record<string, SymbolBaseRates | null>>({});
   const [baseRatesLoading, setBaseRatesLoading] = useState(false);
