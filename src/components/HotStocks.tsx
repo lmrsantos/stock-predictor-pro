@@ -465,8 +465,40 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
     discover();
   }, [discover]);
 
-  const visible = filter === "hot" ? stocks.filter(s => s.hot) : stocks;
+  // ── Conditioned base rates for every scored symbol ──────────────────────────
+  useEffect(() => {
+    if (isScanning || !hasScanned || stocks.length === 0) return;
+    let cancelled = false;
+    setBaseRatesLoading(true);
+    (async () => {
+      try {
+        const pipeline = await runBaseRatePipeline();
+        const out: Record<string, SymbolBaseRates | null> = {};
+        for (const s of stocks) {
+          const raw = seriesRef.current[s.symbol];
+          const series = raw
+            ? makeSymbolSeries(s.symbol, raw.dates, raw.closes, raw.sector)
+            : null;
+          out[s.symbol] = baseRatesForSymbol(pipeline, s.symbol, series);
+        }
+        if (!cancelled) setBaseRates(out);
+      } catch (e) {
+        console.warn("base-rate pipeline failed", e);
+      } finally {
+        if (!cancelled) setBaseRatesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isScanning, hasScanned, stocks]);
+
+  const conservativeCount = stocks.filter(s => baseRates[s.symbol]?.anyConservative).length;
+
+  const visible =
+    filter === "hot"          ? stocks.filter(s => s.hot)
+    : filter === "conservative" ? stocks.filter(s => baseRates[s.symbol]?.anyConservative)
+    : stocks;
   const hotCount = stocks.filter(s => s.hot).length;
+
 
   const exportToExcel = useCallback(() => {
     if (!visible.length) return;
