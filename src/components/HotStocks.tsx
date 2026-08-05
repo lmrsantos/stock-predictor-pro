@@ -704,7 +704,44 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 <p className={`text-[10px] font-mono leading-relaxed pt-0.5 ${stock.hot ? "text-foreground/80" : "text-muted-foreground"}`}>
                   {stock.hot ? "✓ " : "· "}{stock.reason}
                 </p>
+                {(() => {
+                  const br = baseRates[stock.symbol];
+                  if (!br) return null;
+                  const b = br.best;
+                  if (!b) {
+                    return (
+                      <p className="text-[10px] font-mono text-muted-foreground pt-0.5">
+                        No historical setup match · {br.profile.volBucket} volatility
+                      </p>
+                    );
+                  }
+                  const r = b.rate;
+                  const excess = r.excessHitRatePp;
+                  const thin = r.symbolOccurrences < 10;
+                  return (
+                    <p className="text-[10px] font-mono text-muted-foreground pt-0.5">
+                      <span className="text-foreground/80">{b.name}</span>
+                      {excess != null && (
+                        <> · <span className={excess >= 5 ? "text-green-600 dark:text-green-400" : ""}>
+                          {excess >= 0 ? "+" : ""}{excess.toFixed(1)}pp vs {br.profile.volBucket}-vol baseline
+                        </span></>
+                      )}
+                      {" · "}{r.n} occurrences
+                      {r.meetsConservativeCriteria && (
+                        <span className="ml-1.5 px-1 py-px rounded bg-green-500/15 text-green-600 dark:text-green-400 font-semibold">
+                          conservative
+                        </span>
+                      )}
+                      {thin && (
+                        <span className="ml-1.5 opacity-80">
+                          only {r.symbolOccurrences} for {stock.symbol} itself — too few to mean anything
+                        </span>
+                      )}
+                    </p>
+                  );
+                })()}
               </div>
+
             </button>
           ))}
           <p className="text-[9px] text-muted-foreground text-center mt-2 leading-relaxed">
