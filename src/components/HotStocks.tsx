@@ -156,6 +156,18 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         qs: quickScore(s.series.map(p => p.close)),
       }));
 
+      // Keep raw series around so the base-rate pipeline can profile every row
+      const seriesMap: Record<string, { dates: string[]; closes: number[]; sector: string }> = {};
+      for (const s of symbolData) {
+        seriesMap[s.symbol] = {
+          dates: s.series.map(p => p.date),
+          closes: s.series.map(p => p.close),
+          sector: s.sector,
+        };
+      }
+      seriesRef.current = seriesMap;
+
+
       const preRanked = allScored
         .filter(s => s.qs !== null && s.qs.recentReturn > -0.05)
         .sort((a, b) => {
