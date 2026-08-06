@@ -170,7 +170,9 @@ export function bucketVol(vol: number, cuts = VOL_CUTS): VolBucket {
   return 'volatile';
 }
 
-export function bucketListing(years: number): ListingBucket {
+/** null in, null out — an unknown listing age must not be bucketed. */
+export function bucketListing(years: number | null | undefined): ListingBucket | null {
+  if (years == null || !Number.isFinite(years)) return null;
   if (years >= LISTING_CUTS.seasonedMin) return 'seasoned';
   if (years >= LISTING_CUTS.establishedMin) return 'established';
   return 'young';
@@ -192,7 +194,7 @@ export function deriveVolCuts(universeVols: number[]): typeof VOL_CUTS {
 
 export function buildProfile(
   closes: number[],
-  listingYears: number,
+  listingYears: number | null,
   cuts = VOL_CUTS,
 ): ConditioningProfile {
   const vol = annualizedVol(closes);
@@ -209,6 +211,9 @@ export function buildProfile(
     note = 'High volatility. Forecast direction is materially less reliable than for calm names.';
   } else if (listingBucket === 'young') {
     note = 'Short listing history. Limited data and no established price regime to fit against.';
+  } else if (listingBucket === null) {
+    note = `Mid-range volatility. Listing age is unknown for this symbol, so the ` +
+           `listing dimension is not used in its conditioning.`;
   } else {
     note = 'Mid-range volatility and listing history. Typical forecastability.';
   }
@@ -216,12 +221,14 @@ export function buildProfile(
   return {
     annualizedVol: vol,
     volBucket,
-    listingYears,
+    listingYears: listingYears == null || !Number.isFinite(listingYears) ? null : listingYears,
     listingBucket,
-    cellKey: `${volBucket}|${listingBucket}`,
+    // Listing age unknown → the cell key collapses to the volatility bucket alone.
+    cellKey: listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
     forecastabilityNote: note,
   };
 }
+
 
 // ─── Statistics ───────────────────────────────────────────────────────────────
 
