@@ -554,17 +554,21 @@ export default function Landing() {
               ["Terminal", "/terminal"],
               ["Linkage Engine", "/linkages"],
               ["Sector Backtest", "/sector-backtest"],
+              ["IPO Intelligence", "/ipo-intelligence"],
+              ["Portfolio", "/portfolio"],
               ["Pricing", "/pricing"],
             ]}
           />
           <FooterCol
             title="Company"
             links={[
+              ["Methodology", "/methodology"],
               ["Terms", "/terms"],
               ["Privacy", "/privacy"],
               ["Disclaimer", "/disclaimer"],
             ]}
           />
+
           <FooterCol
             title="Contact"
             links={[["contact@quant-forecast.com", "mailto:contact@quant-forecast.com"]]}
