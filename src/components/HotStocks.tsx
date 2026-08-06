@@ -562,7 +562,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 ? "bg-primary text-primary-foreground border-transparent"
                 : "bg-card/50 border-border text-muted-foreground hover:text-foreground"
             }`}>
-            {baseRatesLoading ? "Conservative only (…)" : `Conservative only (${conservativeCount})`}
+            {baseRatesLoading ? "Strong evidence only (…)" : `Strong evidence only (${conservativeCount})`}
           </button>
 
           <button
