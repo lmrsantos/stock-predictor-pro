@@ -438,11 +438,12 @@ export default function Landing() {
               From ticker to thesis in under a minute.
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { n: "01", t: "Search any symbol", b: "Pull a year of daily closes, fundamentals, and analyst consensus in one query." },
-              { n: "02", t: "Read the regression", b: "R², slope, drift, probability cones — every metric explains itself with a tooltip." },
-              { n: "03", t: "Stress-test the thesis", b: "Backtest the symbol, backtest the sector, ask QuantAgent what could go wrong." },
+              { n: "01", t: "Search any symbol", b: "Daily closes, fundamentals, analyst consensus — plus the live pre-market or after-hours print when the session calls for it." },
+              { n: "02", t: "Read the forecast", b: "Shrunk regression slope, 1σ/2σ cones, cycle pivots and nearby Fibonacci levels. Every metric explains itself." },
+              { n: "03", t: "Check the receipts", b: "Out-of-sample model fit and conditioned base rates tell you how often this setup actually worked before." },
+              { n: "04", t: "Position it", b: "Sector linkages, Hot Stocks tilts and the liquidity-aware Portfolio Advisor turn the thesis into an allocation." },
             ].map((s) => (
               <div key={s.n} className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
                 <div className="text-xs font-mono text-indigo-300 mb-4">{s.n}</div>
