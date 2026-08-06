@@ -24,9 +24,12 @@ export type ListingBucket = 'seasoned' | 'established' | 'young';
 export interface ConditioningProfile {
   annualizedVol: number;
   volBucket: VolBucket;
-  listingYears: number;
-  listingBucket: ListingBucket;
-  /** Combined cell key, e.g. "calm|seasoned". */
+  /** Years since the real listing (IPO) date. null when unknown — NEVER inferred
+   *  from how much price history happens to be available. */
+  listingYears: number | null;
+  /** null when listing age is unknown; the listing dimension is then skipped. */
+  listingBucket: ListingBucket | null;
+  /** Combined cell key, e.g. "calm|seasoned", or just "calm" when listing age is unknown. */
   cellKey: string;
   /** Plain-language note on how forecastable this name is likely to be. */
   forecastabilityNote: string;
@@ -40,8 +43,9 @@ export interface Occurrence {
   forwardReturn: number;
   cellKey: string;
   volBucket: VolBucket;
-  listingBucket: ListingBucket;
+  listingBucket: ListingBucket | null;
 }
+
 
 export interface BaseRateStats {
   n: number;
