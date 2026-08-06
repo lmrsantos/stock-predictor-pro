@@ -8,6 +8,7 @@ import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 import { FeatureGate } from "@/components/FeatureGate";
+import { useEntitlement } from "@/hooks/useEntitlement";
 import {
   runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchIpoDates,
   type SymbolBaseRates,
@@ -125,6 +126,11 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   const [hasScanned, setHasScanned]   = useState(false);
   const [scanStatus, setScanStatus]   = useState("");
   const [filter, setFilter]           = useState<"all" | "hot" | "conservative">("hot");
+  const { can: canFeature, isLoading: entLoading } = useEntitlement();
+  const allTiers = canFeature("hot_stocks_all_tiers");
+  useEffect(() => {
+    if (!entLoading && !allTiers) setFilter("conservative");
+  }, [entLoading, allTiers]);
   const [detail, setDetail]           = useState<{ symbol: string; sector?: string } | null>(null);
   const [baseRates, setBaseRates]     = useState<Record<string, SymbolBaseRates | null>>({});
   const [baseRatesLoading, setBaseRatesLoading] = useState(false);
