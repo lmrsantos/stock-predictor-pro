@@ -542,10 +542,19 @@ Search for any relevant current market news before responding.`;
             <h2 className="text-lg font-mono font-bold text-foreground">Illustrative Model Output</h2>
             <p className="text-[10px] font-mono text-muted-foreground mt-0.5">Educational only — not a recommendation.</p>
           </div>
-          <button onClick={reset} className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors">
-            <RotateCcw className="w-3 h-3" />
-            Start over
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => exportRecommendationToExcel(recommendation, macroCtx, advisorResponse)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-card/60 text-[10px] font-mono text-foreground hover:bg-accent transition-colors"
+            >
+              <FileSpreadsheet className="w-3 h-3" />
+              Export to Excel
+            </button>
+            <button onClick={reset} className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors">
+              <RotateCcw className="w-3 h-3" />
+              Start over
+            </button>
+          </div>
         </div>
 
         {/* Regime */}
