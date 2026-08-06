@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.fetch-extended-hours]
 verify_jwt = false
+
+[functions.fetch-symbol-metadata]
+verify_jwt = false

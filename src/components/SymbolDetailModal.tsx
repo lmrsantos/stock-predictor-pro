@@ -228,7 +228,7 @@ export function SymbolDetailModal({
                     {profile && (
                       <span className="text-muted-foreground"> · {profile.forecastabilityNote.split(/(?<=\.)\s/)[0]}</span>
                     )}
-                    <Link to="/methodology" target="_blank" className="text-primary hover:underline ml-2">
+                    <Link to="/methodology" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-2">
                       How is this calculated?
                     </Link>
                   </p>

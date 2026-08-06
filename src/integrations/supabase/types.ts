@@ -488,6 +488,24 @@ export type Database = {
         }
         Relationships: []
       }
+      symbol_metadata: {
+        Row: {
+          ipo_date: string | null
+          ticker: string
+          updated_at: string
+        }
+        Insert: {
+          ipo_date?: string | null
+          ticker: string
+          updated_at?: string
+        }
+        Update: {
+          ipo_date?: string | null
+          ticker?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       usage_counters: {
         Row: {
           count: number

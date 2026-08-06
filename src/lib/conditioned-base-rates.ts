@@ -24,9 +24,12 @@ export type ListingBucket = 'seasoned' | 'established' | 'young';
 export interface ConditioningProfile {
   annualizedVol: number;
   volBucket: VolBucket;
-  listingYears: number;
-  listingBucket: ListingBucket;
-  /** Combined cell key, e.g. "calm|seasoned". */
+  /** Years since the real listing (IPO) date. null when unknown — NEVER inferred
+   *  from how much price history happens to be available. */
+  listingYears: number | null;
+  /** null when listing age is unknown; the listing dimension is then skipped. */
+  listingBucket: ListingBucket | null;
+  /** Combined cell key, e.g. "calm|seasoned", or just "calm" when listing age is unknown. */
   cellKey: string;
   /** Plain-language note on how forecastable this name is likely to be. */
   forecastabilityNote: string;
@@ -40,8 +43,9 @@ export interface Occurrence {
   forwardReturn: number;
   cellKey: string;
   volBucket: VolBucket;
-  listingBucket: ListingBucket;
+  listingBucket: ListingBucket | null;
 }
+
 
 export interface BaseRateStats {
   n: number;
@@ -166,7 +170,9 @@ export function bucketVol(vol: number, cuts = VOL_CUTS): VolBucket {
   return 'volatile';
 }
 
-export function bucketListing(years: number): ListingBucket {
+/** null in, null out — an unknown listing age must not be bucketed. */
+export function bucketListing(years: number | null | undefined): ListingBucket | null {
+  if (years == null || !Number.isFinite(years)) return null;
   if (years >= LISTING_CUTS.seasonedMin) return 'seasoned';
   if (years >= LISTING_CUTS.establishedMin) return 'established';
   return 'young';
@@ -188,7 +194,7 @@ export function deriveVolCuts(universeVols: number[]): typeof VOL_CUTS {
 
 export function buildProfile(
   closes: number[],
-  listingYears: number,
+  listingYears: number | null,
   cuts = VOL_CUTS,
 ): ConditioningProfile {
   const vol = annualizedVol(closes);
@@ -205,6 +211,9 @@ export function buildProfile(
     note = 'High volatility. Forecast direction is materially less reliable than for calm names.';
   } else if (listingBucket === 'young') {
     note = 'Short listing history. Limited data and no established price regime to fit against.';
+  } else if (listingBucket === null) {
+    note = `Mid-range volatility. Listing age is unknown for this symbol, so the ` +
+           `listing dimension is not used in its conditioning.`;
   } else {
     note = 'Mid-range volatility and listing history. Typical forecastability.';
   }
@@ -212,12 +221,14 @@ export function buildProfile(
   return {
     annualizedVol: vol,
     volBucket,
-    listingYears,
+    listingYears: listingYears == null || !Number.isFinite(listingYears) ? null : listingYears,
     listingBucket,
-    cellKey: `${volBucket}|${listingBucket}`,
+    // Listing age unknown → the cell key collapses to the volatility bucket alone.
+    cellKey: listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
     forecastabilityNote: note,
   };
 }
+
 
 // ─── Statistics ───────────────────────────────────────────────────────────────
 
@@ -312,16 +323,20 @@ export function resolveConditionedBaseRate(
   if (exact.length >= MIN_N_EXACT) {
     stats = computeStats(exact.map(o => o.forwardReturn));
     source = 'exact';
-    sourceNote =
-      `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility, ` +
-      `${profile.listingBucket} names — the same population as this stock.`;
+    sourceNote = profile.listingBucket
+      ? `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility, ` +
+        `${profile.listingBucket} names — the same population as this stock.`
+      : `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility names ` +
+        `— the same population as this stock. Listing age is unknown here, so it is not ` +
+        `used as a conditioning dimension.`;
   } else if (volOnly.length >= MIN_N_VOL_ONLY) {
     stats = computeStats(volOnly.map(o => o.forwardReturn));
     source = 'volatility_only';
     sourceNote =
-      `Too few occurrences in the exact ${profile.volBucket}/${profile.listingBucket} cell ` +
+      `Too few occurrences in the exact ${profile.cellKey} cell ` +
       `(${exact.length}). Falling back to all ${profile.volBucket}-volatility names ` +
       `(${volOnly.length} occurrences). Listing age is not controlled for here.`;
+
   } else if (universeStats) {
     stats = universeStats;
     source = 'universe';

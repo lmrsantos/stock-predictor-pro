@@ -30,8 +30,9 @@ export interface SymbolSeries {
   symbol: string;
   dates: string[];
   closes: number[];
-  /** Years of listing history available (from first trade date, not array length). */
-  listingYears: number;
+  /** Years since the real listing (IPO) date, or null when unknown.
+   *  NEVER derived from how many price bars are available. */
+  listingYears: number | null;
   sector: string;
 }
 
@@ -240,16 +241,18 @@ export function detectOccurrencesForSymbol(
       if (!Number.isFinite(volNow)) continue;
       const volBucket: VolBucket = bucketVol(volNow, cfg.volCuts);
 
-      // Listing age as of this bar: total listing years minus the time remaining
+      // Listing age as of this bar: total listing years minus the time remaining.
+      // null when the listing date is unknown — the dimension is then skipped.
       const yearsRemaining = (closes.length - 1 - i) / 252;
-      const listingYearsAtBar = Math.max(0, series.listingYears - yearsRemaining);
-      const listingBucket: ListingBucket = bucketListing(listingYearsAtBar);
+      const listingBucket: ListingBucket | null = series.listingYears == null
+        ? null
+        : bucketListing(Math.max(0, series.listingYears - yearsRemaining));
 
       occurrences.push({
         symbol: series.symbol,
         barIdx: i,
         forwardReturn,
-        cellKey: `${volBucket}|${listingBucket}`,
+        cellKey: listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
         volBucket,
         listingBucket,
       });
@@ -329,6 +332,7 @@ export function sampleBaselineReturns(
         if (!Number.isFinite(v) || bucketVol(v, cfg.volCuts) !== filter.volBucket) continue;
       }
       if (filter?.listingBucket) {
+        if (series.listingYears == null) continue;
         const yearsRemaining = (closes.length - 1 - i) / 252;
         const yrs = Math.max(0, series.listingYears - yearsRemaining);
         if (bucketListing(yrs) !== filter.listingBucket) continue;
