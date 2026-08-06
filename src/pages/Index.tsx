@@ -395,7 +395,7 @@ const Index = () => {
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             onClick={() => setShowBacktest(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
           >
             <FlaskConical className="w-4 h-4" />
             Symbol Backtest
@@ -430,7 +430,7 @@ const Index = () => {
           </button>
           <Link
             to="/linkages"
-            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity shadow-[0_0_12px_rgba(139,92,246,0.35)]"
+            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
           >
             <Network className="w-4 h-4" />
             Linkage Engine
@@ -450,7 +450,7 @@ const Index = () => {
             onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               activeView === "advisor"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-accent text-foreground"
                 : "bg-secondary text-secondary-foreground hover:bg-accent"
             }`}
           >
