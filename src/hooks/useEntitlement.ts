@@ -20,7 +20,7 @@ const REQUIRED: Record<Feature, Tier> = {
   sector_backtest: "pro",
   hot_stocks_all_tiers: "pro",
   cycle_analysis: "pro",
-  quant_agent: "free",
+  quant_agent: "pro",
   portfolio_advisor: "pro",
   csv_export: "pro",
   custom_forecast: "elite",
