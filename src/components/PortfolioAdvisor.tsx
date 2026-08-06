@@ -351,6 +351,7 @@ Search for any relevant current market news before responding.`;
           action: "get_analysis",
           macroContext: macroCtx,
           profile,
+          regime: recommendation?.regime,
           message: msg,
           history: newHistory.slice(-6),
         },
