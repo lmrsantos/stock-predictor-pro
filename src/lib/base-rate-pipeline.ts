@@ -71,6 +71,9 @@ export interface SymbolBaseRates {
   best: MatchedBaseRate | null;
   /** True when at least one matching setup passes the conservative gate. */
   anyConservative: boolean;
+  /** Total setup occurrences detected across the entire universe. Zero means the
+   *  detector found nothing anywhere — usually a price-history depth problem. */
+  universeOccurrences: number;
 }
 
 export interface PipelineProgress {
@@ -100,13 +103,53 @@ function yearsSince(dateStr: string): number {
   return Math.max(0, (Date.now() - t) / (365.25 * 24 * 3600 * 1000));
 }
 
+// ─── Listing dates (real IPO dates, never inferred from data depth) ───────────
+
+const ipoDateCache = new Map<string, string | null>();
+
+/**
+ * Real listing dates from the `symbol_metadata` cache, topped up by the
+ * `fetch-symbol-metadata` edge function (FMP `ipoDate`, refreshed monthly).
+ * Symbols that cannot be resolved stay `null` — listing age is then unknown and
+ * the listing dimension is skipped. It is NEVER derived from price history.
+ */
+export async function fetchIpoDates(tickers: string[]): Promise<Record<string, string | null>> {
+  const wanted = [...new Set(tickers.map(t => t.toUpperCase()))];
+  const missing = wanted.filter(t => !ipoDateCache.has(t));
+
+  if (missing.length) {
+    try {
+      const { data } = await supabase.functions.invoke("fetch-symbol-metadata", {
+        body: { tickers: missing },
+      });
+      const map = (data?.ipoDates ?? {}) as Record<string, string | null>;
+      for (const t of missing) ipoDateCache.set(t, map[t] ?? null);
+    } catch {
+      for (const t of missing) ipoDateCache.set(t, null);
+    }
+  }
+
+  const out: Record<string, string | null> = {};
+  for (const t of wanted) out[t] = ipoDateCache.get(t) ?? null;
+  return out;
+}
+
+/** Listing age in years for one symbol, or null when its IPO date is unknown. */
+export async function fetchListingYears(symbol: string): Promise<number | null> {
+  const map = await fetchIpoDates([symbol]);
+  const d = map[symbol.toUpperCase()];
+  return d ? yearsSince(d) : null;
+}
+
 /** Build a SymbolSeries from a raw close series. listingYears comes from the
- *  earliest available price date. */
+ *  real IPO date when known, and is null otherwise — never from data depth. */
 export function makeSymbolSeries(
   symbol: string,
   dates: string[],
   closes: number[],
   sector?: string | null,
+  ipoDate?: string | null,
+  listingYears?: number | null,
 ): SymbolSeries {
   const cleanDates: string[] = [];
   const cleanCloses: number[] = [];
@@ -120,7 +163,11 @@ export function makeSymbolSeries(
     symbol,
     dates: cleanDates,
     closes: cleanCloses,
-    listingYears: cleanDates.length ? yearsSince(cleanDates[0]) : 0,
+    listingYears: listingYears != null
+      ? listingYears
+      : ipoDate
+        ? yearsSince(ipoDate)
+        : null,
     sector: sector || primarySectorOf(symbol) || "Unclassified",
   };
 }
@@ -181,10 +228,13 @@ export async function runBaseRatePipeline(
 
     onProgress?.({ stage: "compute", message: "Detecting setups and measuring base rates…" });
 
+    // Real listing dates for the universe (unknown ones stay null)
+    const ipoDates = await fetchIpoDates([...raw.keys()]);
+
     const universe: SymbolSeries[] = [];
     const seriesBySymbol: Record<string, SymbolSeries> = {};
     for (const [sym, s] of raw) {
-      const built = makeSymbolSeries(sym, s.dates, s.closes);
+      const built = makeSymbolSeries(sym, s.dates, s.closes, null, ipoDates[sym] ?? null);
       if (built.closes.length < 60) continue;
       universe.push(built);
       seriesBySymbol[sym] = built;
@@ -281,6 +331,8 @@ export function baseRatesForSymbol(
     matches,
     best,
     anyConservative: matches.some(m => m.rate.meetsConservativeCriteria),
+    universeOccurrences: Object.values(pipeline.occurrences)
+      .reduce((sum, occs) => sum + occs.length, 0),
   };
 }
 
