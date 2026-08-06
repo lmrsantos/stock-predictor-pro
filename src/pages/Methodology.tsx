@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+
 import {
   runBaseRatePipeline, setupBucketTable, SETUPS,
   type BaseRatePipeline, type SetupBucketRow,
