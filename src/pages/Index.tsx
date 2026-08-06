@@ -29,6 +29,7 @@ import {
 
 import { QuantAgent } from "@/components/QuantAgent";
 import { QuantAgentGate } from "@/components/QuantAgentGate";
+import { FeatureGate } from "@/components/FeatureGate";
 
 import { BacktestModal } from "@/components/BacktestModal";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
@@ -547,7 +548,9 @@ const Index = () => {
             </div>
           </div>
         ) : activeView === "advisor" ? (
-          <PortfolioAdvisor />
+          <FeatureGate feature="portfolio_advisor">
+            <PortfolioAdvisor />
+          </FeatureGate>
         ) : (
           <>
             <RegressionStatsBar

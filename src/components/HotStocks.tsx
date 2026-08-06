@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
+import { FeatureGate } from "@/components/FeatureGate";
 import {
   runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchIpoDates,
   type SymbolBaseRates,
@@ -565,6 +566,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
             {baseRatesLoading ? "Strong evidence only (…)" : `Strong evidence only (${conservativeCount})`}
           </button>
 
+          <FeatureGate feature="hot_stocks_all_tiers" compact label="All tiers">
           <button
             onClick={() => setFilter("hot")}
             className={`flex-1 px-2 py-1 rounded-md text-[11px] font-semibold border transition-all ${
@@ -583,16 +585,19 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
             }`}>
             All results ({stocks.length})
           </button>
+          </FeatureGate>
         </div>
       )}
 
       {hasScanned && visible.length > 0 && !isScanning && (
+        <FeatureGate feature="csv_export" compact label="Export to Excel">
         <button
           onClick={exportToExcel}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all">
           <Download className="w-3.5 h-3.5" />
           Export to Excel ({visible.length} rows)
         </button>
+        </FeatureGate>
       )}
 
       {isScanning && (
