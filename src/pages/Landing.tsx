@@ -164,21 +164,23 @@ export default function Landing() {
         <div className="relative max-w-7xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-white/70 mb-8">
             <Sparkles className="w-3 h-3 text-indigo-300" />
-            Cross-Sector Linkage Engine now live
+            New: base-rate evidence &amp; out-of-sample scoring
           </div>
           <h1
             className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 max-w-4xl mx-auto"
             style={{ fontFamily: "'Sora',sans-serif" }}
           >
-            The quant terminal for{" "}
+            Forecasts you can{" "}
             <span className="bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-sky-300 bg-clip-text text-transparent">
-              serious investors.
+              actually audit.
             </span>
           </h1>
           <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Regression forecasts, probability cones, sector backtests, and a lead-lag
-            linkage graph — the same toolkit desks pay $2k/month for, reimagined for you.
+            Regression cones, out-of-sample backtests, conditioned base rates, a lead-lag
+            sector linkage graph, and an AI quant that drives it all — the toolkit desks
+            pay $2k/month for, with the scorecard attached.
           </p>
+
           <div className="flex items-center justify-center gap-3 mb-16">
             <Link
               to={user ? "/terminal" : "/auth"}
