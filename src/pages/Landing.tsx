@@ -237,8 +237,8 @@ export default function Landing() {
               One terminal. Every quant workflow.
             </h2>
             <p className="text-white/60 text-lg">
-              Built by traders who got tired of stitching together five tools.
-              Everything you need to form, test, and monitor a thesis.
+              Forecast it, prove it out-of-sample, check the historical base rate, then
+              size it. Nine modules, one context — no spreadsheet stitching.
             </p>
           </div>
 
@@ -246,43 +246,139 @@ export default function Landing() {
             <FeatureCard
               icon={<LineChart className="w-5 h-5" />}
               title="Regression Forecasts"
-              body="Linear regression with 1σ / 2σ probability cones and risk-adjusted bands. Any ticker, any horizon."
+              body="Adaptive slope-shrink regression with 1σ / 2σ probability cones and mean-reversion pull — so trends aren't blindly extrapolated into a reversal."
               accent="from-indigo-500/20 to-transparent"
+            />
+            <FeatureCard
+              icon={<Gauge className="w-5 h-5" />}
+              title="Out-of-Sample Backtest"
+              body="Rolling-window holdout: the model is cut off 30 bars back and forecasts blind, then scored against the real price. Model fit /100, honestly earned."
+              accent="from-sky-500/20 to-transparent"
+              badge="Rebuilt"
+            />
+            <FeatureCard
+              icon={<Scale className="w-5 h-5" />}
+              title="Base-Rate Evidence"
+              body="Every setup is compared to its volatility-bucket baseline. You see the excess hit rate and sample size — not a green arrow with no denominator."
+              accent="from-emerald-500/20 to-transparent"
+              badge="New"
             />
             <FeatureCard
               icon={<Network className="w-5 h-5" />}
               title="Linkage Engine"
-              body="22 economically-motivated lead-lag pairs, BH-corrected & split-half validated. See what moves what."
+              body="22 economically-motivated lead-lag pairs, BH-corrected & split-half validated. See which sector moves first — and what usually follows."
               accent="from-fuchsia-500/20 to-transparent"
               badge="Signature"
             />
             <FeatureCard
+              icon={<Waves className="w-5 h-5" />}
+              title="Cycle & Fibonacci Levels"
+              body="Structural pivot detection maps real peaks and troughs, then projects the next support and resistance band with nearby retracement levels."
+              accent="from-violet-500/20 to-transparent"
+            />
+            <FeatureCard
               icon={<Layers className="w-5 h-5" />}
               title="Sector Backtest"
-              body="13 curated sectors, 227 symbols, one-year walk-forward. Find the regime before it finds you."
-              accent="from-sky-500/20 to-transparent"
+              body="13 curated sectors, 227 symbols, walk-forward scored. Find the regime before it finds your portfolio."
+              accent="from-cyan-500/20 to-transparent"
             />
             <FeatureCard
               icon={<Zap className="w-5 h-5" />}
-              title="Hot Stocks"
-              body="Momentum + linkage tilt across three risk profiles. Refreshed on demand."
-              accent="from-emerald-500/20 to-transparent"
+              title="Hot Stocks Screener"
+              body="QuantPulse momentum + linkage tilt across three risk profiles, with a 'Strong evidence only' filter that hides anything the base rates don't support."
+              accent="from-amber-500/20 to-transparent"
             />
             <FeatureCard
               icon={<Bot className="w-5 h-5" />}
               title="QuantAgent"
-              body="A senior-quant assistant that reads your context — fundamentals, regression, linkages — and answers plainly."
-              accent="from-amber-500/20 to-transparent"
+              body="A senior-quant assistant grounded on your live chart, fundamentals and macro regime — and it can navigate the terminal for you."
+              accent="from-rose-500/20 to-transparent"
             />
             <FeatureCard
               icon={<BarChart3 className="w-5 h-5" />}
-              title="Portfolio Insights"
-              body="Track holdings, project 30D and 1Y trajectories, get risk breakdowns — same math as the charts."
-              accent="from-rose-500/20 to-transparent"
+              title="Portfolio Advisor"
+              body="Liquidity-aware allocations with no duplicated tickers, 30D and 1Y trajectory projections, and clearly labeled annual yield vs. liquidity."
+              accent="from-teal-500/20 to-transparent"
+            />
+            <FeatureCard
+              icon={<Rocket className="w-5 h-5" />}
+              title="IPO Intelligence"
+              body="Fresh listings scored on lockup risk, float, and dilution pressure — the part of the market where price history can't help you."
+              accent="from-orange-500/20 to-transparent"
+            />
+            <FeatureCard
+              icon={<Clock className="w-5 h-5" />}
+              title="Extended-Hours Prices"
+              body="Pre-market and after-hours prints appear next to the last close automatically, Yahoo-style, based on the session you're actually in."
+              accent="from-lime-500/20 to-transparent"
+            />
+            <FeatureCard
+              icon={<BookOpen className="w-5 h-5" />}
+              title="Explains Itself"
+              body="Every metric ships with a 'what is it / how to read it' tooltip, plus a full methodology page. Learn the math while you use it."
+              accent="from-indigo-500/20 to-transparent"
             />
           </div>
         </div>
       </section>
+
+      {/* ─── EVIDENCE / HONESTY SPOTLIGHT ────────────────────── */}
+      <section id="evidence" className="py-32 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/30 via-transparent to-transparent pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs text-emerald-200 mb-6">
+              <Scale className="w-3 h-3" />
+              Proof, not promises
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+              Most tools show you a forecast. We show you its track record.
+            </h2>
+            <p className="text-white/70 text-lg leading-relaxed mb-8">
+              Every projection is scored the hard way: the model is blinded to the most
+              recent 30 bars, forced to forecast, and graded against what actually
+              happened. When the fit is weak, we cap the confidence instead of dressing
+              it up.
+            </p>
+            <ul className="space-y-3 mb-8">
+              {[
+                "True out-of-sample holdout — no lookahead, ever",
+                "Conditioned base rates vs. volatility-bucket baselines",
+                "Excess hit rate and sample size shown on every setup",
+                "Confidence gate caps the score when calibration error is high",
+              ].map((f) => (
+                <li key={f} className="flex items-start gap-3 text-white/80">
+                  <Check className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" /> {f}
+                </li>
+              ))}
+            </ul>
+            <a
+              href="/methodology"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#07071a] font-medium hover:bg-white/90"
+            >
+              Read the methodology <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { k: "Blind horizon", v: "30 bars", d: "Model sees nothing after the cutoff" },
+              { k: "Linkage pairs", v: "22", d: "BH-corrected & split-half validated" },
+              { k: "Backtest universe", v: "227 symbols", d: "Across 13 curated sectors" },
+              { k: "Evidence gate", v: "+5pp", d: "Minimum excess over baseline" },
+            ].map((s) => (
+              <div key={s.k} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2">{s.k}</div>
+                <div className="text-2xl font-bold mb-1">{s.v}</div>
+                <p className="text-white/50 text-xs leading-relaxed">{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
 
       {/* ─── LINKAGE SPOTLIGHT ───────────────────────────────── */}
       <section id="linkages" className="py-32 border-t border-white/5 relative overflow-hidden">
