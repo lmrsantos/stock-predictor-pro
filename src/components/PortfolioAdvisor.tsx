@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ChevronRight, RotateCcw, TrendingUp, Shield, Coins, Zap } from "lucide-react";
+import { Loader2, ChevronRight, RotateCcw, TrendingUp, Shield, Coins, Zap, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   classifyRegime,
   buildAllocation,
@@ -11,6 +12,76 @@ import {
   type AllocationBucket,
   type RegimeAssessment,
 } from "@/lib/portfolio-engine";
+
+// ─── Excel export ─────────────────────────────────────────────────────────────
+
+function exportRecommendationToExcel(
+  rec: PortfolioRecommendation,
+  macro: Record<string, unknown> | null,
+  analysis: string,
+) {
+  const wb = XLSX.utils.book_new();
+
+  // Allocation sheet
+  const allocRows: (string | number | null)[][] = [
+    ["Bucket", "Bucket %", "Bucket amount", "Ticker", "Instrument", "Asset class", "Weight %", "Amount", "Rationale"],
+  ];
+  rec.buckets.forEach(b => {
+    b.instruments.forEach((it, i) => {
+      allocRows.push([
+        i === 0 ? `${b.emoji} ${b.name}` : "",
+        i === 0 ? b.pct : "",
+        i === 0 ? (b.amount ?? "") : "",
+        it.instrument.ticker,
+        it.instrument.name,
+        it.instrument.assetClass,
+        it.pct,
+        it.amount ?? "",
+        it.instrument.rationale,
+      ]);
+    });
+    allocRows.push(["", "", "", "", "", "", "", "", b.rationale]);
+  });
+  allocRows.push([]);
+  allocRows.push(["TOTAL", rec.totalPct, rec.profile.amount ?? ""]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allocRows), "Allocation");
+
+  // Profile + regime sheet
+  const p = rec.profile;
+  const summaryRows: (string | number | null)[][] = [
+    ["QuantForecast — Illustrative Portfolio Model"],
+    ["Generated", rec.generatedAt],
+    [],
+    ["Investor profile"],
+    ["Horizon", String(p.horizon ?? "")],
+    ["Risk behavior", String(p.riskBehavior ?? "")],
+    ["Income needed", String(p.incomeNeeded ?? "")],
+    ["Tax advantaged", String(p.taxAdvantaged ?? "")],
+    ["Can lock funds", String(p.canLockFunds ?? "")],
+    ["Amount (illustration)", p.amount ?? ""],
+    [],
+    ["Regime", rec.regime.label ?? rec.regime.regime],
+    ["Confidence", rec.regime.confidence ?? ""],
+    ["Summary", rec.summary],
+    [],
+    ["Macro snapshot"],
+    ...Object.entries(macro ?? {}).map(([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : String(v)]),
+    [],
+    ["Re-entry triggers"],
+    ...rec.reEntryTriggers.map(t => ["", t]),
+    [],
+    ["What to avoid now"],
+    ...rec.avoidList.map(a => ["", a]),
+    [],
+    ["QuantAgent analysis"],
+    ...analysis.split("\n").filter(l => l.trim()).map(l => ["", l.replace(/\*\*/g, "")]),
+    [],
+    ["Educational only — not investment advice. Consult a licensed financial adviser."],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), "Summary");
+
+  XLSX.writeFile(wb, `quantforecast-portfolio-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
 
 // ─── Intake Questions ─────────────────────────────────────────────────────────
 
