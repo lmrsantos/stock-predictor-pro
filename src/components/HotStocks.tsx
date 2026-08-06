@@ -539,7 +539,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end">
-        <Link to="/methodology" target="_blank"
+        <Link to="/methodology" target="_blank" rel="noopener noreferrer"
           className="text-[10px] font-mono text-primary hover:underline">
           How is this calculated?
         </Link>

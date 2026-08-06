@@ -170,7 +170,7 @@ export function BaseRateSection({ symbol, sector, dates, closes }: BaseRateSecti
         <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
           Historical base rates
         </p>
-        <Link to="/methodology" target="_blank"
+        <Link to="/methodology" target="_blank" rel="noopener noreferrer"
           className="text-[10px] font-mono text-primary hover:underline shrink-0">
           How is this calculated?
         </Link>
