@@ -636,7 +636,12 @@ Search for any relevant current market news before responding.`;
                 : "bg-muted/50 text-muted-foreground mr-4"
             }`}>
               {msg.content.split("\n").filter(l => l.trim()).slice(0, 8).map((line, j) => (
-                <p key={j}>{line.replace(/\*\*/g, "")}</p>
+                <p key={j}>
+                  {line
+                    .replace(/\*\*/g, "")
+                    .replace(/^#{1,6}\s*/, "")
+                    .replace(/^[*·]\s+/, "· ")}
+                </p>
               ))}
             </div>
           ))}
