@@ -484,9 +484,9 @@ export default function Landing() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
             {[
-              { name: "Free", price: "$0", desc: "The regression chart, on us." },
-              { name: "Pro", price: "$19", desc: "Full toolkit + Linkage read-only.", highlight: true },
-              { name: "Elite", price: "$49", desc: "Live Linkage re-runs & exports." },
+              { name: "Market Pulse", price: "$0", desc: "Regression chart on any ticker, 30-day horizon, 2 linkages unlocked." },
+              { name: "Sector Intel", price: "$49", desc: "All 22 linkages, event catalog, backtests, all Hot Stocks tiers, CSV exports.", highlight: true },
+              { name: "Custom Intel", price: "$149", desc: "Your own leader → follower pairs, saved & monitored, plus API access." },
             ].map((p) => (
               <div
                 key={p.name}
