@@ -323,16 +323,20 @@ export function resolveConditionedBaseRate(
   if (exact.length >= MIN_N_EXACT) {
     stats = computeStats(exact.map(o => o.forwardReturn));
     source = 'exact';
-    sourceNote =
-      `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility, ` +
-      `${profile.listingBucket} names — the same population as this stock.`;
+    sourceNote = profile.listingBucket
+      ? `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility, ` +
+        `${profile.listingBucket} names — the same population as this stock.`
+      : `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility names ` +
+        `— the same population as this stock. Listing age is unknown here, so it is not ` +
+        `used as a conditioning dimension.`;
   } else if (volOnly.length >= MIN_N_VOL_ONLY) {
     stats = computeStats(volOnly.map(o => o.forwardReturn));
     source = 'volatility_only';
     sourceNote =
-      `Too few occurrences in the exact ${profile.volBucket}/${profile.listingBucket} cell ` +
+      `Too few occurrences in the exact ${profile.cellKey} cell ` +
       `(${exact.length}). Falling back to all ${profile.volBucket}-volatility names ` +
       `(${volOnly.length} occurrences). Listing age is not controlled for here.`;
+
   } else if (universeStats) {
     stats = universeStats;
     source = 'universe';
