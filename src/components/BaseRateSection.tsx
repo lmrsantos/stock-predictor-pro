@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import {
-  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries,
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears,
   type SymbolBaseRates, type MatchedBaseRate,
 } from "@/lib/base-rate-pipeline";
 
@@ -151,7 +151,8 @@ export function BaseRateSection({ symbol, sector, dates, closes }: BaseRateSecti
     (async () => {
       try {
         const pipeline = await runBaseRatePipeline();
-        const series = makeSymbolSeries(symbol, dates, closes, sector);
+        const listingYears = await fetchListingYears(symbol);
+        const series = makeSymbolSeries(symbol, dates, closes, sector, null, listingYears);
         const res = baseRatesForSymbol(pipeline, symbol, series);
         if (!cancelled) setData(res);
       } catch (e) {
@@ -192,7 +193,9 @@ export function BaseRateSection({ symbol, sector, dates, closes }: BaseRateSecti
           <div>
             <p className="text-[11px] font-mono text-foreground">
               {data.profile.volBucket} volatility ({pct(data.profile.annualizedVol, 0)}) ·{" "}
-              {data.profile.listingBucket} ({data.profile.listingYears.toFixed(1)} years listed)
+              {data.profile.listingYears == null || !data.profile.listingBucket
+                ? "listing age unknown"
+                : `${data.profile.listingBucket} (${data.profile.listingYears.toFixed(1)} years listed)`}
             </p>
             <p className="text-[10px] font-mono text-muted-foreground leading-relaxed mt-0.5">
               {data.profile.forecastabilityNote}
@@ -200,9 +203,17 @@ export function BaseRateSection({ symbol, sector, dates, closes }: BaseRateSecti
           </div>
 
           {data.matches.length === 0 ? (
-            <p className="text-[11px] font-mono text-muted-foreground">
-              No defined setups match this symbol right now.
-            </p>
+            <>
+              <p className="text-[11px] font-mono text-muted-foreground">
+                No defined setups match this symbol right now.
+              </p>
+              {data.universeOccurrences === 0 && (
+                <p className="text-[10px] font-mono text-amber-500 leading-relaxed">
+                  No setups matched any symbol. Available price history may be too short —
+                  three of five setups require 220 bars of history.
+                </p>
+              )}
+            </>
           ) : (
             <>
               <div className="space-y-3">

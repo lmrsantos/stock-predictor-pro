@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  runBaseRatePipeline, makeSymbolSeries,
+  runBaseRatePipeline, makeSymbolSeries, fetchListingYears,
 } from "@/lib/base-rate-pipeline";
 import { profileForSymbol } from "@/lib/setup-detector";
 import type { ConditioningProfile } from "@/lib/conditioned-base-rates";
@@ -23,7 +23,8 @@ export function useForecastability(
     (async () => {
       try {
         const pipeline = await runBaseRatePipeline();
-        const series = makeSymbolSeries(symbol, dates, closes, sector);
+        const listingYears = await fetchListingYears(symbol);
+        const series = makeSymbolSeries(symbol, dates, closes, sector, null, listingYears);
         if (!cancelled) setProfile(profileForSymbol(series, pipeline.volCuts));
       } catch {
         if (!cancelled) setProfile(null);
