@@ -8,7 +8,7 @@ import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 import {
-  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries,
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchIpoDates,
   type SymbolBaseRates,
 } from "@/lib/base-rate-pipeline";
 
@@ -473,11 +473,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
     (async () => {
       try {
         const pipeline = await runBaseRatePipeline();
+        const ipoDates = await fetchIpoDates(stocks.map(s => s.symbol));
         const out: Record<string, SymbolBaseRates | null> = {};
         for (const s of stocks) {
           const raw = seriesRef.current[s.symbol];
           const series = raw
-            ? makeSymbolSeries(s.symbol, raw.dates, raw.closes, raw.sector)
+            ? makeSymbolSeries(s.symbol, raw.dates, raw.closes, raw.sector,
+                ipoDates[s.symbol.toUpperCase()] ?? null)
             : null;
           out[s.symbol] = baseRatesForSymbol(pipeline, s.symbol, series);
         }
