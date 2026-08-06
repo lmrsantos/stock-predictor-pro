@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 import { SectorBacktest } from "@/components/SectorBacktest";
+import { FeatureGate } from "@/components/FeatureGate";
 
 export default function SectorBacktestPage() {
   return (
@@ -15,8 +16,11 @@ export default function SectorBacktestPage() {
         </div>
       </header>
       <main className="flex-1 p-6 overflow-hidden">
-        <SectorBacktest inline />
+        <FeatureGate feature="sector_backtest">
+          <SectorBacktest inline />
+        </FeatureGate>
       </main>
+
     </div>
   );
 }
