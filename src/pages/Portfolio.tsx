@@ -11,6 +11,7 @@ import { ArrowLeft, Briefcase, Plus, Trash2, Loader2, LogIn, Pencil, Check, X, R
 import { toast } from "sonner";
 import { PortfolioIntradaySparkline, usePortfolioIntraday, MiniSparkline } from "@/components/PortfolioIntradaySparkline";
 import { PortfolioBacktest } from "@/components/PortfolioBacktest";
+import { FeatureGate } from "@/components/FeatureGate";
 import { TradePlanPanel } from "@/components/TradePlanPanel";
 import { History } from "lucide-react";
 
@@ -634,7 +635,9 @@ export default function Portfolio() {
       </main>
 
       {backtestOpen && (
-        <PortfolioBacktest holdings={holdings} onClose={() => setBacktestOpen(false)} />
+        <FeatureGate feature="portfolio_advisor">
+          <PortfolioBacktest holdings={holdings} onClose={() => setBacktestOpen(false)} />
+        </FeatureGate>
       )}
 
       {analysisOpen && analysis && totals && (

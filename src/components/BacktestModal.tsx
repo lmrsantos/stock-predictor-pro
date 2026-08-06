@@ -1,6 +1,7 @@
 // components/BacktestModal.tsx
 import { useState, useEffect } from "react";
 import { CycleAnalysisPanel } from "@/components/CycleAnalysis";
+import { FeatureGate } from "@/components/FeatureGate";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine, Legend,
@@ -765,11 +766,13 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                   </div>
                 )}
                 {activeTab === "cycle" && (
-                  <CycleAnalysisPanel
-                    ticker={ticker}
-                    prices={dataPoints.map(d => d.actual)}
-                    dates={dataPoints.map(d => d.date)}
-                  />
+                  <FeatureGate feature="cycle_analysis">
+                    <CycleAnalysisPanel
+                      ticker={ticker}
+                      prices={dataPoints.map(d => d.actual)}
+                      dates={dataPoints.map(d => d.date)}
+                    />
+                  </FeatureGate>
                 )}
               </div>
             </>
