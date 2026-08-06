@@ -363,8 +363,8 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
         // Signal mapping — descriptive, never a trade decision:
         //   • extreme regime or very low fit → STAY OUT
-        //   • fit above threshold + up-forecast + models agree → SETUP MATCH
-        //   • same with down-forecast → BEARISH SETUP
+        //   • fit above threshold + up-forecast + models agree → MODEL FLAG
+        //   • same with down-forecast → BEARISH FLAG
         //   • otherwise → WAIT
         const minConf = c.riskTier === 1 ? 55 : c.riskTier === 2 ? 50 : c.riskTier === 3 ? 45 : 40;
         const stayOutConf = c.riskTier === 1 ? 25 : c.riskTier === 2 ? 22 : 20;
@@ -379,29 +379,29 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           ? `Direction correct in ${dirHits} of ${v.windowCount} windows`
           : "No single model validated — showing ensemble mean";
 
-        let signal: "SETUP MATCH"|"BEARISH SETUP"|"WAIT"|"STAY OUT" = "WAIT";
+        let signal: "MODEL FLAG"|"BEARISH FLAG"|"WAIT"|"STAY OUT" = "WAIT";
         if (regime === "EXTREME" || tiltedConfidence < stayOutConf) {
           signal = "STAY OUT";
         } else if (dirReliable && tiltedConfidence >= minConf && agree && bt.forecastPct > 0.5) {
-          signal = "SETUP MATCH";
+          signal = "MODEL FLAG";
         } else if (dirReliable && tiltedConfidence >= minConf && agree && bt.forecastPct < -0.5) {
-          signal = "BEARISH SETUP";
+          signal = "BEARISH FLAG";
         }
 
-        const hot = signal === "SETUP MATCH";
+        const hot = signal === "MODEL FLAG";
         const winnerErr = bt.winningModel.errorPct;
 
         let reason = "";
         if (!dirReliable) {
           reason = `Direction not reliable (${dirHits} of ${v.windowCount} windows). Expected move ±${band.toFixed(1)}%.`;
         } else if (hot) {
-          reason = `Setup match · ${validationLine} · ${withBand(bt.forecastPct)} · model fit ${Math.round(tiltedConfidence)}/100`;
+          reason = `Model flag · ${validationLine} · ${withBand(bt.forecastPct)} · model fit ${Math.round(tiltedConfidence)}/100`;
         } else if (signal === "STAY OUT") {
           reason = regime === "EXTREME"
             ? `Stay out — extreme volatility regime (${bt.regime.ratio.toFixed(1)}× normal)`
             : `Stay out — model fit ${Math.round(tiltedConfidence)}/100 below threshold`;
-        } else if (signal === "BEARISH SETUP") {
-          reason = `Bearish setup — ${withBand(bt.forecastPct)} · ${validationLine}`;
+        } else if (signal === "BEARISH FLAG") {
+          reason = `Bearish flag — ${withBand(bt.forecastPct)} · ${validationLine}`;
         } else {
           const bits: string[] = [];
           if (tiltedConfidence < minConf) bits.push(`model fit ${Math.round(tiltedConfidence)}/100 < ${minConf} threshold`);
@@ -449,7 +449,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       setStocks(finalSorted);
       setHasScanned(true);
       const hotCount = finalSorted.filter(s => s.hot).length;
-      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} setup matches · ${finalSorted.length - hotCount} no match`);
+      setScanStatus(`Scored ${finalSorted.length} symbols · ${hotCount} model flags · ${finalSorted.length - hotCount} no match`);
 
     } catch (e) {
       toast.error((e as Error).message);
@@ -609,7 +609,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       {hasScanned && visible.length === 0 && !isScanning && (
         <p className="text-xs text-muted-foreground text-center py-2 leading-relaxed">
           {filter === "hot"
-            ? "No setup matches in this scan. Switch to 'All results' to see what the model saw."
+            ? "No model flags in this scan. Switch to 'All results' to see what the model saw."
             : filter === "conservative"
               ? baseRatesLoading
                 ? "Computing historical base rates…"

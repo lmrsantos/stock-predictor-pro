@@ -310,7 +310,7 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
     ticker,
     price: result.currentPrice,
     backtestResult: {
-      signal:              result.forecastDirection === "up" ? "SETUP MATCH" : "BEARISH SETUP",
+      signal:              result.forecastDirection === "up" ? "MODEL FLAG" : "BEARISH FLAG",
       confidenceScore:     result.confidenceScore,
       walkForwardAccuracy: Math.max(0, 100 - result.winningModel.errorPct),
       hitRate:             result.ensembleAgreement * 100,
@@ -421,7 +421,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
   const dirReliable = v.directionHitRate > 0.55;
   const bandText   = `${result.forecastPct >= 0 ? "+" : ""}${result.forecastPct}% over 30d (1σ range ${(result.forecastPct - band).toFixed(0)}% to ${result.forecastPct + band >= 0 ? "+" : ""}${(result.forecastPct + band).toFixed(0)}%)`;
 
-  let signal: "SETUP MATCH" | "BEARISH SETUP" | "WAIT" | "STAY OUT" = "WAIT";
+  let signal: "MODEL FLAG" | "BEARISH FLAG" | "WAIT" | "STAY OUT" = "WAIT";
   let signalColor = "#fbbf24";
   let emoji       = "⏳";
 
@@ -430,13 +430,13 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
   } else if (agreement < 0.6 || !dirReliable) {
     signal = "WAIT";     signalColor = "#fbbf24"; emoji = "⏳";
   } else if (confidence >= 50 && up) {
-    signal = "SETUP MATCH";   signalColor = "#34d399"; emoji = "📈";
+    signal = "MODEL FLAG";   signalColor = "#34d399"; emoji = "📈";
   } else if (confidence >= 50 && !up) {
-    signal = "BEARISH SETUP"; signalColor = "#f87171"; emoji = "📉";
+    signal = "BEARISH FLAG"; signalColor = "#f87171"; emoji = "📉";
   }
 
   let positionSize = "Stay flat";
-  if (signal === "SETUP MATCH" || signal === "BEARISH SETUP") {
+  if (signal === "MODEL FLAG" || signal === "BEARISH FLAG") {
     if (confidence >= 75 && !regime.outsideDistribution)      positionSize = "Full position";
     else if (confidence >= 50 && !regime.outsideDistribution) positionSize = "Half position";
     else                                                       positionSize = "Quarter position";
