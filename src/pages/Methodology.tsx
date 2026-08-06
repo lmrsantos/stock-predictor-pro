@@ -2,8 +2,8 @@
 // Not linked from the main nav — reached from "How is this calculated?" links.
 
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
+
 import {
   runBaseRatePipeline, setupBucketTable, SETUPS,
   type BaseRatePipeline, type SetupBucketRow,
@@ -68,9 +68,17 @@ export default function Methodology() {
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-5 py-8 space-y-8">
         <div>
-          <Link to="/terminal" className="inline-flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to terminal
-          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) window.history.back();
+              else window.close();
+            }}
+            className="inline-flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Close and return
+          </button>
+
           <h1 className="text-2xl font-mono font-bold text-foreground mt-3">Methodology</h1>
           <p className="text-[12px] font-mono text-muted-foreground mt-1 leading-relaxed">
             How setups, base rates, and forecast reliability are measured in this app.
