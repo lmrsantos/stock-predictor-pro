@@ -11,6 +11,12 @@ import {
   BarChart3,
   Check,
   TrendingUp,
+  Gauge,
+  Scale,
+  Waves,
+  Rocket,
+  Clock,
+  BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import quantAgentHero from "@/assets/quantagent-hero.jpg";
