@@ -2,7 +2,7 @@
 // Not linked from the main nav — reached from "How is this calculated?" links.
 
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import {
   runBaseRatePipeline, setupBucketTable, SETUPS,
