@@ -267,6 +267,23 @@ export default function Pricing() {
         </div>
 
         <div className="mt-8 rounded-2xl border border-border p-6">
+          <h2 className="text-lg font-bold mb-2">What “custom linkage analysis — $29 one-time” means</h2>
+          <p className="text-sm text-muted-foreground">
+            The 22 published linkages are ready-made leader → follower pairs. A <b>custom</b> analysis
+            is you choosing your own pair (for example Crude Oil → Airlines) and having the engine run
+            the full lead-lag study on it: correlation at each lag, significance testing, split-half
+            validation and a plain-English read of what it implies.
+          </p>
+          <p className="text-sm text-muted-foreground mt-3">
+            On <b>Sector Intel</b> these aren't included in the monthly plan — you buy a single run for
+            $29, and that analysis is saved to your account permanently. On <b>Custom Intel</b> you get
+            3 custom runs every month included, plus the ability to save and monitor those pairs over
+            time with rebalance alerts.
+          </p>
+        </div>
+
+
+        <div className="mt-8 rounded-2xl border border-border p-6">
           <h2 className="text-lg font-bold mb-2">One person per account</h2>
           <p className="text-sm text-muted-foreground">
             Plans are personal. Each plan covers a set number of devices for one person — a shared
