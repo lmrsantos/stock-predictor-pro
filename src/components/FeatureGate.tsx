@@ -47,7 +47,7 @@ const FEATURE_COPY: Record<Feature, { title: string; blurb: string; plan: Tier }
   custom_forecast: {
     title: "Custom forecasts",
     blurb: "Run your own pairs and horizons with saved monitoring.",
-    plan: "elite",
+    plan: "plus",
   },
   rebalance_alerts: {
     title: "Rebalance alerts",
@@ -62,8 +62,9 @@ const FEATURE_COPY: Record<Feature, { title: string; blurb: string; plan: Tier }
   linkages_run: {
     title: "Live linkage re-runs",
     blurb: "Re-run the linkage engine on demand and export the results.",
-    plan: "elite",
+    plan: "plus",
   },
+
 };
 
 interface FeatureGateProps {
