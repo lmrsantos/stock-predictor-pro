@@ -18,13 +18,15 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Cache: return existing if fresher than 30 minutes
-    const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    // Shared global cache: one AI call per 90 minutes for the whole platform,
+    // no matter how many visitors load the gauge.
+    const cacheWindow = new Date(Date.now() - 90 * 60 * 1000).toISOString();
     const { data: recent } = await supabase
       .from("geopolitical_sentiment")
       .select("id")
-      .gte("created_at", thirtyMinsAgo)
+      .gte("created_at", cacheWindow)
       .limit(1);
+
 
     if (recent?.length) {
       const { data: latest } = await supabase
