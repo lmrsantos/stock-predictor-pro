@@ -17,10 +17,13 @@ export default function Account() {
   const sub = useSubscription();
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
+  const { status: sharing } = useSessionGuard();
+  const meta = PLAN_META[sub.tier];
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth?redirect=/account");
   }, [authLoading, user, navigate]);
+
 
   const openPortal = async () => {
     setPortalLoading(true);
