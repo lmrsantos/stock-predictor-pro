@@ -23,13 +23,14 @@ const REQUIRED: Record<Feature, Tier> = {
   quant_agent: "pro",
   portfolio_advisor: "pro",
   csv_export: "pro",
-  custom_forecast: "elite",
+  custom_forecast: "plus",   // Signal Pro adds custom horizons
   rebalance_alerts: "elite",
   linkages_view: "pro",   // Pro sees cached graph
-  linkages_run: "elite",  // Only Elite can re-run + export
+  linkages_run: "plus",   // Signal Pro can re-run + export
 };
 
-const RANK: Record<Tier, number> = { free: 0, pro: 1, elite: 2 };
+const RANK: Record<Tier, number> = { free: 0, pro: 1, plus: 2, elite: 3 };
+
 
 export function useEntitlement() {
   const sub = useSubscription();

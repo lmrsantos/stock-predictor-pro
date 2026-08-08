@@ -54,8 +54,10 @@ export function useSubscription(): SubscriptionState {
       if (data.status === "canceled" && stillValid) isActive = true;
       if (isActive) {
         if (data.price_id === "elite_monthly" || data.price_id === "elite_yearly") tier = "elite";
+        else if (data.price_id === "plus_monthly" || data.price_id === "plus_yearly") tier = "plus";
         else if (data.price_id === "pro_monthly" || data.price_id === "pro_yearly") tier = "pro";
       }
+
     }
     setState({
       tier,
