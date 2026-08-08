@@ -485,11 +485,12 @@ export default function Landing() {
           <p className="text-white/60 text-lg mb-10">
             Start free. Upgrade when the terminal pays for itself.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-left">
             {[
-              { name: "Market Pulse", price: "$0", desc: "Regression chart on any ticker, 30-day horizon, 2 linkages unlocked." },
-              { name: "Sector Intel", price: "$49", desc: "All 22 linkages, event catalog, backtests, all Hot Stocks tiers, CSV exports.", highlight: true },
-              { name: "Custom Intel", price: "$149", desc: "Your own leader → follower pairs, saved & monitored, plus API access." },
+              { name: "Market Pulse", price: "$0", who: "Light user", actions: "20 AI actions / mo", desc: "Regression chart on any ticker, 30-day horizon, 2 linkages unlocked." },
+              { name: "Sector Intel", price: "$49", who: "Medium user", actions: "500 AI actions / mo", desc: "All 22 linkages, event catalog, backtests, all Hot Stocks tiers, CSV exports.", highlight: true },
+              { name: "Signal Pro", price: "$89", who: "Heavy user", actions: "1,200 AI actions / mo", desc: "Everything in Sector Intel plus live linkage re-runs, custom horizons and room to work all day." },
+              { name: "Custom Intel", price: "$149", who: "Power user", actions: "2,500 AI actions / mo", desc: "Your own leader → follower pairs, saved & monitored, plus API access." },
             ].map((p) => (
               <div
                 key={p.name}
@@ -504,10 +505,18 @@ export default function Landing() {
                   {p.price}
                   <span className="text-sm font-normal text-white/50">/mo</span>
                 </div>
+                <div className="text-[11px] font-mono uppercase tracking-widest text-white/50 mb-1">{p.who}</div>
+                <div className="text-sm text-white/80 mb-2">{p.actions}</div>
                 <p className="text-sm text-white/60">{p.desc}</p>
               </div>
             ))}
           </div>
+          <p className="text-xs text-white/40 mt-6">
+            An AI action = one QuantAgent question (1), one portfolio proposal (3) or one IPO report (5).
+            Charts, forecasts and backtests are unlimited on every paid plan. Plans are personal — one
+            person, a few devices.
+          </p>
+
           <Link
             to="/pricing"
             className="inline-flex items-center gap-2 mt-10 px-6 py-3 rounded-full bg-white text-[#07071a] font-semibold hover:bg-white/90"

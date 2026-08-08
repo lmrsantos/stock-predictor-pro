@@ -6,16 +6,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { useEffect, useState } from "react";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { AiActionsMeter } from "@/components/AiActionsMeter";
+import { DeviceSharingNotice } from "@/components/DeviceSharingNotice";
+import { useSessionGuard } from "@/hooks/useSessionGuard";
+import { PLAN_META } from "@/lib/plans";
+
 
 export default function Account() {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const sub = useSubscription();
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
+  const { status: sharing } = useSessionGuard();
+  const meta = PLAN_META[sub.tier];
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth?redirect=/account");
   }, [authLoading, user, navigate]);
+
 
   const openPortal = async () => {
     setPortalLoading(true);
@@ -48,7 +56,8 @@ export default function Account() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="text-xs uppercase text-muted-foreground font-mono">Current plan</div>
-              <div className="text-2xl font-bold capitalize mt-1">{sub.tier}</div>
+              <div className="text-2xl font-bold mt-1">{meta.name}</div>
+              <div className="text-xs text-muted-foreground mt-1">{meta.profileLabel} · {meta.allowanceExample}</div>
               {sub.status && <div className="text-xs text-muted-foreground mt-1">Status: {sub.status}{sub.cancelAtPeriodEnd ? " (cancels at period end)" : ""}</div>}
             </div>
             <Link to="/pricing" className="text-sm underline">Change plan</Link>
@@ -68,6 +77,29 @@ export default function Account() {
             </button>
           )}
         </div>
+
+        <div className="mb-6">
+          <AiActionsMeter />
+        </div>
+
+        <div className="mb-6">
+          <DeviceSharingNotice />
+        </div>
+
+        <div className="rounded-2xl border border-border p-6 mb-6">
+          <div className="text-xs uppercase text-muted-foreground font-mono mb-2">Devices on this account</div>
+          <div className="text-2xl font-bold">
+            {sharing?.devices_24h ?? "—"}{" "}
+            <span className="text-sm font-normal text-muted-foreground">
+              of {meta.devices} allowed (last 24h)
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {meta.name} is a personal plan for one person on up to {meta.devices} devices. Sharing a
+            login uses up your monthly AI actions much faster and may be limited.
+          </p>
+        </div>
+
 
         <button onClick={() => { signOut(); navigate("/terminal"); }} className="text-sm text-muted-foreground underline">
           Sign out

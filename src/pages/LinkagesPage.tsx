@@ -158,7 +158,7 @@ export default function LinkagesPage() {
               )}
               {!canRun && (
                 <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                  {tier === "pro" ? "Pro: read-only view" : ""}
+                  {tier === "pro" ? "Sector Intel: read-only view" : ""}
                 </span>
               )}
             </div>
