@@ -8,24 +8,27 @@ import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 
 type Cycle = "monthly" | "yearly";
 
-// Plans align with subscription-gating.ts: free / standard / premium.
-// Stripe price IDs are unchanged (pro_* → Sector Intel, elite_* → Custom Intel).
+// Plans align with subscription-gating.ts. Everything the member sees is
+// expressed in **AI actions** — never "credits".
 const PLANS = [
   {
     id: "free" as const,
     stripeTier: "free" as const,
     name: "Market Pulse",
     tagline: "Free",
+    profile: "Light user",
     monthly: 0,
     yearly: 0,
     blurb: "See the market — with two linkages unlocked",
+    actions: "20 AI actions / month",
+    actionsDetail: "≈ 20 QuantAgent questions a month",
+    devices: "1 person · 2 devices",
     features: [
       "Regression chart, any ticker",
       "30-day forecast horizon",
       "Full Linkage Graph — blurred",
       "2 unlocked linkages: Banks → Real Estate, US10Y → Utilities",
       "Hot Stocks: Aggressive only (top 5)",
-      "5 QuantAgent chats / day",
     ],
   },
   {
@@ -33,12 +36,16 @@ const PLANS = [
     stripeTier: "pro" as const,
     name: "Sector Intel",
     tagline: "For active traders",
+    profile: "Medium user",
     monthly: 49,
     yearly: 490,
     priceMonthlyId: "pro_monthly",
     priceYearlyId: "pro_yearly",
     blurb: "All 22 linkages, event catalog, ticker-level view",
     highlight: true,
+    actions: "500 AI actions / month",
+    actionsDetail: "≈ 16 questions a day, or 160 portfolio reviews",
+    devices: "1 person · 3 devices",
     features: [
       "Everything in Market Pulse",
       "🔗 All 22 cross-sector linkages unlocked",
@@ -47,9 +54,31 @@ const PLANS = [
       "Sector & symbol backtests",
       "Cycle Analysis + Portfolio Advisor",
       "All 3 Hot Stocks risk tiers",
-      "50 QuantAgent chats / day",
       "Custom linkage analysis — $29 one-time",
       "CSV exports",
+    ],
+  },
+  {
+    id: "plus" as const,
+    stripeTier: "plus" as const,
+    name: "Signal Pro",
+    tagline: "For heavy daily users",
+    profile: "Heavy user",
+    monthly: 89,
+    yearly: 890,
+    priceMonthlyId: "plus_monthly",
+    priceYearlyId: "plus_yearly",
+    badge: "Best value per action",
+    blurb: "Everything in Sector Intel with room to work all day",
+    actions: "1,200 AI actions / month",
+    actionsDetail: "≈ 40 questions every single day",
+    devices: "1 person · 4 devices",
+    features: [
+      "Everything in Sector Intel",
+      "Live Linkage Engine re-runs + CSV export",
+      "Custom forecast horizons",
+      "Priority model refreshes",
+      "Excel exports for portfolio proposals",
     ],
   },
   {
@@ -57,25 +86,27 @@ const PLANS = [
     stripeTier: "elite" as const,
     name: "Custom Intel",
     tagline: "For pros & funds",
+    profile: "Power user",
     monthly: 149,
     yearly: 1490,
     priceMonthlyId: "elite_monthly",
     priceYearlyId: "elite_yearly",
     badge: "Full Quant Suite",
     blurb: "Run and monitor your own leader → follower pairs",
+    actions: "2,500 AI actions / month",
+    actionsDetail: "≈ 80 questions a day, plus custom research runs",
+    devices: "1 person · 6 devices",
     features: [
-      "Everything in Sector Intel",
+      "Everything in Signal Pro",
       "👑 3 custom linkage analyses / month",
       "Save & monitor private linkages over time",
       "Rebalance alerts on your saved pairs",
-      "Live Linkage Engine re-runs + CSV export",
-      "Custom forecast horizons",
-      "500 QuantAgent chats / day",
       "API & data access",
       "Priority support",
     ],
   },
 ];
+
 
 export default function Pricing() {
   const { user } = useAuth();
