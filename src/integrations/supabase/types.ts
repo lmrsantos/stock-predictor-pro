@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_credit_ledger: {
+        Row: {
+          balance_after: number | null
+          created_at: string
+          delta: number
+          feature: string
+          id: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          balance_after?: number | null
+          created_at?: string
+          delta: number
+          feature: string
+          id?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          balance_after?: number | null
+          created_at?: string
+          delta?: number
+          feature?: string
+          id?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_credit_wallets: {
+        Row: {
+          allowance_granted: number
+          allowance_period_start: string
+          balance: number
+          purchased_total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowance_granted?: number
+          allowance_period_start?: string
+          balance?: number
+          purchased_total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowance_granted?: number
+          allowance_period_start?: string
+          balance?: number
+          purchased_total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_config: {
         Row: {
           api_name: string
@@ -559,9 +616,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ai_effective_tier: { Args: { _user_id: string }; Returns: string }
+      ai_plan_allowance: { Args: { _tier: string }; Returns: number }
+      consume_ai_credits: {
+        Args: { _cost: number; _feature: string; _user_id: string }
+        Returns: Json
+      }
       get_user_tier: {
         Args: { check_env?: string; user_uuid: string }
         Returns: string
+      }
+      grant_ai_credits: {
+        Args: { _amount: number; _note: string; _user_id: string }
+        Returns: Json
       }
       has_active_subscription: {
         Args: { check_env?: string; user_uuid: string }
@@ -573,6 +640,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      sync_ai_credit_wallet: {
+        Args: { _user_id: string }
+        Returns: {
+          allowance_granted: number
+          allowance_period_start: string
+          balance: number
+          purchased_total: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ai_credit_wallets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
