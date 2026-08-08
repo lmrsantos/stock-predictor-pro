@@ -19,18 +19,22 @@ const PLANS = [
     profile: "Light user",
     monthly: 0,
     yearly: 0,
-    blurb: "See the market — with two linkages unlocked",
+    blurb: "The full analytics terminal — minus the AI assistants",
     actions: "20 AI actions / month",
-    actionsDetail: "≈ 20 QuantAgent questions a month",
+    actionsDetail: "≈ 20 chart insights a month (QuantAgent starts at Sector Intel)",
     devices: "1 person · 2 devices",
     features: [
-      "Regression chart, any ticker",
+      "Regression chart + all 4 forecast models, any ticker",
       "30-day forecast horizon",
-      "Full Linkage Graph — blurred",
-      "2 unlocked linkages: Banks → Real Estate, US10Y → Utilities",
+      "Model calibration — true out-of-sample backtest per symbol",
+      "Symbol detail: key levels, Fibonacci & base-rate evidence",
+      "Live market ticker, macro strip & geopolitical tension index",
+      "Investment simulator + portfolio tracking (no AI advisor)",
       "Hot Stocks: Aggressive only (top 5)",
+      "Full Linkage Graph — blurred, 2 pairs unlocked (Banks → Real Estate, US10Y → Utilities)",
     ],
   },
+
   {
     id: "standard" as const,
     stripeTier: "pro" as const,
@@ -52,10 +56,11 @@ const PLANS = [
       "Event catalog — what moves each sector",
       "Ticker-level linkage view",
       "Sector & symbol backtests",
-      "Cycle Analysis + Portfolio Advisor",
+      "Cycle Analysis + QuantAgent + Portfolio Insights",
       "All 3 Hot Stocks risk tiers",
-      "Custom linkage analysis — $29 one-time",
+      "Custom linkage analysis — buy a single run for $29 (one-off, kept forever)",
       "CSV exports",
+
     ],
   },
   {
@@ -260,6 +265,23 @@ export default function Pricing() {
             actions you have left, and whether you're running light, medium or heavy for your plan.
           </p>
         </div>
+
+        <div className="mt-8 rounded-2xl border border-border p-6">
+          <h2 className="text-lg font-bold mb-2">What “custom linkage analysis — $29 one-time” means</h2>
+          <p className="text-sm text-muted-foreground">
+            The 22 published linkages are ready-made leader → follower pairs. A <b>custom</b> analysis
+            is you choosing your own pair (for example Crude Oil → Airlines) and having the engine run
+            the full lead-lag study on it: correlation at each lag, significance testing, split-half
+            validation and a plain-English read of what it implies.
+          </p>
+          <p className="text-sm text-muted-foreground mt-3">
+            On <b>Sector Intel</b> these aren't included in the monthly plan — you buy a single run for
+            $29, and that analysis is saved to your account permanently. On <b>Custom Intel</b> you get
+            3 custom runs every month included, plus the ability to save and monitor those pairs over
+            time with rebalance alerts.
+          </p>
+        </div>
+
 
         <div className="mt-8 rounded-2xl border border-border p-6">
           <h2 className="text-lg font-bold mb-2">One person per account</h2>
