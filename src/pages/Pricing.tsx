@@ -56,10 +56,11 @@ const PLANS = [
       "Event catalog — what moves each sector",
       "Ticker-level linkage view",
       "Sector & symbol backtests",
-      "Cycle Analysis + Portfolio Advisor",
+      "Cycle Analysis + QuantAgent + Portfolio Insights",
       "All 3 Hot Stocks risk tiers",
-      "Custom linkage analysis — $29 one-time",
+      "Custom linkage analysis — buy a single run for $29 (one-off, kept forever)",
       "CSV exports",
+
     ],
   },
   {
