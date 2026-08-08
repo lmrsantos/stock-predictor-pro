@@ -38,7 +38,11 @@ serve(async (req) => {
   }
 
   try {
+    const charge = await chargeAiCredits(req, "chat_insights", corsHeaders);
+    if (!charge.ok) return charge.response;
+
     const { messages, context } = await req.json();
+
 
     // Build context-aware system message
     let systemContent = SYSTEM_PROMPT;
