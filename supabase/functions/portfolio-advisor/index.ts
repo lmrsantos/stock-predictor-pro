@@ -75,7 +75,16 @@ serve(async (req) => {
 
     // ── Action: get_analysis ──────────────────────────────────────────────────
     if (action === "get_analysis") {
+      const isFollowUp = Array.isArray(history) && history.length > 0;
+      const charge = await chargeAiCredits(
+        req,
+        isFollowUp ? "portfolio_advisor_chat" : "portfolio_advisor",
+        corsHeaders,
+      );
+      if (!charge.ok) return charge.response;
+
       const macroContext = body.macroContext;
+
       const systemPrompt = `You are QuantForecast's Portfolio Advisor — a sophisticated investment analyst combining quantitative signals with macro regime analysis.
 
 ## Current Macro Context (Live Data)
