@@ -578,7 +578,18 @@ const Index = () => {
               <div ref={tableRef}>
                 <DataTable
                   historicalFit={regression.historicalFit}
-                  predictions={regression.predictions}
+                  predictions={chartData
+                    .filter((d) => d.isForecast)
+                    .map((d) => ({
+                      date: d.date,
+                      timestamp: d.timestamp,
+                      predicted: d.predicted ?? 0,
+                      upper1Sigma: d.upper1Sigma,
+                      lower1Sigma: d.lower1Sigma,
+                      upper2Sigma: d.upper2Sigma,
+                      lower2Sigma: d.lower2Sigma,
+                    }))}
+                  modelLabel={forecastModels.find((m) => m.value === forecastModel)?.label ?? "Model"}
                 />
               </div>
             )}
