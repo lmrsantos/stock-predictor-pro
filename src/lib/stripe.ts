@@ -27,9 +27,11 @@ export function getStripeEnvironment(): StripeEnv {
 }
 
 export const TIERS = {
-  free: { name: "Free", price: 0 },
-  pro: { name: "Pro", price: 19, priceYearly: 190 },
-  elite: { name: "Elite", price: 49, priceYearly: 490 },
+  free: { name: "Market Pulse", price: 0 },
+  pro: { name: "Sector Intel", price: 49, priceYearly: 490 },
+  plus: { name: "Signal Pro", price: 89, priceYearly: 890 },
+  elite: { name: "Custom Intel", price: 149, priceYearly: 1490 },
 } as const;
 
 export type Tier = keyof typeof TIERS;
+
