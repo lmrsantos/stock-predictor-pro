@@ -4,9 +4,10 @@ import { formatPrice } from "@/lib/regression";
 interface DataTableProps {
   historicalFit: FitPoint[];
   predictions: PredictionPoint[];
+  modelLabel?: string;
 }
 
-export function DataTable({ historicalFit, predictions }: DataTableProps) {
+export function DataTable({ historicalFit, predictions, modelLabel = "Model" }: DataTableProps) {
   // Show last 20 historical + all predictions
   const recentHistory = historicalFit.slice(-20);
 
@@ -18,7 +19,7 @@ export function DataTable({ historicalFit, predictions }: DataTableProps) {
             <tr className="border-b border-border text-muted-foreground">
               <th className="text-left px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Date</th>
               <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Actual</th>
-              <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Regression</th>
+              <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Regression Fit</th>
               <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">Residual</th>
               <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">68% Low</th>
               <th className="text-right px-4 py-3 font-bold uppercase tracking-widest text-[10px]">68% High</th>
@@ -46,7 +47,7 @@ export function DataTable({ historicalFit, predictions }: DataTableProps) {
             {predictions.length > 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-2 text-[10px] uppercase tracking-widest text-primary font-bold bg-primary/5">
-                  Forecast
+                  Forecast — {modelLabel}
                 </td>
               </tr>
             )}

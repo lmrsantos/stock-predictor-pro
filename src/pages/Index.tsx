@@ -11,7 +11,7 @@ import { ChartDataPoint } from "@/lib/types";
 import { simulateMonteCarlo } from "@/lib/monte-carlo";
 
 
-import { ChartControls, ForecastModel } from "@/components/ChartControls";
+import { ChartControls, ForecastModel, forecastModels } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
@@ -578,7 +578,19 @@ const Index = () => {
               <div ref={tableRef}>
                 <DataTable
                   historicalFit={regression.historicalFit}
-                  predictions={regression.predictions}
+                  predictions={chartData
+                    .filter((d) => d.isForecast)
+                    .map((d, i) => ({
+                      date: d.date,
+                      timestamp: d.timestamp,
+                      dayIndex: i + 1,
+                      predicted: d.predicted ?? 0,
+                      upper1Sigma: d.upper1Sigma,
+                      lower1Sigma: d.lower1Sigma,
+                      upper2Sigma: d.upper2Sigma,
+                      lower2Sigma: d.lower2Sigma,
+                    }))}
+                  modelLabel={forecastModels.find((m) => m.value === forecastModel)?.label ?? "Model"}
                 />
               </div>
             )}
