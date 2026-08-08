@@ -11,7 +11,7 @@ import { ChartDataPoint } from "@/lib/types";
 import { simulateMonteCarlo } from "@/lib/monte-carlo";
 
 
-import { ChartControls, ForecastModel } from "@/components/ChartControls";
+import { ChartControls, ForecastModel, forecastModels } from "@/components/ChartControls";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
