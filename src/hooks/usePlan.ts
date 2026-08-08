@@ -18,9 +18,10 @@ import type { Tier } from "@/lib/stripe";
  */
 function tierToPlan(tier: Tier): Plan {
   if (tier === "elite") return "premium";
-  if (tier === "pro") return "standard";
+  if (tier === "pro" || tier === "plus") return "standard";
   return "free";
 }
+
 
 export interface UsePlanResult {
   plan: Plan;
