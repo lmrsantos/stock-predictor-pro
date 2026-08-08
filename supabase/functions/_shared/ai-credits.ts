@@ -74,12 +74,37 @@ export async function chargeAiCredits(
     };
   }
 
+  // Fair-use guard: one login shared across many devices burns the monthly
+  // allowance fast, so hard-block clear abuse before spending anything.
+  const { data: sharing } = await supabase.rpc("account_sharing_status", {
+    _user_id: user.id,
+  });
+  const share = sharing as
+    | { device_allowance: number; devices_24h: number }
+    | null;
+  if (share && share.devices_24h > share.device_allowance + 2) {
+    return {
+      ok: false,
+      response: json(
+        {
+          error:
+            "This login is active on too many devices. Plans are personal — sign out elsewhere or upgrade to continue.",
+          code: "SHARING_LIMIT",
+          devices: share.devices_24h,
+          allowed: share.device_allowance,
+        },
+        429,
+      ),
+    };
+  }
+
   const cost = costOverride ?? AI_CREDIT_COSTS[feature];
   const { data, error } = await supabase.rpc("consume_ai_credits", {
     _user_id: user.id,
     _feature: feature,
     _cost: cost,
   });
+
 
   if (error) {
     console.error("consume_ai_credits failed", error);
