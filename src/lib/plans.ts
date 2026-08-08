@@ -36,7 +36,7 @@ export const PLAN_META: Record<Tier, PlanMeta> = {
     devices: 2,
     profile: "light",
     profileLabel: "Light user",
-    allowanceExample: "≈ 20 QuantAgent questions a month",
+    allowanceExample: "≈ 20 chart insights a month (QuantAgent starts at Sector Intel)",
   },
   pro: {
     tier: "pro",
