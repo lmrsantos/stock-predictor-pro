@@ -590,6 +590,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_devices: {
+        Row: {
+          device_id: string
+          first_seen: string
+          id: string
+          ip_hash: string | null
+          last_seen: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          device_id: string
+          first_seen?: string
+          id?: string
+          ip_hash?: string | null
+          last_seen?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          device_id?: string
+          first_seen?: string
+          id?: string
+          ip_hash?: string | null
+          last_seen?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -616,6 +646,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      account_sharing_status: { Args: { _user_id: string }; Returns: Json }
+      ai_device_allowance: { Args: { _tier: string }; Returns: number }
       ai_effective_tier: { Args: { _user_id: string }; Returns: string }
       ai_plan_allowance: { Args: { _tier: string }; Returns: number }
       consume_ai_credits: {
@@ -640,6 +672,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_user_device: {
+        Args: {
+          _device_id: string
+          _ip_hash: string
+          _user_agent: string
+          _user_id: string
+        }
+        Returns: Json
       }
       sync_ai_credit_wallet: {
         Args: { _user_id: string }
