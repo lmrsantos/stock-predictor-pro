@@ -4,6 +4,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { chargeAiCredits, refundAiCredits } from "../_shared/ai-credits.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -235,6 +237,9 @@ serve(async (req) => {
         });
       }
 
+      const charge = await chargeAiCredits(req, "quant_agent", corsHeaders);
+      if (!charge.ok) return charge.response;
+
       const linkCache = await loadLinkages();
       const linkageStr = linkageBlock(currentTicker, linkCache);
       const ipoStr = await loadIpoIntel();
@@ -259,13 +264,16 @@ serve(async (req) => {
         }),
       });
 
+      if (!res.ok) {
+        await refundAiCredits(charge.userId, charge.cost, "Refund — quant_agent call failed");
+      }
       if (res.status === 429) {
         return new Response(JSON.stringify({ response: "I'm getting rate-limited right now — please try again in a moment." }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (res.status === 402) {
-        return new Response(JSON.stringify({ response: "AI credits are exhausted for this workspace. Please add credits to keep chatting." }), {
+        return new Response(JSON.stringify({ response: "AI service is temporarily unavailable. Please try again shortly." }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -277,10 +285,11 @@ serve(async (req) => {
       const data = await res.json();
       const reply = data?.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response — try rephrasing.";
 
-      return new Response(JSON.stringify({ response: reply }), {
+      return new Response(JSON.stringify({ response: reply, creditBalance: charge.balance }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     throw new Error(`Unknown action: ${action}`);
 

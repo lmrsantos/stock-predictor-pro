@@ -9,6 +9,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { chargeAiCredits, refundAiCredits } from '../_shared/ai-credits.ts';
+
 import {
   buildClaudePrompt,
   validateClaudeResponse,
@@ -160,8 +162,37 @@ serve(async (req) => {
       );
     }
 
+    // --- Serve the shared cache for free when it is still fresh (12h) ---------
+    const cacheClient = createClient(SUPABASE_URL, SUPABASE_KEY);
+    if (!customQuery) {
+      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+      const { data: cached } = await cacheClient
+        .from('ipo_intelligence')
+        .select('*')
+        .eq('horizon', horizon)
+        .gte('refreshed_at', twelveHoursAgo)
+        .order('risk_score', { ascending: true });
+      if (cached?.length) {
+        return new Response(
+          JSON.stringify({ cached: true, rows: cached, refreshedAt: cached[0].refreshed_at }),
+          { headers: jsonHeaders }
+        );
+      }
+    }
+
+    // A fresh AI research run is charged to the requesting user's credits.
+    const charge = await chargeAiCredits(req, 'ipo_intelligence', corsHeaders);
+    if (!charge.ok) return charge.response;
+
     // --- Call Claude with web search ---
-    const textBlock = await fetchIpoFactsText(buildClaudePrompt(horizon, customQuery));
+    let textBlock: string;
+    try {
+      textBlock = await fetchIpoFactsText(buildClaudePrompt(horizon, customQuery));
+    } catch (e) {
+      await refundAiCredits(charge.userId, charge.cost, 'Refund — ipo_intelligence run failed');
+      throw e;
+    }
+
 
     // --- Validate and score ---
     let facts;

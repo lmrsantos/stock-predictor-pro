@@ -6,6 +6,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { chargeAiCredits, refundAiCredits } from "../_shared/ai-credits.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,7 +77,16 @@ serve(async (req) => {
 
     // ── Action: get_analysis ──────────────────────────────────────────────────
     if (action === "get_analysis") {
+      const isFollowUp = Array.isArray(history) && history.length > 0;
+      const charge = await chargeAiCredits(
+        req,
+        isFollowUp ? "portfolio_advisor_chat" : "portfolio_advisor",
+        corsHeaders,
+      );
+      if (!charge.ok) return charge.response;
+
       const macroContext = body.macroContext;
+
       const systemPrompt = `You are QuantForecast's Portfolio Advisor — a sophisticated investment analyst combining quantitative signals with macro regime analysis.
 
 ## Current Macro Context (Live Data)
@@ -161,16 +172,18 @@ EDUCATIONAL, ILLUSTRATIVE content only. You must:
       });
 
       if (!res.ok) {
+        await refundAiCredits(charge.userId, charge.cost, "Refund — portfolio_advisor call failed");
         if (res.status === 429) throw new Error("Rate limited — please retry in a minute.");
-        if (res.status === 402) throw new Error("AI credits exhausted. Please add credits in Lovable settings.");
+        if (res.status === 402) throw new Error("AI service is temporarily unavailable. Please try again shortly.");
         throw new Error(`AI gateway error: ${await res.text()}`);
       }
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content || "";
 
-      return new Response(JSON.stringify({ response: text }), {
+      return new Response(JSON.stringify({ response: text, creditBalance: charge.balance }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     }
 
     throw new Error(`Unknown action: ${action}`);

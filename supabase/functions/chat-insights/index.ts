@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { chargeAiCredits, refundAiCredits } from "../_shared/ai-credits.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,7 +38,11 @@ serve(async (req) => {
   }
 
   try {
+    const charge = await chargeAiCredits(req, "chat_insights", corsHeaders);
+    if (!charge.ok) return charge.response;
+
     const { messages, context } = await req.json();
+
 
     // Build context-aware system message
     let systemContent = SYSTEM_PROMPT;
@@ -91,6 +97,7 @@ serve(async (req) => {
     if (!response.ok) {
       const errText = await response.text();
       console.error("AI gateway error:", errText);
+      await refundAiCredits(charge.userId, charge.cost, "Refund — chat_insights call failed");
       // Never expose technical details to user
       return new Response(
         JSON.stringify({
@@ -106,9 +113,10 @@ serve(async (req) => {
       data.choices?.[0]?.message?.content ||
       "Let me think about that... try rephrasing your question!";
 
-    return new Response(JSON.stringify({ reply }), {
+    return new Response(JSON.stringify({ reply, creditBalance: charge.balance }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error) {
     console.error("Chat error:", error);
     return new Response(

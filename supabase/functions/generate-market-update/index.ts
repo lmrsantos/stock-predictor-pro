@@ -53,29 +53,28 @@ serve(async (req) => {
   }
 
   try {
-    const { ticker, adminKey, auto } = await req.json();
+    const { ticker: requestedTicker, adminKey, auto } = await req.json();
+    // Auto mode always produces ONE globally shared general update — per-ticker
+    // AI commentary would multiply cost with every visitor and every symbol.
+    const ticker = auto ? null : requestedTicker;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Auto mode: no admin key needed, but rate-limited (1 per ticker per 10 min)
+    // Auto mode: shared global cache — at most one AI call per 45 minutes for
+    // the whole platform, regardless of how many visitors load the page.
     if (auto) {
-      const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-      const query = supabase
+      const windowStart = new Date(Date.now() - 45 * 60 * 1000).toISOString();
+      const { data: recent } = await supabase
         .from("market_updates")
         .select("id")
-        .gte("created_at", tenMinsAgo);
+        .is("ticker", null)
+        .gte("created_at", windowStart)
+        .limit(1);
 
-      if (ticker) {
-        query.eq("ticker", ticker);
-      } else {
-        query.is("ticker", null);
-      }
-
-      const { data: recent } = await query.limit(1);
       if (recent && recent.length > 0) {
-        return new Response(JSON.stringify({ skipped: true, reason: "Recent update exists" }), {
+        return new Response(JSON.stringify({ skipped: true, reason: "Shared update is still fresh" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -88,6 +87,7 @@ serve(async (req) => {
         });
       }
     }
+
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
