@@ -6,6 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { useEffect, useState } from "react";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { AiActionsMeter } from "@/components/AiActionsMeter";
+import { DeviceSharingNotice } from "@/components/DeviceSharingNotice";
+import { useSessionGuard } from "@/hooks/useSessionGuard";
+import { PLAN_META } from "@/lib/plans";
+
 
 export default function Account() {
   const { user, signOut, isLoading: authLoading } = useAuth();
