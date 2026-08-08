@@ -170,16 +170,18 @@ EDUCATIONAL, ILLUSTRATIVE content only. You must:
       });
 
       if (!res.ok) {
+        await refundAiCredits(charge.userId, charge.cost, "Refund — portfolio_advisor call failed");
         if (res.status === 429) throw new Error("Rate limited — please retry in a minute.");
-        if (res.status === 402) throw new Error("AI credits exhausted. Please add credits in Lovable settings.");
+        if (res.status === 402) throw new Error("AI service is temporarily unavailable. Please try again shortly.");
         throw new Error(`AI gateway error: ${await res.text()}`);
       }
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content || "";
 
-      return new Response(JSON.stringify({ response: text }), {
+      return new Response(JSON.stringify({ response: text, creditBalance: charge.balance }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     }
 
     throw new Error(`Unknown action: ${action}`);
