@@ -7,8 +7,10 @@ import type { Tier } from "@/lib/stripe";
 const PLAN_LABEL: Record<Tier, string> = {
   free: "Market Pulse",
   pro: "Sector Intel",
+  plus: "Signal Pro",
   elite: "Custom Intel",
 };
+
 
 const FEATURE_COPY: Record<Feature, { title: string; blurb: string; plan: Tier }> = {
   symbol_backtest: { title: "Symbol backtest", blurb: "", plan: "free" },
