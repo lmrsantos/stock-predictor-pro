@@ -580,9 +580,10 @@ const Index = () => {
                   historicalFit={regression.historicalFit}
                   predictions={chartData
                     .filter((d) => d.isForecast)
-                    .map((d) => ({
+                    .map((d, i) => ({
                       date: d.date,
                       timestamp: d.timestamp,
+                      dayIndex: i + 1,
                       predicted: d.predicted ?? 0,
                       upper1Sigma: d.upper1Sigma,
                       lower1Sigma: d.lower1Sigma,
