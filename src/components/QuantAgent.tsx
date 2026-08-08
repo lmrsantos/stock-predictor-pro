@@ -372,7 +372,29 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
         },
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        // Surface allowance / fair-use messages in plain language.
+        let friendly = error.message;
+        try {
+          const ctx = (error as unknown as { context?: Response }).context;
+          const body = ctx ? await ctx.clone().json() : null;
+          if (body?.code === "OUT_OF_CREDITS") {
+            friendly =
+              "You've used all your AI actions for this month. Upgrade your plan or wait for the reset on the 1st to keep asking.";
+          } else if (body?.code === "SHARING_LIMIT") {
+            friendly =
+              "This login is active on too many devices. Plans are personal — sign out elsewhere or upgrade to continue.";
+          } else if (body?.code === "AUTH_REQUIRED") {
+            friendly = "Sign in to use QuantAgent.";
+          } else if (body?.error) {
+            friendly = body.error;
+          }
+        } catch {
+          // keep original message
+        }
+        throw new Error(friendly);
+      }
+
 
       // Handle expired session — reinitialize
       if (data?.error === "SESSION_EXPIRED") {
