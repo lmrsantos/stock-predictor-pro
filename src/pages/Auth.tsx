@@ -21,6 +21,7 @@ const Auth = () => {
   // Only allow same-origin relative paths.
   const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/terminal";
   const postAuthRedirect = window.location.origin + nextPath;
+  const emailConfirmationRedirect = window.location.origin;
 
   useEffect(() => {
     if (session) navigate(nextPath, { replace: true });
@@ -41,7 +42,7 @@ const Auth = () => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: postAuthRedirect },
+          options: { emailRedirectTo: emailConfirmationRedirect },
         });
         if (error) throw error;
         setMessage("Check your email to verify your account before signing in.");
