@@ -86,8 +86,13 @@ export interface ForecastResult {
   // All model calibrations (for display)
   models: ModelCalibration[];
 
+  // Ensemble vote counts and majority direction
+  upCount: number;
+  downCount: number;
+  majorityDirection: "up" | "down";
+
   // Ensemble cone from all models
-  ensembleAgreement: number;  // 0–1
+  ensembleAgreement: number;  // 0–1, fraction of models that agree with the majority direction
   modelDisagreement: boolean;
 
   // Regime detection
@@ -485,12 +490,15 @@ export function backtest(
   const forecastDirection  = forecastPct >= 0 ? "up" : "down";
 
   // ── 6. Ensemble agreement ───────────────────────────────────────────────────
-  // How many models agree with the *forecast direction* the user is actually being shown.
-  const agreeCount = models.filter(m =>
-    forecastDirection === "up" ? m.slope > 0 : m.slope < 0
-  ).length;
-  const ensembleAgreement = models.length > 0 ? agreeCount / models.length : 0;
-  const modelDisagreement  = ensembleAgreement < 0.7;
+  // Vote count across all 5 models: how many point up vs down. The majority
+  // fraction is the consensus strength; the UI shows the split so the user can
+  // see both the prevailing direction and the dissent.
+  const upCount = models.filter(m => m.slope > 0).length;
+  const downCount = models.filter(m => m.slope < 0).length;
+  const majorityDirection = upCount > downCount ? "up" : "down";
+  const majorityCount = Math.max(upCount, downCount);
+  const ensembleAgreement = models.length > 0 ? majorityCount / models.length : 0;
+  const modelDisagreement = ensembleAgreement < 0.7;
 
   // ── 7. Regime detection ─────────────────────────────────────────────────────
   const regime = detectRegime(prices);
@@ -594,6 +602,9 @@ export function backtest(
     forecastDirection,
     winningModel:      winner,
     models,
+    upCount,
+    downCount,
+    majorityDirection,
     ensembleAgreement,
     modelDisagreement,
     regime,

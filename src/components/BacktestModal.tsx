@@ -321,7 +321,7 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
     },
   };
 
-  const message = `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
+const message = `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
 
 The quantitative model shows:
 - Forecast: ${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}% over 30 days (1σ range ${(result.forecastPct - result.magnitudeSignal.expectedMovePct).toFixed(0)}% to ${(result.forecastPct + result.magnitudeSignal.expectedMovePct).toFixed(0)}%)
@@ -329,7 +329,7 @@ The quantitative model shows:
 - Direction correct in ${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} rolling windows
 - Model fit: ${result.confidenceScore}/100
 - Regime: ${result.regime.outsideDistribution ? "SHIFTED (elevated volatility)" : "NORMAL"}
-- Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
+- Model vote: ${result.upCount}/${result.models.length} up, ${result.downCount}/${result.models.length} down — majority says ${result.majorityDirection}
 - Calibration quality: ${result.calibration.grade.toUpperCase()} — ${result.calibration.message}
 - Magnitude signal: ${result.magnitudeSignal.message}${result.calibration.directionCredible ? "" : `
 
@@ -415,6 +415,12 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
   const confidence = result.confidenceScore;
   const regime     = result.regime;
   const agreement  = result.ensembleAgreement;
+  const majorityDirection = result.majorityDirection;
+  const upCount    = result.upCount;
+  const downCount  = result.downCount;
+  const majorityCount = majorityDirection === "up" ? upCount : downCount;
+  const minorityCount = majorityDirection === "up" ? downCount : upCount;
+  const matchesConsensus = result.forecastDirection === majorityDirection;
 
   const v          = result.validation;
   const band       = result.magnitudeSignal.expectedMovePct;
@@ -428,7 +434,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
 
   if (regime.ratio > 2.5) {
     signal = "STAY OUT"; signalColor = "#f87171"; emoji = "🚫";
-  } else if (agreement < 0.6 || !dirReliable) {
+  } else if (agreement < 0.6 || !dirReliable || !matchesConsensus) {
     signal = "WAIT";     signalColor = "#fbbf24"; emoji = "⏳";
   } else if (confidence >= 50 && up) {
     signal = "MODEL FLAG";   signalColor = "#34d399"; emoji = "📈";
@@ -450,7 +456,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
             : "No single model validated — showing ensemble mean", positive: v.decisive },
         { text: `Forecast: ${bandText}`, positive: up },
         { text: `Median path error across windows: ${v.medianPathMape.toFixed(1)}%`, positive: v.medianPathMape < 8 },
-        { text: `${(agreement * 100).toFixed(0)}% of models agree on direction — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 },
+        { text: `${majorityCount}/${result.models.length} models agree the trend is ${majorityDirection} (${minorityCount}/${result.models.length} say ${majorityDirection === "up" ? "down" : "up"}) — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 && matchesConsensus },
         { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
         { text: `Model fit ${confidence}/100`, positive: confidence >= 50 },
       ]
@@ -695,10 +701,8 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                 )}
 
                 <StatCard label="Model Agreement"
-                  value={`${(result.ensembleAgreement * 100).toFixed(0)}%`}
-                  sub={`${result.models.filter(m =>
-                    result.forecastDirection === "up" ? m.slope > 0 : m.slope < 0
-                  ).length}/${result.models.length} models agree`}
+                  value={`${result.majorityDirection === "up" ? result.upCount : result.downCount}/${result.models.length} ${result.majorityDirection}`}
+                  sub={`${result.majorityDirection === "up" ? result.downCount : result.upCount}/${result.models.length} models say ${result.majorityDirection === "up" ? "down" : "up"}`}
                   color={accentColor(100 - result.ensembleAgreement * 100, 30, 50)} />
                 <StatCard label="Regime"
                   value={result.regime.outsideDistribution ? "⚠ SHIFTED" : "✓ NORMAL"}

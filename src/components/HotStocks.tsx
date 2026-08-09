@@ -375,7 +375,7 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         //   • otherwise → WAIT
         const minConf = c.riskTier === 1 ? 55 : c.riskTier === 2 ? 50 : c.riskTier === 3 ? 45 : 40;
         const stayOutConf = c.riskTier === 1 ? 25 : c.riskTier === 2 ? 22 : 20;
-        const agree = bt.ensembleAgreement >= 0.6;
+        const agree = bt.ensembleAgreement >= 0.6 && bt.forecastDirection === bt.majorityDirection;
         const v = bt.validation;
         const dirReliable = v.directionHitRate > 0.55;
         const dirHits = Math.round(v.directionHitRate * v.windowCount);
@@ -412,7 +412,13 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
         } else {
           const bits: string[] = [];
           if (tiltedConfidence < minConf) bits.push(`model fit ${Math.round(tiltedConfidence)}/100 < ${minConf} threshold`);
-          if (!agree) bits.push(`only ${Math.round(bt.ensembleAgreement*100)}% of models agree on direction`);
+          if (!agree) {
+            if (bt.ensembleAgreement >= 0.6 && bt.forecastDirection !== bt.majorityDirection) {
+              bits.push(`forecast goes against ${bt.majorityDirection} consensus (${bt.upCount}/${bt.models.length} up, ${bt.downCount}/${bt.models.length} down)`);
+            } else {
+              bits.push(`only ${Math.round(bt.ensembleAgreement*100)}% of models agree on direction`);
+            }
+          }
           if (Math.abs(bt.forecastPct) <= 0.5) bits.push(`flat forecast (${withBand(bt.forecastPct)})`);
           reason = `Wait — ${bits.join("; ") || "signal not strong enough"}`;
         }
