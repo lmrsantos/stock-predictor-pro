@@ -154,26 +154,43 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
               Cycle History ({peaks.length} peaks · {troughs.length} troughs)
             </p>
             <p className="text-[8px] font-mono text-muted-foreground/70">
-              ▲ red = peak (local high / resistance) · ▼ green = trough (local low / support). Showing last 8 pivots.
+              ▲ red = peak (local high / resistance) · ▼ green = trough (local low / support). Showing{" "}
+              {span === 0 ? `all ${allPivots.length}` : `last ${pivots.length}`} pivots.
             </p>
           </div>
-          <div className="flex rounded-md border border-border overflow-hidden shrink-0">
-            {(["chart", "list"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider transition-colors ${
-                  mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex rounded-md border border-border overflow-hidden">
+              {([8, 20, 0] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSpan(s)}
+                  className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                    span === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {s === 0 ? "all" : s}
+                </button>
+              ))}
+            </div>
+            <div className="flex rounded-md border border-border overflow-hidden">
+              {(["chart", "list"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                    mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {mode === "chart" ? (
-          <div className="h-48 -ml-2">
+          <div className={span === 0 ? "h-64 -ml-2" : "h-48 -ml-2"}>
+
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 18, right: 16, bottom: 4, left: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
