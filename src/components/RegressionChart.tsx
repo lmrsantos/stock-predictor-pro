@@ -174,7 +174,9 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
   );
   const hasVolume = maxVolume > 0;
 
-  // Explicit price domain so the volume pane never squashes the price panel
+  // Explicit price domain so neither the volume pane nor the sigma bands
+  // squash the price panel
+  const reserve = hasVolume && showVolume ? 0.22 : 0;
   const priceDomain = useMemo<[number, number]>(() => {
     const vals: number[] = [];
     data.forEach((d) => {
@@ -187,9 +189,10 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
     const pad = (hi - lo) * 0.06 || hi * 0.02;
     // Reserve the bottom ~22% of the price panel for the volume histogram
     const span = hi + pad - (lo - pad);
-    const lower = lo - pad - span * 0.22;
-    return [Math.round(Math.max(0, lower)), Math.round(hi + pad)];
-  }, [data]);
+    const lower = lo - pad - span * reserve;
+    return [Math.max(0, lower), hi + pad];
+  }, [data, reserve]);
+
 
 
   // ── Market-structure pivots: higher/lower highs and lows ──────────────────
