@@ -168,6 +168,25 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   );
   const hasVolume = maxVolume > 0;
 
+  // Explicit price domain so the volume pane never squashes the price panel
+  const priceDomain = useMemo<[number, number]>(() => {
+    const vals: number[] = [];
+    data.forEach((d) => {
+      if (d.actual != null) vals.push(d.actual);
+      if (d.predicted != null) vals.push(d.predicted);
+      if (d.lower2Sigma) vals.push(d.lower2Sigma);
+      if (d.upper2Sigma) vals.push(d.upper2Sigma);
+    });
+    if (!vals.length) return [0, 1];
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.06 || hi * 0.02;
+    // Reserve the bottom ~22% of the price panel for the volume histogram
+    const span = hi + pad - (lo - pad);
+    return [lo - pad - span * 0.28, hi + pad];
+  }, [data]);
+
+
   // ── Market-structure pivots: higher/lower highs and lows ──────────────────
   const { markers, structureSummary } = useMemo(() => {
     const hist = data.filter((d) => !d.isForecast && d.actual != null);
