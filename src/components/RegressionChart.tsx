@@ -49,8 +49,9 @@ interface StructureMarker {
   date: string;
   price: number;
   type: "peak" | "trough";
-  label: "HH" | "LH" | "HL" | "LL" | "P" | "T";
+  label: "HH" | "LH" | "HL" | "LL" | "EH" | "EL" | "P" | "T";
   pct?: number;
+  provisional?: boolean;
 }
 
 function formatVolume(v: number) {
@@ -187,9 +188,15 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
 
 
   // ── Market-structure pivots: higher/lower highs and lows ──────────────────
+  // Rules:
+  //  • a pivot is compared to the PREVIOUS pivot OF THE SAME TYPE
+  //  • moves inside a ±1% deadband are "equal" highs/lows (EH/EL), not HH/LL
+  //  • the final zigzag pivot is still unconfirmed (price can extend it), so it
+  //    is drawn faded with a "?" and excluded from the trend read
   const { markers, structureSummary } = useMemo(() => {
     const hist = data.filter((d) => !d.isForecast && d.actual != null);
     if (hist.length < 30) return { markers: [] as StructureMarker[], structureSummary: null as string | null };
+    const DEADBAND = 1; // percent
     let pivots: StructureMarker[] = [];
     try {
       const res = analyzeCycles(
@@ -198,39 +205,53 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
         hist.map((d) => d.date),
         0.08
       );
-      pivots = [...res.peaks, ...res.troughs]
-        .sort((a, b) => a.index - b.index)
-        .map((p) => {
-          const pct = p.pctFromPrev;
-          const label: StructureMarker["label"] =
-            pct == null
-              ? p.type === "peak" ? "P" : "T"
-              : p.type === "peak"
-                ? (pct > 0 ? "HH" : "LH")
-                : (pct > 0 ? "HL" : "LL");
-          return { date: p.date, price: p.price, type: p.type, label, pct };
-        });
+      const ordered = [...res.peaks, ...res.troughs].sort((a, b) => a.index - b.index);
+      pivots = ordered.map((p, i) => {
+        const pct = p.pctFromPrev;
+        let label: StructureMarker["label"];
+        if (pct == null || Math.abs(pct) < DEADBAND) {
+          label = p.type === "peak" ? "EH" : "EL";
+          if (pct == null) label = p.type === "peak" ? "P" : "T";
+        } else if (p.type === "peak") {
+          label = pct > 0 ? "HH" : "LH";
+        } else {
+          label = pct > 0 ? "HL" : "LL";
+        }
+        return {
+          date: p.date,
+          price: p.price,
+          type: p.type,
+          label,
+          pct,
+          provisional: i === ordered.length - 1,
+        };
+      });
     } catch {
       return { markers: [] as StructureMarker[], structureSummary: null };
     }
 
-    const lows = pivots.filter((p) => p.type === "trough").slice(-2);
-    const highs = pivots.filter((p) => p.type === "peak").slice(-2);
-    const lowLabel = lows.at(-1)?.label;
-    const highLabel = highs.at(-1)?.label;
+    // Trend read uses confirmed pivots only
+    const confirmed = pivots.filter((p) => !p.provisional);
+    const lastLowPivot = confirmed.filter((p) => p.type === "trough").at(-1);
+    const lastHighPivot = confirmed.filter((p) => p.type === "peak").at(-1);
+    const lowLabel = lastLowPivot?.label;
+    const highLabel = lastHighPivot?.label;
     let summary: string | null = null;
     if (lowLabel && highLabel) {
       if (lowLabel === "HL" && highLabel === "HH") summary = "Uptrend intact — higher highs and higher lows";
       else if (lowLabel === "LL" && highLabel === "LH") summary = "Downtrend — lower highs and lower lows";
       else if (lowLabel === "HL" && highLabel === "LH") summary = "Compression — higher lows into lower highs (coiling)";
       else if (lowLabel === "LL" && highLabel === "HH") summary = "Expanding range — wider swings, no clear structure";
-      if (summary) {
-        const lastLow = lows.at(-1);
-        if (lastLow) summary += ` · watch ${lastLow.price.toFixed(2)} as the pivot low`;
+      else summary = "Sideways — latest swing high/low roughly equal to the prior one";
+      if (lastLowPivot) summary += ` · watch ${lastLowPivot.price.toFixed(2)} as the pivot low`;
+      const provisional = pivots.at(-1);
+      if (provisional) {
+        summary += ` · latest ${provisional.type === "peak" ? "high" : "low"} still unconfirmed`;
       }
     }
     return { markers: pivots, structureSummary: summary };
   }, [data]);
+
 
 
   if (isLoading) {
@@ -333,7 +354,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
         <div className="-mt-2 mb-3 text-[11px] text-muted-foreground">
           <span className="font-mono">{structureSummary}</span>
           <span className="ml-2 opacity-70">
-            HH = higher high · HL = higher low · LH = lower high · LL = lower low
+            HH = higher high · HL = higher low · LH = lower high · LL = lower low · EH/EL = equal (±1%) · "?" = unconfirmed
           </span>
         </div>
       )}
@@ -482,11 +503,16 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             />
           )}
 
-          {/* Market structure pivots: HH / HL / LH / LL */}
+          {/* Market structure pivots: HH / HL / LH / LL (EH/EL = equal, ±1%) */}
           {showStructure &&
             markers.map((m) => {
               const bullish = m.label === "HH" || m.label === "HL";
-              const color = bullish ? "hsl(150, 70%, 42%)" : "hsl(0, 72%, 55%)";
+              const neutral = m.label === "EH" || m.label === "EL" || m.label === "P" || m.label === "T";
+              const color = neutral
+                ? (isDark ? "hsl(0,0%,65%)" : "hsl(0,0%,45%)")
+                : bullish
+                  ? "hsl(150, 70%, 42%)"
+                  : "hsl(0, 72%, 55%)";
               return (
                 <ReferenceDot
                   key={`${m.date}-${m.label}`}
@@ -494,19 +520,22 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
                   y={m.price}
                   r={3}
                   fill={color}
+                  fillOpacity={m.provisional ? 0.45 : 1}
                   stroke={isDark ? "hsl(0,0%,10%)" : "hsl(0,0%,100%)"}
                   strokeWidth={1}
                   isFront
                   label={{
-                    value: m.label,
+                    value: m.provisional ? `${m.label}?` : m.label,
                     position: m.type === "peak" ? "top" : "bottom",
                     fill: color,
+                    fillOpacity: m.provisional ? 0.6 : 1,
                     fontSize: 9,
                     fontWeight: 700,
                   }}
                 />
               );
             })}
+
 
         </ComposedChart>
       </ResponsiveContainer>
