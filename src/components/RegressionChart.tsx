@@ -205,7 +205,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
         "chart",
         hist.map((d) => d.actual as number),
         hist.map((d) => d.date),
-        0.08
+        sensitivity
       );
       const ordered = [...res.peaks, ...res.troughs].sort((a, b) => a.index - b.index);
       pivots = ordered.map((p, i) => {
@@ -252,7 +252,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       }
     }
     return { markers: pivots, structureSummary: summary };
-  }, [data]);
+  }, [data, sensitivity]);
 
 
 
@@ -349,6 +349,26 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           >
             Structure HH/HL
           </button>
+          {showStructure && (
+            <span className="flex items-center gap-1 rounded-md border border-border overflow-hidden">
+              {([
+                { v: 0.04, l: "Fine", t: "4% reversal — labels intermediate swings" },
+                { v: 0.08, l: "Med", t: "8% reversal — balanced (default)" },
+                { v: 0.12, l: "Major", t: "12% reversal — only major structural swings" },
+              ] as const).map((o) => (
+                <button
+                  key={o.v}
+                  title={o.t}
+                  onClick={() => setSensitivity(o.v)}
+                  className={`px-2 py-0.5 font-mono text-[10px] transition-colors ${
+                    sensitivity === o.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {o.l}
+                </button>
+              ))}
+            </span>
+          )}
         </span>
       </div>
 
