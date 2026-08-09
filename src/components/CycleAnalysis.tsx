@@ -196,8 +196,11 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
                 <XAxis
                   dataKey="date"
+                  interval="preserveStartEnd"
+                  minTickGap={showLabels ? 5 : 24}
                   tick={{ fontSize: 8, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
                   tickLine={false}
+
                   axisLine={{ stroke: "hsl(var(--border))" }}
                 />
                 <YAxis
