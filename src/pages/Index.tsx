@@ -240,7 +240,10 @@ const Index = () => {
   const website = meta?.website || null;
   const irWebsite = meta?.irWebsite || null;
 
-  const isLoading = isFetching || (isQuerying && !meta?.prices?.length);
+  const isLoading = isIntraday
+    ? isIntradayLoading
+    : isFetching || (isQuerying && !meta?.prices?.length);
+
   const error = fetchError || (stockData?.length ? null : queryError);
 
   // Build risk context from VIX + geopolitical tension
