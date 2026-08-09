@@ -1,7 +1,8 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   ComposedChart,
   Area,
+  Bar,
   Line,
   XAxis,
   YAxis,
@@ -9,9 +10,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceDot,
 } from "recharts";
 import { ChartDataPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/regression";
+import { analyzeCycles } from "@/lib/cycle-analysis";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 
 interface RegressionChartProps {
@@ -26,6 +29,10 @@ interface StackedPoint {
   predicted?: number;
   fitted?: number;
   isForecast: boolean;
+  volume?: number;
+  volumeUp?: boolean;
+  volUp?: number;
+  volDown?: number;
   // Stacked band fields
   base2: number;       // lower2Sigma (invisible base)
   band2Lower: number;  // lower2Sigma → lower1Sigma
@@ -36,6 +43,14 @@ interface StackedPoint {
   lower1Sigma: number;
   upper2Sigma: number;
   lower2Sigma: number;
+}
+
+interface StructureMarker {
+  date: string;
+  price: number;
+  type: "peak" | "trough";
+  label: "HH" | "LH" | "HL" | "LL" | "P" | "T";
+  pct?: number;
 }
 
 function CustomTooltip({ active, payload }: any) {
