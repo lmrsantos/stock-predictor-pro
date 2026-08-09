@@ -600,7 +600,9 @@ const Index = () => {
               data={chartData}
               isLoading={isLoading}
               slopePositive={regression ? regression.slope >= 0 : true}
+              intraday={isIntraday}
             />
+
 
             <div className="flex justify-start -mt-2">
               <button
