@@ -21,7 +21,10 @@ interface RegressionChartProps {
   data: ChartDataPoint[];
   isLoading: boolean;
   slopePositive: boolean;
+  /** 1-day view: x-axis shows intraday times instead of dates */
+  intraday?: boolean;
 }
+
 
 interface StackedPoint {
   date: string;
