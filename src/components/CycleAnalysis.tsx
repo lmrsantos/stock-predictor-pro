@@ -1,6 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { analyzeCycles, formatCycleReport, type CycleAnalysisResult } from "@/lib/cycle-analysis";
 import { TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+} from "recharts";
+
 
 interface CycleAnalysisProps {
   ticker: string;
