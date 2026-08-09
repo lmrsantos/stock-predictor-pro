@@ -172,10 +172,10 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   const priceDomain = useMemo<[number, number]>(() => {
     const vals: number[] = [];
     data.forEach((d) => {
-      if (d.actual != null) vals.push(d.actual);
-      if (d.predicted != null) vals.push(d.predicted);
-      if (d.lower2Sigma) vals.push(d.lower2Sigma);
-      if (d.upper2Sigma) vals.push(d.upper2Sigma);
+      if (d.actual != null && d.actual > 0) vals.push(d.actual);
+      if (d.predicted != null && d.predicted > 0) vals.push(d.predicted);
+      if (d.lower2Sigma > 0) vals.push(d.lower2Sigma);
+      if (d.upper2Sigma > 0) vals.push(d.upper2Sigma);
     });
     if (!vals.length) return [0, 1];
     const lo = Math.min(...vals);
@@ -183,7 +183,8 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     const pad = (hi - lo) * 0.06 || hi * 0.02;
     // Reserve the bottom ~22% of the price panel for the volume histogram
     const span = hi + pad - (lo - pad);
-    return [lo - pad - span * 0.22, hi + pad];
+    const lower = lo - pad - span * 0.22;
+    return [Math.round(Math.max(0, lower)), Math.round(hi + pad)];
   }, [data]);
 
 
