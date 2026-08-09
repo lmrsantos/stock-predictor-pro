@@ -485,11 +485,12 @@ export function backtest(
   const forecastDirection  = forecastPct >= 0 ? "up" : "down";
 
   // ── 6. Ensemble agreement ───────────────────────────────────────────────────
-  // How much do models agree on direction?
-  const positiveSlopes = models.filter(m => m.slope > 0).length;
-  const directionAgreement = Math.max(positiveSlopes, models.length - positiveSlopes) / models.length;
-  const ensembleAgreement  = directionAgreement;
-  const modelDisagreement  = directionAgreement < 0.7;
+  // How many models agree with the *forecast direction* the user is actually being shown.
+  const agreeCount = models.filter(m =>
+    forecastDirection === "up" ? m.slope > 0 : m.slope < 0
+  ).length;
+  const ensembleAgreement = models.length > 0 ? agreeCount / models.length : 0;
+  const modelDisagreement  = ensembleAgreement < 0.7;
 
   // ── 7. Regime detection ─────────────────────────────────────────────────────
   const regime = detectRegime(prices);
