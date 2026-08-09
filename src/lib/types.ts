@@ -51,4 +51,6 @@ export interface ChartDataPoint {
   upper2Sigma: number;
   lower2Sigma: number;
   isForecast?: boolean;
+  volume?: number;
+  volumeUp?: boolean;
 }

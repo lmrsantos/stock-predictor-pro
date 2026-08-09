@@ -1,7 +1,8 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   ComposedChart,
   Area,
+  Bar,
   Line,
   XAxis,
   YAxis,
@@ -9,9 +10,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ReferenceDot,
 } from "recharts";
 import { ChartDataPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/regression";
+import { analyzeCycles } from "@/lib/cycle-analysis";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 
 interface RegressionChartProps {
@@ -26,6 +29,10 @@ interface StackedPoint {
   predicted?: number;
   fitted?: number;
   isForecast: boolean;
+  volume?: number;
+  volumeUp?: boolean;
+  volUp?: number;
+  volDown?: number;
   // Stacked band fields
   base2: number;       // lower2Sigma (invisible base)
   band2Lower: number;  // lower2Sigma → lower1Sigma
@@ -36,6 +43,21 @@ interface StackedPoint {
   lower1Sigma: number;
   upper2Sigma: number;
   lower2Sigma: number;
+}
+
+interface StructureMarker {
+  date: string;
+  price: number;
+  type: "peak" | "trough";
+  label: "HH" | "LH" | "HL" | "LL" | "P" | "T";
+  pct?: number;
+}
+
+function formatVolume(v: number) {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
+  return `${Math.round(v)}`;
 }
 
 function CustomTooltip({ active, payload }: any) {
@@ -72,6 +94,14 @@ function CustomTooltip({ active, payload }: any) {
           <span className="font-mono text-primary">${formatPrice(point.fitted)}</span>
         </div>
       )}
+      {point.volume != null && point.volume > 0 && (
+        <div className="flex justify-between gap-6">
+          <span className="text-muted-foreground">Volume</span>
+          <span className={`font-mono ${point.volumeUp ? "text-emerald-500" : "text-red-500"}`}>
+            {formatVolume(point.volume)}
+          </span>
+        </div>
+      )}
       <div className="border-t border-border pt-1.5 mt-1.5">
         <div className="flex justify-between gap-6">
           <span className="text-muted-foreground">68% Range</span>
@@ -91,6 +121,9 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+  const [showVolume, setShowVolume] = useState(true);
+  const [showStructure, setShowStructure] = useState(true);
+
   const isDark = useSyncExternalStore(
     (cb) => {
       const observer = new MutationObserver(cb);
@@ -113,6 +146,10 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
         predicted: d.predicted,
         fitted: d.fitted,
         isForecast: d.isForecast,
+        volume: d.volume,
+        volumeUp: d.volumeUp,
+        volUp: d.volumeUp ? d.volume : undefined,
+        volDown: d.volumeUp === false ? d.volume : undefined,
         base2: l2,
         band2Lower: l1 - l2,
         band1: u1 - l1,
@@ -124,6 +161,77 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       };
     });
   }, [data]);
+
+  const maxVolume = useMemo(
+    () => Math.max(0, ...data.map((d) => d.volume ?? 0)),
+    [data]
+  );
+  const hasVolume = maxVolume > 0;
+
+  // Explicit price domain so the volume pane never squashes the price panel
+  const priceDomain = useMemo<[number, number]>(() => {
+    const vals: number[] = [];
+    data.forEach((d) => {
+      if (d.actual != null && d.actual > 0) vals.push(d.actual);
+      if (d.predicted != null && d.predicted > 0) vals.push(d.predicted);
+    });
+    if (!vals.length) return [0, 1];
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.06 || hi * 0.02;
+    // Reserve the bottom ~22% of the price panel for the volume histogram
+    const span = hi + pad - (lo - pad);
+    const lower = lo - pad - span * 0.22;
+    return [Math.round(Math.max(0, lower)), Math.round(hi + pad)];
+  }, [data]);
+
+
+  // ── Market-structure pivots: higher/lower highs and lows ──────────────────
+  const { markers, structureSummary } = useMemo(() => {
+    const hist = data.filter((d) => !d.isForecast && d.actual != null);
+    if (hist.length < 30) return { markers: [] as StructureMarker[], structureSummary: null as string | null };
+    let pivots: StructureMarker[] = [];
+    try {
+      const res = analyzeCycles(
+        "chart",
+        hist.map((d) => d.actual as number),
+        hist.map((d) => d.date),
+        0.08
+      );
+      pivots = [...res.peaks, ...res.troughs]
+        .sort((a, b) => a.index - b.index)
+        .map((p) => {
+          const pct = p.pctFromPrev;
+          const label: StructureMarker["label"] =
+            pct == null
+              ? p.type === "peak" ? "P" : "T"
+              : p.type === "peak"
+                ? (pct > 0 ? "HH" : "LH")
+                : (pct > 0 ? "HL" : "LL");
+          return { date: p.date, price: p.price, type: p.type, label, pct };
+        });
+    } catch {
+      return { markers: [] as StructureMarker[], structureSummary: null };
+    }
+
+    const lows = pivots.filter((p) => p.type === "trough").slice(-2);
+    const highs = pivots.filter((p) => p.type === "peak").slice(-2);
+    const lowLabel = lows.at(-1)?.label;
+    const highLabel = highs.at(-1)?.label;
+    let summary: string | null = null;
+    if (lowLabel && highLabel) {
+      if (lowLabel === "HL" && highLabel === "HH") summary = "Uptrend intact — higher highs and higher lows";
+      else if (lowLabel === "LL" && highLabel === "LH") summary = "Downtrend — lower highs and lower lows";
+      else if (lowLabel === "HL" && highLabel === "LH") summary = "Compression — higher lows into lower highs (coiling)";
+      else if (lowLabel === "LL" && highLabel === "HH") summary = "Expanding range — wider swings, no clear structure";
+      if (summary) {
+        const lastLow = lows.at(-1);
+        if (lastLow) summary += ` · watch ${lastLow.price.toFixed(2)} as the pivot low`;
+      }
+    }
+    return { markers: pivots, structureSummary: summary };
+  }, [data]);
+
 
   if (isLoading) {
     return (
@@ -198,7 +306,38 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           Forecast
           <InfoTooltip {...metricInfo.forecast} />
         </span>
+
+        <span className="flex items-center gap-2 ml-auto normal-case tracking-normal">
+          {hasVolume && (
+            <button
+              onClick={() => setShowVolume((v) => !v)}
+              className={`px-2 py-0.5 rounded-md font-mono text-[10px] transition-colors ${
+                showVolume ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Volume
+            </button>
+          )}
+          <button
+            onClick={() => setShowStructure((v) => !v)}
+            className={`px-2 py-0.5 rounded-md font-mono text-[10px] transition-colors ${
+              showStructure ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Structure HH/HL
+          </button>
+        </span>
       </div>
+
+      {showStructure && structureSummary && (
+        <div className="-mt-2 mb-3 text-[11px] text-muted-foreground">
+          <span className="font-mono">{structureSummary}</span>
+          <span className="ml-2 opacity-70">
+            HH = higher high · HL = higher low · LH = lower high · LL = lower low
+          </span>
+        </div>
+      )}
+
 
       <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={stackedData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
@@ -217,14 +356,46 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             minTickGap={60}
           />
           <YAxis
-            domain={["auto", "auto"]}
+            domain={hasVolume && showVolume ? priceDomain : ["auto", "auto"]}
+            allowDataOverflow={hasVolume && showVolume}
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => `$${v.toFixed(0)}`}
             width={60}
           />
+          {hasVolume && showVolume && (
+            <YAxis
+              yAxisId="vol"
+              orientation="right"
+              domain={[0, maxVolume / 0.17]}
+              hide
+            />
+          )}
           <Tooltip content={<CustomTooltip />} />
+
+          {/* Volume bars pinned to the bottom quarter of the plot */}
+          {hasVolume && showVolume && (
+            <Bar
+              yAxisId="vol"
+              dataKey="volUp"
+              stackId="vol"
+              fill="hsl(150, 65%, 45%)"
+              fillOpacity={0.45}
+              isAnimationActive={false}
+            />
+          )}
+          {hasVolume && showVolume && (
+            <Bar
+              yAxisId="vol"
+              dataKey="volDown"
+              stackId="vol"
+              fill="hsl(0, 72%, 55%)"
+              fillOpacity={0.45}
+              isAnimationActive={false}
+            />
+          )}
+
 
           {/* Stacked bands: base2 (invisible) → band2Lower → band1 → band2Upper */}
           <Area
@@ -310,6 +481,33 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
               }}
             />
           )}
+
+          {/* Market structure pivots: HH / HL / LH / LL */}
+          {showStructure &&
+            markers.map((m) => {
+              const bullish = m.label === "HH" || m.label === "HL";
+              const color = bullish ? "hsl(150, 70%, 42%)" : "hsl(0, 72%, 55%)";
+              return (
+                <ReferenceDot
+                  key={`${m.date}-${m.label}`}
+                  x={m.date}
+                  y={m.price}
+                  r={3}
+                  fill={color}
+                  stroke={isDark ? "hsl(0,0%,10%)" : "hsl(0,0%,100%)"}
+                  strokeWidth={1}
+                  isFront
+                  label={{
+                    value: m.label,
+                    position: m.type === "peak" ? "top" : "bottom",
+                    fill: color,
+                    fontSize: 9,
+                    fontWeight: 700,
+                  }}
+                />
+              );
+            })}
+
         </ComposedChart>
       </ResponsiveContainer>
     </div>
