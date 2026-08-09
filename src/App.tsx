@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
 import Landing from "./pages/Landing.tsx";
 import Auth from "./pages/Auth.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import Portfolio from "./pages/Portfolio.tsx";
 import SectorBacktestPage from "./pages/SectorBacktestPage.tsx";
 import SectorChartPage from "./pages/SectorChartPage.tsx";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/terminal" element={<Index />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/sector-backtest" element={<SectorBacktestPage />} />
             <Route path="/sectors" element={<SectorChartPage />} />
             <Route path="/linkages" element={<LinkagesPage />} />
