@@ -74,10 +74,26 @@ function detectZigzag(
   const points: { index: number; price: number; type: "peak" | "trough" }[] = [];
   if (prices.length < 10) return points;
 
-  // Find local extremes with significance filter
+  // Find local extremes with significance filter.
+  // Seed the initial direction from the FIRST SIGNIFICANT move (>= threshold),
+  // not from a single bar — otherwise a long opening decline can be mistaken for
+  // an extended "trough search" and the first real pivot gets pushed far into
+  // the middle of the series.
+  let seedType: "peak" | "trough" = "trough";
+  {
+    let runMax = prices[0], runMin = prices[0];
+    for (let i = 1; i < prices.length; i++) {
+      runMax = Math.max(runMax, prices[i]);
+      runMin = Math.min(runMin, prices[i]);
+      if ((runMax - prices[0]) / prices[0] >= threshold) { seedType = "trough"; break; }
+      if ((prices[0] - runMin) / prices[0] >= threshold) { seedType = "peak"; break; }
+    }
+  }
+
   let lastExtreme = prices[0];
-  let lastType: "peak" | "trough" = prices[1] > prices[0] ? "trough" : "peak";
+  let lastType: "peak" | "trough" = seedType;
   let lastIndex = 0;
+
 
   for (let i = 1; i < prices.length; i++) {
     const pct = (prices[i] - lastExtreme) / lastExtreme;
