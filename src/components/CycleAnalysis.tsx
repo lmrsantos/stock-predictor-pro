@@ -235,24 +235,27 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
                         <circle
                           cx={props.cx}
                           cy={props.cy}
-                          r={3.5}
+                          r={showLabels ? 3.5 : 2.5}
                           fill={isPeak ? "hsl(0 72% 60%)" : "hsl(152 62% 48%)"}
                           stroke="hsl(var(--card))"
                           strokeWidth={1}
                         />
-                        <text
-                          x={props.cx}
-                          y={isPeak ? props.cy - 8 : props.cy + 14}
-                          textAnchor="middle"
-                          fontSize={8}
-                          fontFamily="monospace"
-                          fill={isPeak ? "hsl(0 72% 60%)" : "hsl(152 62% 48%)"}
-                        >
-                          ${props.payload.price.toFixed(2)}
-                        </text>
+                        {showLabels && (
+                          <text
+                            x={props.cx}
+                            y={isPeak ? props.cy - 8 : props.cy + 14}
+                            textAnchor="middle"
+                            fontSize={8}
+                            fontFamily="monospace"
+                            fill={isPeak ? "hsl(0 72% 60%)" : "hsl(152 62% 48%)"}
+                          >
+                            ${props.payload.price.toFixed(2)}
+                          </text>
+                        )}
                       </g>
                     );
                   }}
+
                   activeDot={{ r: 5 }}
                 />
               </LineChart>
