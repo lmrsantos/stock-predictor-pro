@@ -49,8 +49,9 @@ interface StructureMarker {
   date: string;
   price: number;
   type: "peak" | "trough";
-  label: "HH" | "LH" | "HL" | "LL" | "P" | "T";
+  label: "HH" | "LH" | "HL" | "LL" | "EH" | "EL" | "P" | "T";
   pct?: number;
+  provisional?: boolean;
 }
 
 function formatVolume(v: number) {
