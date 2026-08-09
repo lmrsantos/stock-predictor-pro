@@ -345,7 +345,38 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             tickFormatter={(v: number) => `$${v.toFixed(0)}`}
             width={60}
           />
+          {hasVolume && showVolume && (
+            <YAxis
+              yAxisId="vol"
+              orientation="right"
+              domain={[0, maxVolume * 4]}
+              hide
+            />
+          )}
           <Tooltip content={<CustomTooltip />} />
+
+          {/* Volume bars pinned to the bottom quarter of the plot */}
+          {hasVolume && showVolume && (
+            <Bar
+              yAxisId="vol"
+              dataKey="volUp"
+              stackId="vol"
+              fill="hsl(150, 65%, 45%)"
+              fillOpacity={0.45}
+              isAnimationActive={false}
+            />
+          )}
+          {hasVolume && showVolume && (
+            <Bar
+              yAxisId="vol"
+              dataKey="volDown"
+              stackId="vol"
+              fill="hsl(0, 72%, 55%)"
+              fillOpacity={0.45}
+              isAnimationActive={false}
+            />
+          )}
+
 
           {/* Stacked bands: base2 (invisible) → band2Lower → band1 → band2Upper */}
           <Area
