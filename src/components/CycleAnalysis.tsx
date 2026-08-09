@@ -1,6 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { analyzeCycles, formatCycleReport, type CycleAnalysisResult } from "@/lib/cycle-analysis";
 import { TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+} from "recharts";
+
 
 interface CycleAnalysisProps {
   ticker: string;
@@ -14,6 +18,24 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   }, [ticker, prices, dates]);
 
   const { projection, peaks, troughs, currentPrice } = result;
+
+  const [mode, setMode] = useState<"chart" | "list">("chart");
+
+  const pivots = useMemo(
+    () => [...peaks, ...troughs].sort((a, b) => a.index - b.index).slice(-8),
+    [peaks, troughs],
+  );
+
+  const chartData = useMemo(
+    () => pivots.map((p) => ({
+      date: p.date?.slice(5) ?? "",
+      price: p.price,
+      type: p.type,
+      pct: p.pctFromPrev,
+    })),
+    [pivots],
+  );
+
 
   const positionColors = {
     near_trough: "text-emerald-400 bg-emerald-500/10 border-emerald-800/40",
@@ -117,19 +139,102 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
 
       {/* Cycle history */}
       <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
-        <div className="space-y-0.5">
-          <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
-            Cycle History ({peaks.length} peaks · {troughs.length} troughs)
-          </p>
-          <p className="text-[8px] font-mono text-muted-foreground/70">
-            ▲ red = peak (local high / resistance) · ▼ green = trough (local low / support). Showing last 8 pivots.
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
+              Cycle History ({peaks.length} peaks · {troughs.length} troughs)
+            </p>
+            <p className="text-[8px] font-mono text-muted-foreground/70">
+              ▲ red = peak (local high / resistance) · ▼ green = trough (local low / support). Showing last 8 pivots.
+            </p>
+          </div>
+          <div className="flex rounded-md border border-border overflow-hidden shrink-0">
+            {(["chart", "list"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                  mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="space-y-1 max-h-32 overflow-y-auto">
-          {[...peaks, ...troughs]
-            .sort((a, b) => a.index - b.index)
-            .slice(-8)
-            .map((pt, i) => (
+
+        {mode === "chart" ? (
+          <div className="h-48 -ml-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 18, right: 16, bottom: 4, left: 0 }}>
+                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="2 4" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 8, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={false}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                />
+                <YAxis
+                  domain={["dataMin", "dataMax"]}
+                  tick={{ fontSize: 8, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
+                  tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+                  tickLine={false}
+                  axisLine={false}
+                  width={38}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                  }}
+                  labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                  formatter={(v: number, _n, p) => [
+                    `$${v.toFixed(2)}${p?.payload?.pct !== undefined ? `  (${p.payload.pct > 0 ? "+" : ""}${p.payload.pct.toFixed(0)}%)` : ""}`,
+                    p?.payload?.type === "peak" ? "Peak" : "Trough",
+                  ]}
+                />
+                <Line
+                  type="linear"
+                  dataKey="price"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={1.5}
+                  isAnimationActive={false}
+                  dot={(props: any) => {
+                    const isPeak = props.payload.type === "peak";
+                    return (
+                      <g key={`d-${props.index}`}>
+                        <circle
+                          cx={props.cx}
+                          cy={props.cy}
+                          r={3.5}
+                          fill={isPeak ? "hsl(0 72% 60%)" : "hsl(152 62% 48%)"}
+                          stroke="hsl(var(--card))"
+                          strokeWidth={1}
+                        />
+                        <text
+                          x={props.cx}
+                          y={isPeak ? props.cy - 8 : props.cy + 14}
+                          textAnchor="middle"
+                          fontSize={8}
+                          fontFamily="monospace"
+                          fill={isPeak ? "hsl(0 72% 60%)" : "hsl(152 62% 48%)"}
+                        >
+                          ${props.payload.price.toFixed(2)}
+                        </text>
+                      </g>
+                    );
+                  }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {pivots.map((pt, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className={pt.type === "peak" ? "text-red-400" : "text-emerald-400"}>
@@ -154,8 +259,10 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
                 </div>
               </div>
             ))}
-        </div>
+          </div>
+        )}
       </div>
+
 
       {/* Interpretation */}
       <div className="rounded-lg border border-sky-800/30 bg-sky-950/10 p-3 space-y-2">
