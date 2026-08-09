@@ -19,6 +19,24 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
 
   const { projection, peaks, troughs, currentPrice } = result;
 
+  const [mode, setMode] = useState<"chart" | "list">("chart");
+
+  const pivots = useMemo(
+    () => [...peaks, ...troughs].sort((a, b) => a.index - b.index).slice(-8),
+    [peaks, troughs],
+  );
+
+  const chartData = useMemo(
+    () => pivots.map((p) => ({
+      date: p.date?.slice(5) ?? "",
+      price: p.price,
+      type: p.type,
+      pct: p.pctFromPrev,
+    })),
+    [pivots],
+  );
+
+
   const positionColors = {
     near_trough: "text-emerald-400 bg-emerald-500/10 border-emerald-800/40",
     near_peak:   "text-red-400 bg-red-500/10 border-red-800/40",
