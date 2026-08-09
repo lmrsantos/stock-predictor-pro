@@ -378,11 +378,12 @@ const Index = () => {
   }
 
 
-  const prevPrice = stockData?.length && stockData.length > 1
-    ? stockData[stockData.length - 2].close
-    : lastPrice;
-  const priceChange = lastPrice - prevPrice;
-  const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
+  // Change is measured across the selected period: last close vs. the first
+  // bar of the visible series (1d → today's open print, 1y → a year ago, …)
+  const refPrice = stockData?.length ? stockData[0].close : lastPrice;
+  const priceChange = lastPrice - refPrice;
+  const priceChangePct = refPrice ? lastPrice / refPrice - 1 : 0;
+
 
   const chatContext = {
     ticker,
