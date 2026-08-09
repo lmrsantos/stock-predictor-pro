@@ -696,7 +696,9 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
 
                 <StatCard label="Model Agreement"
                   value={`${(result.ensembleAgreement * 100).toFixed(0)}%`}
-                  sub={`${result.models.filter(m => m.winner || m.slope * (result.forecastDirection === "up" ? 1 : -1) > 0).length}/5 models agree`}
+                  sub={`${result.models.filter(m =>
+                    result.forecastDirection === "up" ? m.slope > 0 : m.slope < 0
+                  ).length}/${result.models.length} models agree`}
                   color={accentColor(100 - result.ensembleAgreement * 100, 30, 50)} />
                 <StatCard label="Regime"
                   value={result.regime.outsideDistribution ? "⚠ SHIFTED" : "✓ NORMAL"}
