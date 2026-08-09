@@ -21,7 +21,10 @@ interface RegressionChartProps {
   data: ChartDataPoint[];
   isLoading: boolean;
   slopePositive: boolean;
+  /** 1-day view: x-axis shows intraday times instead of dates */
+  intraday?: boolean;
 }
+
 
 interface StackedPoint {
   date: string;
@@ -121,7 +124,7 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+export function RegressionChart({ data, isLoading, slopePositive, intraday = false }: RegressionChartProps) {
   const [showVolume, setShowVolume] = useState(true);
   const [showStructure, setShowStructure] = useState(true);
   // Zigzag sensitivity: minimum % reversal required to register a swing pivot
@@ -171,7 +174,9 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
   );
   const hasVolume = maxVolume > 0;
 
-  // Explicit price domain so the volume pane never squashes the price panel
+  // Explicit price domain so neither the volume pane nor the sigma bands
+  // squash the price panel
+  const reserve = hasVolume && showVolume ? 0.22 : 0;
   const priceDomain = useMemo<[number, number]>(() => {
     const vals: number[] = [];
     data.forEach((d) => {
@@ -184,9 +189,10 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     const pad = (hi - lo) * 0.06 || hi * 0.02;
     // Reserve the bottom ~22% of the price panel for the volume histogram
     const span = hi + pad - (lo - pad);
-    const lower = lo - pad - span * 0.22;
-    return [Math.round(Math.max(0, lower)), Math.round(hi + pad)];
-  }, [data]);
+    const lower = lo - pad - span * reserve;
+    return [Math.max(0, lower), hi + pad];
+  }, [data, reserve]);
+
 
 
   // ── Market-structure pivots: higher/lower highs and lows ──────────────────
@@ -283,11 +289,15 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
 
   const formatDate = (date: string) => {
     const d = new Date(date);
+    if (intraday) {
+      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    }
     if (spanMultipleYears) {
       return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
     }
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
+
 
   const regressionColor = slopePositive
     ? "hsl(150, 70%, 40%)"
@@ -399,12 +409,16 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             minTickGap={60}
           />
           <YAxis
-            domain={hasVolume && showVolume ? priceDomain : ["auto", "auto"]}
-            allowDataOverflow={hasVolume && showVolume}
+            domain={priceDomain}
+            allowDataOverflow
+
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+            tickFormatter={(v: number) =>
+              `$${v.toFixed(priceDomain[1] - priceDomain[0] < 5 ? 2 : 0)}`
+            }
+
             width={60}
           />
           {hasVolume && showVolume && (

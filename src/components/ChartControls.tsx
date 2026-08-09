@@ -24,7 +24,9 @@ interface ChartControlsProps {
 }
 
 const periods = [
+  { value: "1d", label: "1 Day" },
   { value: "1mo", label: "1 Month" },
+
   { value: "3mo", label: "3 Months" },
   { value: "6mo", label: "6 Months" },
   { value: "1y", label: "1 Year" },

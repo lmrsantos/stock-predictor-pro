@@ -87,10 +87,12 @@ const Index = () => {
     }
   }, [searchInput]);
 
+  const isIntraday = period === "1d";
+
   // Step 1: Fetch from Yahoo Finance → store in DB
   const { data: meta, isLoading: isFetching, error: fetchError } = useQuery({
-    queryKey: ["fetch-stock", ticker, period],
-    queryFn: () => fetchAndStoreStockData(ticker, period),
+    queryKey: ["fetch-stock", ticker, isIntraday ? "1mo" : period],
+    queryFn: () => fetchAndStoreStockData(ticker, isIntraday ? "1mo" : period),
     retry: (count, err) => !(err instanceof SymbolNotFoundError) && count < 1,
     staleTime: 0, // always fetch fresh data
   });
@@ -99,11 +101,41 @@ const Index = () => {
   const { data: dbStockData, isLoading: isQuerying, error: queryError } = useQuery({
     queryKey: ["stock-db", ticker, period],
     queryFn: () => getStockDataFromDB(ticker, period),
-    enabled: !!meta, // Only query DB after fetch completes
+    enabled: !!meta && !isIntraday, // Only query DB after fetch completes
     staleTime: 10 * 60 * 1000,
   });
 
-  const baseStockData = dbStockData?.length ? dbStockData : meta?.prices;
+  // Step 2a: 1-day view uses 5-minute intraday bars instead of daily closes
+  const { data: intradayData, isLoading: isIntradayLoading } = useQuery({
+    queryKey: ["intraday-chart", ticker],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-intraday", {
+        body: { tickers: [ticker] },
+      });
+      if (error) throw error;
+      const s = (data?.series ?? {})[ticker.toUpperCase()] as
+        | { points: { t: number; c: number }[] }
+        | undefined;
+      return (s?.points ?? []).map((p) => ({
+        date: new Date(p.t * 1000).toISOString(),
+        timestamp: p.t,
+        open: p.c,
+        high: p.c,
+        low: p.c,
+        close: p.c,
+        volume: 0,
+      }));
+    },
+    enabled: isIntraday && !!ticker,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
+  const baseStockData = isIntraday
+    ? intradayData
+    : dbStockData?.length
+      ? dbStockData
+      : meta?.prices;
 
   // Step 2b: Extended-session quote. Yahoo's marketState decides whether a
   // pre-market or after-hours print is the relevant "latest" price. During the
@@ -129,6 +161,7 @@ const Index = () => {
   });
 
   const stockData = baseStockData;
+
 
   // marketState: PRE / PREPRE (before open), REGULAR (open), POST / POSTPOST / CLOSED (after close)
   const extendedQuote = useMemo(() => {
@@ -207,7 +240,10 @@ const Index = () => {
   const website = meta?.website || null;
   const irWebsite = meta?.irWebsite || null;
 
-  const isLoading = isFetching || (isQuerying && !meta?.prices?.length);
+  const isLoading = isIntraday
+    ? isIntradayLoading
+    : isFetching || (isQuerying && !meta?.prices?.length);
+
   const error = fetchError || (stockData?.length ? null : queryError);
 
   // Build risk context from VIX + geopolitical tension
@@ -345,11 +381,12 @@ const Index = () => {
   }
 
 
-  const prevPrice = stockData?.length && stockData.length > 1
-    ? stockData[stockData.length - 2].close
-    : lastPrice;
-  const priceChange = lastPrice - prevPrice;
-  const priceChangePct = prevPrice ? priceChange / prevPrice : 0;
+  // Change is measured across the selected period: last close vs. the first
+  // bar of the visible series (1d → today's open print, 1y → a year ago, …)
+  const refPrice = stockData?.length ? stockData[0].close : lastPrice;
+  const priceChange = lastPrice - refPrice;
+  const priceChangePct = refPrice ? lastPrice / refPrice - 1 : 0;
+
 
   const chatContext = {
     ticker,
@@ -566,7 +603,9 @@ const Index = () => {
               data={chartData}
               isLoading={isLoading}
               slopePositive={regression ? regression.slope >= 0 : true}
+              intraday={isIntraday}
             />
+
 
             <div className="flex justify-start -mt-2">
               <button
