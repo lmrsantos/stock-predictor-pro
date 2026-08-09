@@ -409,8 +409,9 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
             minTickGap={60}
           />
           <YAxis
-            domain={hasVolume && showVolume ? priceDomain : ["auto", "auto"]}
-            allowDataOverflow={hasVolume && showVolume}
+            domain={priceDomain}
+            allowDataOverflow
+
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
