@@ -354,7 +354,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
         <div className="-mt-2 mb-3 text-[11px] text-muted-foreground">
           <span className="font-mono">{structureSummary}</span>
           <span className="ml-2 opacity-70">
-            HH = higher high · HL = higher low · LH = lower high · LL = lower low
+            HH = higher high · HL = higher low · LH = lower high · LL = lower low · EH/EL = equal (±1%) · "?" = unconfirmed
           </span>
         </div>
       )}
