@@ -288,7 +288,38 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           Forecast
           <InfoTooltip {...metricInfo.forecast} />
         </span>
+
+        <span className="flex items-center gap-2 ml-auto normal-case tracking-normal">
+          {hasVolume && (
+            <button
+              onClick={() => setShowVolume((v) => !v)}
+              className={`px-2 py-0.5 rounded-md font-mono text-[10px] transition-colors ${
+                showVolume ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Volume
+            </button>
+          )}
+          <button
+            onClick={() => setShowStructure((v) => !v)}
+            className={`px-2 py-0.5 rounded-md font-mono text-[10px] transition-colors ${
+              showStructure ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Structure HH/HL
+          </button>
+        </span>
       </div>
+
+      {showStructure && structureSummary && (
+        <div className="-mt-2 mb-3 text-[11px] text-muted-foreground">
+          <span className="font-mono">{structureSummary}</span>
+          <span className="ml-2 opacity-70">
+            HH = higher high · HL = higher low · LH = lower high · LL = lower low
+          </span>
+        </div>
+      )}
+
 
       <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={stackedData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
