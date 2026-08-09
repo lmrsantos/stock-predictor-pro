@@ -321,7 +321,7 @@ function MarketContextPanel({ ticker, result }: { ticker: string; result: Foreca
     },
   };
 
-  const message = `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
+const message = `For ${ticker} (current price: ${fmtPrice(result.currentPrice)}):
 
 The quantitative model shows:
 - Forecast: ${result.forecastPct > 0 ? "+" : ""}${result.forecastPct}% over 30 days (1σ range ${(result.forecastPct - result.magnitudeSignal.expectedMovePct).toFixed(0)}% to ${(result.forecastPct + result.magnitudeSignal.expectedMovePct).toFixed(0)}%)
@@ -329,7 +329,7 @@ The quantitative model shows:
 - Direction correct in ${Math.round(result.validation.directionHitRate * result.validation.windowCount)} of ${result.validation.windowCount} rolling windows
 - Model fit: ${result.confidenceScore}/100
 - Regime: ${result.regime.outsideDistribution ? "SHIFTED (elevated volatility)" : "NORMAL"}
-- Direction agreement: ${(result.ensembleAgreement * 100).toFixed(0)}% of models agree
+- Model vote: ${result.upCount}/${result.models.length} up, ${result.downCount}/${result.models.length} down — majority says ${result.majorityDirection}
 - Calibration quality: ${result.calibration.grade.toUpperCase()} — ${result.calibration.message}
 - Magnitude signal: ${result.magnitudeSignal.message}${result.calibration.directionCredible ? "" : `
 
