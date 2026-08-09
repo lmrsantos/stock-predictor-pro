@@ -20,10 +20,16 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   const { projection, peaks, troughs, currentPrice } = result;
 
   const [mode, setMode] = useState<"chart" | "list">("chart");
+  const [span, setSpan] = useState<8 | 20 | 0>(8); // 0 = all pivots
+
+  const allPivots = useMemo(
+    () => [...peaks, ...troughs].sort((a, b) => a.index - b.index),
+    [peaks, troughs],
+  );
 
   const pivots = useMemo(
-    () => [...peaks, ...troughs].sort((a, b) => a.index - b.index).slice(-8),
-    [peaks, troughs],
+    () => (span === 0 ? allPivots : allPivots.slice(-span)),
+    [allPivots, span],
   );
 
   const chartData = useMemo(
@@ -35,6 +41,9 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
     })),
     [pivots],
   );
+
+  const showLabels = pivots.length <= 20;
+
 
 
   const positionColors = {
