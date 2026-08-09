@@ -121,6 +121,9 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+  const [showVolume, setShowVolume] = useState(true);
+  const [showStructure, setShowStructure] = useState(true);
+
   const isDark = useSyncExternalStore(
     (cb) => {
       const observer = new MutationObserver(cb);
@@ -143,6 +146,10 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
         predicted: d.predicted,
         fitted: d.fitted,
         isForecast: d.isForecast,
+        volume: d.volume,
+        volumeUp: d.volumeUp,
+        volUp: d.volumeUp ? d.volume : undefined,
+        volDown: d.volumeUp === false ? d.volume : undefined,
         base2: l2,
         band2Lower: l1 - l2,
         band1: u1 - l1,
@@ -154,6 +161,59 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
       };
     });
   }, [data]);
+
+  const maxVolume = useMemo(
+    () => Math.max(0, ...data.map((d) => d.volume ?? 0)),
+    [data]
+  );
+  const hasVolume = maxVolume > 0;
+
+  // ── Market-structure pivots: higher/lower highs and lows ──────────────────
+  const { markers, structureSummary } = useMemo(() => {
+    const hist = data.filter((d) => !d.isForecast && d.actual != null);
+    if (hist.length < 30) return { markers: [] as StructureMarker[], structureSummary: null as string | null };
+    let pivots: StructureMarker[] = [];
+    try {
+      const res = analyzeCycles(
+        "chart",
+        hist.map((d) => d.actual as number),
+        hist.map((d) => d.date),
+        0.08
+      );
+      pivots = [...res.peaks, ...res.troughs]
+        .sort((a, b) => a.index - b.index)
+        .map((p) => {
+          const pct = p.pctFromPrev;
+          const label: StructureMarker["label"] =
+            pct == null
+              ? p.type === "peak" ? "P" : "T"
+              : p.type === "peak"
+                ? (pct > 0 ? "HH" : "LH")
+                : (pct > 0 ? "HL" : "LL");
+          return { date: p.date, price: p.price, type: p.type, label, pct };
+        });
+    } catch {
+      return { markers: [] as StructureMarker[], structureSummary: null };
+    }
+
+    const lows = pivots.filter((p) => p.type === "trough").slice(-2);
+    const highs = pivots.filter((p) => p.type === "peak").slice(-2);
+    const lowLabel = lows.at(-1)?.label;
+    const highLabel = highs.at(-1)?.label;
+    let summary: string | null = null;
+    if (lowLabel && highLabel) {
+      if (lowLabel === "HL" && highLabel === "HH") summary = "Uptrend intact — higher highs and higher lows";
+      else if (lowLabel === "LL" && highLabel === "LH") summary = "Downtrend — lower highs and lower lows";
+      else if (lowLabel === "HL" && highLabel === "LH") summary = "Compression — higher lows into lower highs (coiling)";
+      else if (lowLabel === "LL" && highLabel === "HH") summary = "Expanding range — wider swings, no clear structure";
+      if (summary) {
+        const lastLow = lows.at(-1);
+        if (lastLow) summary += ` · watch ${lastLow.price.toFixed(2)} as the pivot low`;
+      }
+    }
+    return { markers: pivots, structureSummary: summary };
+  }, [data]);
+
 
   if (isLoading) {
     return (
