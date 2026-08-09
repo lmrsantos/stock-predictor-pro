@@ -122,6 +122,17 @@ const Auth = () => {
             required
             minLength={6}
           />
+          {isLogin && (
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsLogin(false)}
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           {message && <p className="text-sm text-accent-foreground">{message}</p>}
           <Button type="submit" className="w-full" disabled={loading}>
