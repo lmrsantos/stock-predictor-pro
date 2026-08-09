@@ -183,7 +183,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     const pad = (hi - lo) * 0.06 || hi * 0.02;
     // Reserve the bottom ~22% of the price panel for the volume histogram
     const span = hi + pad - (lo - pad);
-    return [lo - pad - span * 0.28, hi + pad];
+    return [lo - pad - span * 0.22, hi + pad];
   }, [data]);
 
 
@@ -362,18 +362,14 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: number) =>
-              hasVolume && showVolume && v < priceDomain[0] + (priceDomain[1] - priceDomain[0]) * 0.2
-                ? ""
-                : `$${v.toFixed(0)}`
-            }
+            tickFormatter={(v: number) => `$${v.toFixed(0)}`}
             width={60}
           />
           {hasVolume && showVolume && (
             <YAxis
               yAxisId="vol"
               orientation="right"
-              domain={[0, maxVolume / 0.2]}
+              domain={[0, maxVolume / 0.17]}
               hide
             />
           )}
