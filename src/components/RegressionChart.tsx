@@ -357,18 +357,23 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
             minTickGap={60}
           />
           <YAxis
-            domain={["auto", "auto"]}
+            domain={hasVolume && showVolume ? priceDomain : ["auto", "auto"]}
+            allowDataOverflow={false}
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+            tickFormatter={(v: number) =>
+              hasVolume && showVolume && v < priceDomain[0] + (priceDomain[1] - priceDomain[0]) * 0.2
+                ? ""
+                : `$${v.toFixed(0)}`
+            }
             width={60}
           />
           {hasVolume && showVolume && (
             <YAxis
               yAxisId="vol"
               orientation="right"
-              domain={[0, maxVolume * 4]}
+              domain={[0, maxVolume / 0.2]}
               hide
             />
           )}
