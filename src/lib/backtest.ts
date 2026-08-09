@@ -86,8 +86,13 @@ export interface ForecastResult {
   // All model calibrations (for display)
   models: ModelCalibration[];
 
+  // Ensemble vote counts and majority direction
+  upCount: number;
+  downCount: number;
+  majorityDirection: "up" | "down";
+
   // Ensemble cone from all models
-  ensembleAgreement: number;  // 0–1
+  ensembleAgreement: number;  // 0–1, fraction of models that agree with the majority direction
   modelDisagreement: boolean;
 
   // Regime detection
