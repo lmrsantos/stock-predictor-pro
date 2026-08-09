@@ -415,6 +415,12 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
   const confidence = result.confidenceScore;
   const regime     = result.regime;
   const agreement  = result.ensembleAgreement;
+  const majorityDirection = result.majorityDirection;
+  const upCount    = result.upCount;
+  const downCount  = result.downCount;
+  const majorityCount = majorityDirection === "up" ? upCount : downCount;
+  const minorityCount = majorityDirection === "up" ? downCount : upCount;
+  const matchesConsensus = result.forecastDirection === majorityDirection;
 
   const v          = result.validation;
   const band       = result.magnitudeSignal.expectedMovePct;
@@ -428,7 +434,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
 
   if (regime.ratio > 2.5) {
     signal = "STAY OUT"; signalColor = "#f87171"; emoji = "🚫";
-  } else if (agreement < 0.6 || !dirReliable) {
+  } else if (agreement < 0.6 || !dirReliable || !matchesConsensus) {
     signal = "WAIT";     signalColor = "#fbbf24"; emoji = "⏳";
   } else if (confidence >= 50 && up) {
     signal = "MODEL FLAG";   signalColor = "#34d399"; emoji = "📈";
@@ -450,7 +456,7 @@ function RecommendationPanel({ result, ticker }: { result: ForecastResult; ticke
             : "No single model validated — showing ensemble mean", positive: v.decisive },
         { text: `Forecast: ${bandText}`, positive: up },
         { text: `Median path error across windows: ${v.medianPathMape.toFixed(1)}%`, positive: v.medianPathMape < 8 },
-        { text: `${(agreement * 100).toFixed(0)}% of models agree on direction — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 },
+        { text: `${majorityCount}/${result.models.length} models agree the trend is ${majorityDirection} (${minorityCount}/${result.models.length} say ${majorityDirection === "up" ? "down" : "up"}) — ${agreement >= 0.8 ? "strong consensus" : agreement >= 0.6 ? "moderate consensus" : "low consensus"}`, positive: agreement >= 0.6 && matchesConsensus },
         { text: `Market regime: ${regime.outsideDistribution ? `SHIFTED (${regime.ratio.toFixed(1)}× normal volatility) — elevated risk` : "NORMAL — model within trained conditions"}`, positive: !regime.outsideDistribution },
         { text: `Model fit ${confidence}/100`, positive: confidence >= 50 },
       ]
