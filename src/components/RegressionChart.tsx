@@ -286,11 +286,15 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
 
   const formatDate = (date: string) => {
     const d = new Date(date);
+    if (intraday) {
+      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    }
     if (spanMultipleYears) {
       return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
     }
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
+
 
   const regressionColor = slopePositive
     ? "hsl(150, 70%, 40%)"
