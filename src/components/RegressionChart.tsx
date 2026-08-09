@@ -415,7 +415,10 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+            tickFormatter={(v: number) =>
+              `$${v.toFixed(priceDomain[1] - priceDomain[0] < 5 ? 2 : 0)}`
+            }
+
             width={60}
           />
           {hasVolume && showVolume && (
