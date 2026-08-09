@@ -53,6 +53,13 @@ interface StructureMarker {
   pct?: number;
 }
 
+function formatVolume(v: number) {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
+  return `${Math.round(v)}`;
+}
+
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
 
