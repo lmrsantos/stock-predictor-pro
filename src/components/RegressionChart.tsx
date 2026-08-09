@@ -87,6 +87,14 @@ function CustomTooltip({ active, payload }: any) {
           <span className="font-mono text-primary">${formatPrice(point.fitted)}</span>
         </div>
       )}
+      {point.volume != null && point.volume > 0 && (
+        <div className="flex justify-between gap-6">
+          <span className="text-muted-foreground">Volume</span>
+          <span className={`font-mono ${point.volumeUp ? "text-emerald-500" : "text-red-500"}`}>
+            {formatVolume(point.volume)}
+          </span>
+        </div>
+      )}
       <div className="border-t border-border pt-1.5 mt-1.5">
         <div className="flex justify-between gap-6">
           <span className="text-muted-foreground">68% Range</span>
