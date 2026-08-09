@@ -462,6 +462,33 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
               }}
             />
           )}
+
+          {/* Market structure pivots: HH / HL / LH / LL */}
+          {showStructure &&
+            markers.map((m) => {
+              const bullish = m.label === "HH" || m.label === "HL";
+              const color = bullish ? "hsl(150, 70%, 42%)" : "hsl(0, 72%, 55%)";
+              return (
+                <ReferenceDot
+                  key={`${m.date}-${m.label}`}
+                  x={m.date}
+                  y={m.price}
+                  r={3}
+                  fill={color}
+                  stroke={isDark ? "hsl(0,0%,10%)" : "hsl(0,0%,100%)"}
+                  strokeWidth={1}
+                  isFront
+                  label={{
+                    value: m.label,
+                    position: m.type === "peak" ? "top" : "bottom",
+                    fill: color,
+                    fontSize: 9,
+                    fontWeight: 700,
+                  }}
+                />
+              );
+            })}
+
         </ComposedChart>
       </ResponsiveContainer>
     </div>
