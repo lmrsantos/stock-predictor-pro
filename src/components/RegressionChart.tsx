@@ -174,8 +174,6 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
     data.forEach((d) => {
       if (d.actual != null && d.actual > 0) vals.push(d.actual);
       if (d.predicted != null && d.predicted > 0) vals.push(d.predicted);
-      if (d.lower2Sigma > 0) vals.push(d.lower2Sigma);
-      if (d.upper2Sigma > 0) vals.push(d.upper2Sigma);
     });
     if (!vals.length) return [0, 1];
     const lo = Math.min(...vals);
@@ -359,7 +357,7 @@ export function RegressionChart({ data, isLoading, slopePositive }: RegressionCh
           />
           <YAxis
             domain={hasVolume && showVolume ? priceDomain : ["auto", "auto"]}
-            allowDataOverflow={false}
+            allowDataOverflow={hasVolume && showVolume}
             tick={{ fill: tickColor, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
