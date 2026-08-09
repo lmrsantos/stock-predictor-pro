@@ -164,7 +164,7 @@ export function SectorBacktest({ isOpen, onClose, onSelectTicker, inline = false
 
   function handlePickTicker(t: string) {
     if (inline) {
-      navigate(`/?ticker=${t}`);
+      navigate(`/terminal?ticker=${encodeURIComponent(t)}`);
       return;
     }
     onSelectTicker?.(t);
