@@ -124,7 +124,7 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export function RegressionChart({ data, isLoading, slopePositive }: RegressionChartProps) {
+export function RegressionChart({ data, isLoading, slopePositive, intraday = false }: RegressionChartProps) {
   const [showVolume, setShowVolume] = useState(true);
   const [showStructure, setShowStructure] = useState(true);
   // Zigzag sensitivity: minimum % reversal required to register a swing pivot
