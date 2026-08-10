@@ -9,6 +9,8 @@ import {
 import { backtest, ForecastResult } from "@/lib/backtest";
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { supabase } from "@/integrations/supabase/client";
+import { PreInvestmentChecklist } from "@/components/PreInvestmentChecklist";
+import { ClipboardList } from "lucide-react";
 
 interface StockPoint { date: string; timestamp: number; close: number; }
 
@@ -526,6 +528,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
   const [dataLoading, setDataLoading] = useState(false);
   const [dataReady, setDataReady]   = useState(false);
   const [activeTab, setActiveTab]   = useState<"forecast" | "calibration" | "regime" | "cycle">("forecast");
+  const [checklistOpen, setChecklistOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !ticker) return;
@@ -620,7 +623,31 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
               {ticker} — 5 models compete · winner forecasts forward · AI market context
             </p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors text-xl font-light">✕</button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setChecklistOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono border border-border bg-card/60 hover:bg-accent transition-colors"
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              Pre-investment checklist
+            </button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors text-xl font-light">✕</button>
+          </div>
+
+          {checklistOpen && (
+            <PreInvestmentChecklist
+              isOpen={checklistOpen}
+              onClose={() => setChecklistOpen(false)}
+              symbol={ticker}
+              snapshotInput={{
+                symbol: ticker,
+                dates: dataPoints.map(d => d.date),
+                closes: dataPoints.map(d => d.actual),
+                forecast: result,
+                baseRates: null,
+              }}
+            />
+          )}
         </div>
 
         <div className="p-6 flex flex-col gap-5">
