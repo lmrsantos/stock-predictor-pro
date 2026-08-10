@@ -29,6 +29,9 @@ import {
   type AutoSnapshot, type SnapshotInput,
 } from "@/lib/checklist-snapshot";
 import { exportChecklistExcel, exportChecklistPdf } from "@/lib/checklist-export";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { computeAdminVerdict } from "@/lib/admin-verdict";
+
 
 interface Props {
   isOpen: boolean;
@@ -183,6 +186,8 @@ export function PreInvestmentChecklist({
   const { user } = useAuth();
   const sub = useSubscription();
   const canSave = sub.tier !== "free";
+  const { isAdmin } = useIsAdmin();
+
 
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
@@ -297,6 +302,11 @@ export function PreInvestmentChecklist({
   };
 
   const counts = useMemo(() => countsFor(entries), [entries]);
+  const adminVerdict = useMemo(
+    () => (isAdmin ? computeAdminVerdict(snapshot, snapshotInput) : null),
+    [isAdmin, snapshot, snapshotInput],
+  );
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -385,6 +395,45 @@ export function PreInvestmentChecklist({
 
           {!loading && (
             <div className="p-5 flex flex-col gap-6">
+              {adminVerdict && (
+                <section className="rounded-xl border border-primary/40 bg-primary/5 p-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-primary">
+                      Admin only · model recommendation
+                    </p>
+                    <span className="text-[9px] font-mono text-muted-foreground">
+                      confidence: {adminVerdict.confidence}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-3 mt-2">
+                    <span className={`text-2xl font-mono font-bold ${
+                      adminVerdict.verdict === "BUY" ? "text-emerald-500"
+                      : adminVerdict.verdict === "SELL" ? "text-destructive"
+                      : "text-amber-500"
+                    }`}>
+                      {adminVerdict.verdict === "STAY" ? "STAY" : adminVerdict.verdict}
+                    </span>
+                    <span className="text-[11px] font-mono text-foreground">{adminVerdict.headline}</span>
+                  </div>
+                  <ul className="mt-3 space-y-1">
+                    {adminVerdict.reasons.map((r, i) => (
+                      <li key={i} className="text-[11px] font-mono text-muted-foreground leading-relaxed">
+                        <span className={`inline-block w-8 ${
+                          r.points > 0 ? "text-emerald-500" : r.points < 0 ? "text-destructive" : "text-muted-foreground"
+                        }`}>
+                          {r.points > 0 ? `+${r.points}` : r.points === 0 ? "0" : r.points}
+                        </span>
+                        {r.label}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[9px] font-mono text-muted-foreground mt-3 leading-relaxed">
+                    Deterministic rule sum, visible to admins only and never shown to users or exported.
+                    Not advice.
+                  </p>
+                </section>
+              )}
+
               {CHECKLIST_SECTIONS.map(section => (
                 <section key={section.id} className="flex flex-col gap-2">
                   <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
