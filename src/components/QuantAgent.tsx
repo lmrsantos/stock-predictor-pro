@@ -74,6 +74,21 @@ function parseActions(raw: string): { text: string; actions: QuantAgentAction[] 
   return { text: cleaned, actions };
 }
 
+// Did the user actually ask to be moved somewhere / to load a symbol?
+// The model sometimes emits action tags for plain analysis questions, which
+// yanked the user to a random page mid-conversation. We only auto-execute
+// when the request is explicit; otherwise we offer it as a button.
+function userRequestedNavigation(text: string): boolean {
+  const t = text.toLowerCase();
+  return /\b(take me|bring me|go to|navigate|open|show me|switch to|switch ticker|load|pull up|jump to)\b/.test(t);
+}
+
+function actionLabel(a: QuantAgentAction): string {
+  if (a.kind === "switch_ticker") return `Load ${a.symbol}`;
+  if (a.kind === "open") return `Open ${a.target.replace("_", " ")}`;
+  return `Go to ${a.path}`;
+}
+
 const QUICK_ACTIONS = [
   "Switch to NVDA",
   "Take me to my portfolio",
