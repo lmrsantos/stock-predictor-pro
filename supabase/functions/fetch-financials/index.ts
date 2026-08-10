@@ -57,7 +57,123 @@ async function fmp(path: string, key: string, attempt = 0): Promise<any[]> {
 }
 
 
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+async function yahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  try {
+    const cookieRes = await fetch("https://fc.yahoo.com/", { headers: { "User-Agent": UA }, redirect: "manual" });
+    const cookie = (cookieRes.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
+    await cookieRes.text().catch(() => {});
+    if (!cookie) return null;
+    const crumbRes = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "User-Agent": UA, Cookie: cookie },
+    });
+    if (!crumbRes.ok) return null;
+    const crumb = await crumbRes.text();
+    if (!crumb || crumb.includes("<")) return null;
+    return { crumb, cookie };
+  } catch {
+    return null;
+  }
+}
+
+const yv = (o: unknown): number | null => {
+  if (o == null) return null;
+  if (typeof o === "number") return Number.isFinite(o) ? o : null;
+  const raw = (o as { raw?: unknown }).raw;
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+};
+
+/** Fallback: Yahoo quoteSummary reported statements + key ratios. */
+async function yahooFinancials(symbol: string): Promise<Record<string, unknown> | null> {
+  const auth = await yahooCrumb();
+  if (!auth) return null;
+  const modules = [
+    "financialData", "defaultKeyStatistics", "summaryDetail", "price",
+    "incomeStatementHistory", "balanceSheetHistory", "cashflowStatementHistory",
+  ].join("%2C");
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}&crumb=${encodeURIComponent(auth.crumb)}`;
+  let j: any;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Cookie: auth.cookie } });
+    if (!res.ok) {
+      console.warn("Yahoo quoteSummary", res.status);
+      return null;
+    }
+    j = await res.json();
+  } catch (e) {
+    console.warn("Yahoo quoteSummary failed", e);
+    return null;
+  }
+
+  const r = j?.quoteSummary?.result?.[0];
+  if (!r) return null;
+  const fd = r.financialData ?? {}, ks = r.defaultKeyStatistics ?? {}, sd = r.summaryDetail ?? {};
+  const inc = r.incomeStatementHistory?.incomeStatementHistory ?? [];
+  const bs  = r.balanceSheetHistory?.balanceSheetStatements ?? [];
+  const cf  = r.cashflowStatementHistory?.cashflowStatements ?? [];
+  const i0 = inc[0] ?? {}, i1 = inc[1] ?? {}, i3 = inc[3] ?? {};
+  const b0 = bs[0] ?? {};
+
+  const rev0 = yv(i0.totalRevenue) ?? yv(fd.totalRevenue);
+  const rev1 = yv(i1.totalRevenue);
+  const rev3 = yv(i3.totalRevenue);
+  const netMargin = yv(fd.profitMargins) != null ? yv(fd.profitMargins)! * 100
+    : rev0 && yv(i0.netIncome) != null ? (yv(i0.netIncome)! / rev0) * 100 : null;
+  const prevNetMargin = rev1 && yv(i1.netIncome) != null ? (yv(i1.netIncome)! / rev1) * 100 : null;
+
+  const fcfYears = cf.map((c: any) => {
+    const op = yv(c.totalCashFromOperatingActivities);
+    const capex = yv(c.capitalExpenditures) ?? 0;
+    return op == null ? null : op + capex; // capex is reported negative
+  }).filter((x: number | null) => x != null) as number[];
+
+  const marketCap = yv(sd.marketCap) ?? yv(r.price?.marketCap);
+  const equity = yv(b0.totalStockholderEquity);
+  const d2e = yv(fd.debtToEquity);
+
+  return {
+    symbol,
+    fiscalDate: i0.endDate ? new Date(yv(i0.endDate)! * 1000).toISOString().slice(0, 10) : null,
+    period: "FY",
+    currency: fd.financialCurrency ?? "USD",
+    source: "Yahoo Finance — reported statements",
+    revenueGrowthYoY: yv(fd.revenueGrowth) != null ? yv(fd.revenueGrowth)! * 100
+      : rev0 && rev1 ? (rev0 / rev1 - 1) * 100 : null,
+    revenueGrowth3yCagr: rev0 && rev3 && rev3 > 0 ? (Math.pow(rev0 / rev3, 1 / 3) - 1) * 100 : null,
+    grossMargin: yv(fd.grossMargins) != null ? yv(fd.grossMargins)! * 100 : null,
+    operatingMargin: yv(fd.operatingMargins) != null ? yv(fd.operatingMargins)! * 100 : null,
+    netMargin,
+    marginTrend: netMargin != null && prevNetMargin != null ? netMargin - prevNetMargin : null,
+    roe: yv(fd.returnOnEquity) != null ? yv(fd.returnOnEquity)! * 100 : null,
+    roa: yv(fd.returnOnAssets) != null ? yv(fd.returnOnAssets)! * 100 : null,
+    freeCashFlow: yv(fd.freeCashflow) ?? (fcfYears.length ? fcfYears[0] : null),
+    fcfPositiveYears: fcfYears.filter(x => x > 0).length,
+    fcfYearsChecked: fcfYears.length,
+    // Yahoo reports debt/equity as a percentage.
+    debtToEquity: d2e != null ? d2e / 100 : null,
+    netDebtToEbitda: (() => {
+      const debt = yv(fd.totalDebt), cashAmt = yv(fd.totalCash), ebitda = yv(fd.ebitda);
+      return debt != null && ebitda ? (debt - (cashAmt ?? 0)) / ebitda : null;
+    })(),
+    currentRatio: yv(fd.currentRatio),
+    sharesOutstanding: yv(ks.sharesOutstanding) ?? yv(r.price?.sharesOutstanding),
+    sharesChangeYoY: (() => {
+      const now = yv(ks.sharesOutstanding);
+      const prior = yv(ks.priorSharesOutstanding);
+      return now != null && prior ? (now / prior - 1) * 100 : null;
+    })(),
+    evToEbitda: yv(ks.enterpriseToEbitda),
+    priceToSales: yv(sd.priceToSalesTrailing12Months) ?? (marketCap && rev0 ? marketCap / rev0 : null),
+    priceToBook: yv(ks.priceToBook) ?? (marketCap && equity ? marketCap / equity : null),
+    avgVolume: yv(sd.averageVolume) ?? yv(sd.averageDailyVolume10Day),
+    beta: yv(sd.beta) ?? yv(ks.beta),
+    marketCap,
+  };
+}
+
 serve(async (req) => {
+
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
