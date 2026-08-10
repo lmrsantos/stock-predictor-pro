@@ -309,13 +309,19 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
     : val(signedPct(change1y), "Daily closes (stock_prices)", lastPriceDate);
 
   // ── SECTION 4 ──────────────────────────────────────────────────────────────
-  const mc = Number(fund?.market_cap);
-  values.a_liquidity = Number.isFinite(mc) && mc > 0
-    ? val(
-        `Market cap $${(mc / 1e9).toFixed(2)}B · average volume not ingested · beta not ingested`,
-        FUND_SRC, fundAsOf,
-      )
+  const mc = Number.isFinite(Number(fund?.market_cap)) && Number(fund?.market_cap) > 0
+    ? Number(fund?.market_cap)
+    : (fin?.marketCap ?? null);
+  const liqParts = [
+    mc != null && mc > 0 ? `Market cap ${bigMoney(mc)}` : null,
+    fin?.avgVolume == null ? "average volume not available"
+      : `average volume ${(fin.avgVolume / 1e6).toFixed(2)}M shares/day`,
+    fin?.beta == null ? "beta not available" : `beta ${fin.beta.toFixed(2)}`,
+  ].filter(Boolean) as string[];
+  values.a_liquidity = liqParts.length && (mc != null || fin?.avgVolume != null)
+    ? val(liqParts.join(" · "), fin ? `${FUND_SRC} + ${FIN_SRC}` : FUND_SRC, fin ? finAsOf : fundAsOf)
     : na(FUND_SRC);
+
   values.a_short_interest = na("Short-interest data is not ingested by this app");
 
   // ── SECTION 5 ──────────────────────────────────────────────────────────────
