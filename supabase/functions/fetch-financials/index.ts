@@ -204,6 +204,43 @@ const isoDay = (v: unknown): string | null => {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 };
 
+/** "bmo" / "amc" / "dmh" derived from the report time in US market time. */
+function sessionFromStamp(stamp: number | null): string | null {
+  if (stamp == null) return null;
+  const ms = stamp > 1e11 ? stamp : stamp * 1000;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date(ms));
+  const h = Number(parts.find(p => p.type === "hour")?.value);
+  const m = Number(parts.find(p => p.type === "minute")?.value);
+  if (!Number.isFinite(h)) return null;
+  const mins = h * 60 + (Number.isFinite(m) ? m : 0);
+  // Yahoo often stamps an unknown time as midnight ET — treat that as unknown.
+  if (mins === 0) return null;
+  if (mins < 9 * 60 + 30) return "bmo";
+  if (mins >= 16 * 60) return "amc";
+  return "dmh";
+}
+
+/** Normalizes provider session labels to bmo / amc / dmh. */
+function normalizeSession(raw: unknown): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  if (s.includes("bmo") || s.includes("before")) return "bmo";
+  if (s.includes("amc") || s.includes("after")) return "amc";
+  if (s.includes("dmh") || s.includes("during")) return "dmh";
+  const hm = s.match(/^(\d{1,2}):(\d{2})/);
+  if (hm) {
+    const mins = Number(hm[1]) * 60 + Number(hm[2]);
+    if (mins < 9 * 60 + 30) return "bmo";
+    if (mins >= 16 * 60) return "amc";
+    return "dmh";
+  }
+  return null;
+}
+
+
 async function okUrl(url: string): Promise<boolean> {
   try {
     const ctrl = new AbortController();
@@ -266,10 +303,16 @@ async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
     const lastQuarter = quarterly.length ? quarterly[quarterly.length - 1] : null;
 
     const rawDates: unknown[] = ce.earningsDate ?? [];
-    const upcoming = rawDates
-      .map((d) => isoDay(yv(d) ?? d))
-      .filter((d): d is string => !!d)
-      .sort()[0] ?? null;
+    // Keep the epoch seconds so the session (before open / after close) can be
+    // derived from the actual time of day in US market time.
+    const stamps = rawDates
+      .map((d) => yv(d))
+      .filter((s): s is number => s != null)
+      .sort((a, b) => a - b);
+    const upcomingStamp = stamps[0] ?? null;
+    const upcoming = upcomingStamp != null
+      ? isoDay(upcomingStamp)
+      : rawDates.map((d) => isoDay(d)).filter((d): d is string => !!d).sort()[0] ?? null;
 
     return {
       website: ap.website ?? null,
@@ -277,7 +320,7 @@ async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
       irSource: ap.irWebsite ? "Yahoo Finance company profile" : null,
       nextEarningsDate: upcoming,
       nextEarningsConfirmed: ce.isEarningsDateEstimate === false,
-      nextEarningsTime: ce.earningsCallDate ? isoDay(yv(ce.earningsCallDate)) : null,
+      nextEarningsTime: sessionFromStamp(upcomingStamp),
       nextEarningsSource: upcoming ? "Yahoo Finance earnings calendar" : null,
       lastEarningsDate: last ? isoDay(yv(last.quarter)) : null,
       lastEpsActual: last ? yv(last.epsActual) : null,
@@ -286,6 +329,7 @@ async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
       lastRevenueEstimate: null,
       lastEarningsSource: last ? "Yahoo Finance reported earnings history" : null,
     };
+
   } catch {
     return {};
   }
@@ -307,7 +351,7 @@ async function fmpCompanyInfo(symbol: string, key: string): Promise<Partial<Comp
     .sort((a, b) => (a.date! < b.date! ? -1 : 1))[0];
   if (upcoming?.date) {
     out.nextEarningsDate = upcoming.date;
-    out.nextEarningsTime = upcoming.time;
+    out.nextEarningsTime = normalizeSession(upcoming.time);
     out.nextEarningsConfirmed = true;
     out.nextEarningsSource = "Financial Modeling Prep earnings calendar";
   }
@@ -346,11 +390,16 @@ async function fmpCompanyInfo(symbol: string, key: string): Promise<Partial<Comp
   return out;
 }
 
-async function buildCompanyInfo(symbol: string, key: string | undefined): Promise<CompanyInfo> {
+async function buildCompanyInfo(
+  symbol: string,
+  key: string | undefined,
+  opts: { skipIrProbe?: boolean } = {},
+): Promise<CompanyInfo> {
   const [yahoo, fmpInfo] = await Promise.all([
     yahooCompanyInfo(symbol),
-    key ? fmpCompanyInfo(symbol, key) : Promise.resolve({} as Partial<CompanyInfo>),
+    key && !opts.skipIrProbe ? fmpCompanyInfo(symbol, key) : Promise.resolve({} as Partial<CompanyInfo>),
   ]);
+
 
   const info: CompanyInfo = {
     website: fmpInfo.website ?? yahoo.website ?? null,
@@ -370,8 +419,10 @@ async function buildCompanyInfo(symbol: string, key: string | undefined): Promis
   };
 
   // No provider-published IR page — probe the conventional locations on the
-  // company's own domain and report only a URL that actually answers.
-  if (!info.irWebsite && info.website) {
+  // company's own domain and report only a URL that actually answers. The probe
+  // is several sequential network round-trips, so callers that only need the
+  // earnings calendar skip it.
+  if (!opts.skipIrProbe && !info.irWebsite && info.website) {
     const probed = await probeIrUrl(info.website);
     if (probed) {
       info.irWebsite = probed;
@@ -381,13 +432,14 @@ async function buildCompanyInfo(symbol: string, key: string | undefined): Promis
   return info;
 }
 
+
 serve(async (req) => {
 
 
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { ticker } = await req.json();
+    const { ticker, calendarOnly } = await req.json();
     const symbol = String(ticker ?? "").trim().toUpperCase();
     if (!symbol || symbol.length > 15) {
       return new Response(JSON.stringify({ error: "Invalid ticker" }), {
@@ -397,9 +449,19 @@ serve(async (req) => {
 
     const key = Deno.env.get("FMP_API_KEY");
 
+    // Fast path: the earnings banner only needs the calendar, so skip the
+    // statement feeds and the IR-URL probe.
+    if (calendarOnly === true) {
+      const info = await buildCompanyInfo(symbol, key, { skipIrProbe: true });
+      return new Response(JSON.stringify({ symbol, companyInfo: info }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Earnings calendar + investor-relations links come from their own
     // providers, so they stay available even when the statement feed does not.
     const companyInfo = await buildCompanyInfo(symbol, key);
+
 
     if (!key) {
       const yahooOnly = await yahooFinancials(symbol);

@@ -243,8 +243,9 @@ const Index = () => {
     queryKey: ["earnings-calendar", ticker],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("fetch-financials", {
-        body: { ticker },
+        body: { ticker, calendarOnly: true },
       });
+
       if (error) return null;
       const info = (data as { companyInfo?: Record<string, unknown> } | null)?.companyInfo;
       if (!info) return null;
