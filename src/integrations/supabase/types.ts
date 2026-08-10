@@ -125,6 +125,42 @@ export type Database = {
         }
         Relationships: []
       }
+      checklists: {
+        Row: {
+          auto_snapshot: Json
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          ticker: string
+          updated_at: string
+          user_entries: Json
+          user_id: string
+        }
+        Insert: {
+          auto_snapshot?: Json
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          ticker: string
+          updated_at?: string
+          user_entries?: Json
+          user_id: string
+        }
+        Update: {
+          auto_snapshot?: Json
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          ticker?: string
+          updated_at?: string
+          user_entries?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_linkage_analyses: {
         Row: {
           channel: string | null

@@ -15,6 +15,7 @@ import LinkagesPage from "./pages/LinkagesPage.tsx";
 import IpoIntelligence from "./pages/IpoIntelligence.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import Account from "./pages/Account.tsx";
+import MyChecklists from "./pages/MyChecklists.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Terms from "./pages/Terms.tsx";
 import Disclaimer from "./pages/Disclaimer.tsx";
@@ -48,6 +49,8 @@ const App = () => (
             <Route path="/ipo-intelligence" element={<IpoIntelligence />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/account" element={<Account />} />
+            <Route path="/my-checklists" element={<MyChecklists />} />
+
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
             <Route path="/methodology" element={<Methodology />} />

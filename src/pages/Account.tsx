@@ -86,6 +86,18 @@ export default function Account() {
           <DeviceSharingNotice />
         </div>
 
+        <Link
+          to="/my-checklists"
+          className="block rounded-2xl border border-border p-6 mb-6 hover:border-primary/50 transition-colors"
+        >
+          <div className="text-xs uppercase text-muted-foreground font-mono mb-2">My checklists</div>
+          <div className="text-lg font-semibold">Saved pre-investment checklists</div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Per-symbol evidence worksheets, each keeping the data snapshot from the day you worked on it.
+          </p>
+        </Link>
+
+
         <div className="rounded-2xl border border-border p-6 mb-6">
           <div className="text-xs uppercase text-muted-foreground font-mono mb-2">Devices on this account</div>
           <div className="text-2xl font-bold">
