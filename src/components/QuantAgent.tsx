@@ -46,6 +46,7 @@ interface Message {
   timestamp: Date;
   thinking?: boolean;
   streaming?: boolean;
+  suggestedActions?: QuantAgentAction[];
 }
 
 export type QuantAgentAction =
@@ -72,6 +73,21 @@ function parseActions(raw: string): { text: string; actions: QuantAgentAction[] 
     return "";
   }).trim();
   return { text: cleaned, actions };
+}
+
+// Did the user actually ask to be moved somewhere / to load a symbol?
+// The model sometimes emits action tags for plain analysis questions, which
+// yanked the user to a random page mid-conversation. We only auto-execute
+// when the request is explicit; otherwise we offer it as a button.
+function userRequestedNavigation(text: string): boolean {
+  const t = text.toLowerCase();
+  return /\b(take me|bring me|go to|navigate|open|show me|switch to|switch ticker|load|pull up|jump to)\b/.test(t);
+}
+
+function actionLabel(a: QuantAgentAction): string {
+  if (a.kind === "switch_ticker") return `Load ${a.symbol}`;
+  if (a.kind === "open") return `Open ${a.target.replace("_", " ")}`;
+  return `Go to ${a.path}`;
 }
 
 const QUICK_ACTIONS = [
@@ -200,7 +216,7 @@ function InlineMarkdown({ text }: { text: string }) {
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, onRunAction }: { msg: Message; onRunAction?: (a: QuantAgentAction) => void }) {
   const isAgent = msg.role === "agent";
   const [copied, setCopied] = useState(false);
 
@@ -251,7 +267,22 @@ function MessageBubble({ msg }: { msg: Message }) {
             <span className="text-[10px]">Searching web + analyzing...</span>
           </div>
         ) : (
-          <AgentMarkdown content={msg.content} />
+          <>
+            <AgentMarkdown content={msg.content} />
+            {!!msg.suggestedActions?.length && onRunAction && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {msg.suggestedActions.map((a, i) => (
+                  <button
+                    key={i}
+                    onClick={() => onRunAction(a)}
+                    className="px-2 py-1 rounded-md text-[10px] border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                  >
+                    {actionLabel(a)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -412,6 +443,10 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
 
       const rawReply = data.response || "Analysis complete.";
       const { text: cleanReply, actions } = parseActions(rawReply);
+      // Only auto-drive the platform when the user explicitly asked for it.
+      const explicit = userRequestedNavigation(text);
+      const autoActions = explicit ? actions.slice(0, 1) : [];
+      const suggested = explicit ? [] : actions.slice(0, 2);
       setMessages(prev => [
         ...prev.filter(m => !m.thinking),
         {
@@ -420,11 +455,12 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
           content: cleanReply || "Done.",
           timestamp: new Date(),
           streaming: false,
+          suggestedActions: suggested,
         },
       ]);
-      if (actions.length && onAction) {
+      if (autoActions.length && onAction) {
         // Execute after brief delay so user sees the confirmation text first
-        setTimeout(() => actions.forEach(a => onAction(a)), 400);
+        setTimeout(() => autoActions.forEach(a => onAction(a)), 400);
       }
 
     } catch (e) {
@@ -520,7 +556,9 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               </div>
             ) : (
               <>
-                {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+                {messages.map(msg => (
+                  <MessageBubble key={msg.id} msg={msg} onRunAction={onAction} />
+                ))}
                 <div ref={bottomRef} />
               </>
             )}
