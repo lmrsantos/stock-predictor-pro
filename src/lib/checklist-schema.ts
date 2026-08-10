@@ -45,8 +45,6 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
   {
     id: "s0",
     title: "0 — Before you research",
-    intro:
-      "These come first on purpose. Asking them after you have built a case is too late.",
     items: [
       { id: "s0_why", type: "judgment", kind: "long", label: "Why am I looking at this stock today?", placeholder: "In your own words" },
       yesno("s0_tip", "Did this come from a tip, headline, or social media?"),
