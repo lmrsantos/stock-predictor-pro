@@ -250,9 +250,9 @@ const Index = () => {
       if (!info) return null;
       return {
         date: (info.nextEarningsDate as string | null) ?? null,
-        confirmed: !!info.nextEarningsConfirmed,
-        source: (info.nextEarningsSource as string | null) ?? null,
+        time: (info.nextEarningsTime as string | null) ?? null,
       };
+
     },
     staleTime: 6 * 60 * 60 * 1000,
     retry: false,
