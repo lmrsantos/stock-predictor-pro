@@ -506,6 +506,8 @@ serve(async (req) => {
       avgVolume: n(q0.avgVolume) ?? n(p0.averageVolume),
       beta: n(p0.beta),
       marketCap,
+      companyInfo,
+
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("fetch-financials error", e);
