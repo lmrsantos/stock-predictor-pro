@@ -629,10 +629,10 @@ const Index = () => {
             <EarningsAlert
               ticker={ticker}
               date={earnings?.date}
-              confirmed={earnings?.confirmed}
-              source={earnings?.source}
+              time={earnings?.time}
               windowDays={5}
             />
+
 
             <RegressionStatsBar
               regression={regression}
