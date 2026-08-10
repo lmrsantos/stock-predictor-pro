@@ -49,7 +49,10 @@ interface HotStock {
   dirHits: number;
   windowCount: number;
   expectedMovePct: number;
+  // Historical hold-window (how long it usually takes to reach the best close)
+  hold?: HoldWindowStats | null;
 }
+
 
 
 interface SymbolData {
