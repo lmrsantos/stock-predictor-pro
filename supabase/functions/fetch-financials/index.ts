@@ -33,10 +33,17 @@ const n = (v: unknown): number | null => {
 const ratio = (a: number | null, b: number | null): number | null =>
   a != null && b != null && b !== 0 ? a / b : null;
 
-async function fmp(path: string, key: string): Promise<any[]> {
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/** Sequential + 429-aware: the provider rate-limits parallel bursts. */
+async function fmp(path: string, key: string, attempt = 0): Promise<any[]> {
   const url = `https://financialmodelingprep.com/stable/${path}${path.includes("?") ? "&" : "?"}apikey=${key}`;
   try {
     const res = await fetch(url);
+    if (res.status === 429 && attempt < 3) {
+      await sleep(1200 * (attempt + 1));
+      return fmp(path, key, attempt + 1);
+    }
     if (!res.ok) {
       console.warn("FMP", path, res.status);
       return [];
@@ -48,6 +55,7 @@ async function fmp(path: string, key: string): Promise<any[]> {
     return [];
   }
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
