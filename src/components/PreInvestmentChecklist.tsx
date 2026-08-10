@@ -64,11 +64,12 @@ function AutoRow({ item, snapshot }: { item: ChecklistItem; snapshot: AutoSnapsh
         <span className="text-[11px] font-mono text-muted-foreground">{item.label}</span>
         <TypeTag type="auto" />
       </div>
-      <p className={`text-[12px] font-mono mt-1 leading-relaxed ${
+      <div className={`text-[12px] font-mono mt-1 leading-relaxed whitespace-pre-line ${
         a?.available ? "text-foreground" : "text-muted-foreground italic"
       }`}>
-        {a?.value ?? "Not captured in this snapshot."}
-      </p>
+        {a?.value == null ? "Not captured in this snapshot." : linkify(a.value)}
+      </div>
+
       <p className="text-[9px] font-mono text-muted-foreground mt-1">
         Source: {a?.source ?? "—"} · as of {a?.asOf ?? "—"}
       </p>
