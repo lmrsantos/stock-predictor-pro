@@ -419,8 +419,10 @@ async function buildCompanyInfo(
   };
 
   // No provider-published IR page — probe the conventional locations on the
-  // company's own domain and report only a URL that actually answers.
-  if (!info.irWebsite && info.website) {
+  // company's own domain and report only a URL that actually answers. The probe
+  // is several sequential network round-trips, so callers that only need the
+  // earnings calendar skip it.
+  if (!opts.skipIrProbe && !info.irWebsite && info.website) {
     const probed = await probeIrUrl(info.website);
     if (probed) {
       info.irWebsite = probed;
@@ -429,6 +431,7 @@ async function buildCompanyInfo(
   }
   return info;
 }
+
 
 serve(async (req) => {
 
