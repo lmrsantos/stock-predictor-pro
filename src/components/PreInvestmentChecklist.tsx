@@ -54,6 +54,25 @@ function TypeTag({ type }: { type: ChecklistItem["type"] }) {
   );
 }
 
+/** Renders any http(s) URL inside an auto value as a clickable link. */
+function linkify(text: string) {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary underline break-all"
+      >
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
 function AutoRow({ item, snapshot }: { item: ChecklistItem; snapshot: AutoSnapshot }) {
   const a = snapshot.values[item.id];
   return (
