@@ -445,6 +445,14 @@ const Index = () => {
             <FlaskConical className="w-4 h-4" />
             Symbol Backtest
           </button>
+          <button
+            onClick={() => setChecklistOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Checklist
+          </button>
+
           <Link
             to="/sectors"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
