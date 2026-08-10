@@ -443,6 +443,10 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
 
       const rawReply = data.response || "Analysis complete.";
       const { text: cleanReply, actions } = parseActions(rawReply);
+      // Only auto-drive the platform when the user explicitly asked for it.
+      const explicit = userRequestedNavigation(text);
+      const autoActions = explicit ? actions.slice(0, 1) : [];
+      const suggested = explicit ? [] : actions.slice(0, 2);
       setMessages(prev => [
         ...prev.filter(m => !m.thinking),
         {
@@ -451,11 +455,12 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
           content: cleanReply || "Done.",
           timestamp: new Date(),
           streaming: false,
+          suggestedActions: suggested,
         },
       ]);
-      if (actions.length && onAction) {
+      if (autoActions.length && onAction) {
         // Execute after brief delay so user sees the confirmation text first
-        setTimeout(() => actions.forEach(a => onAction(a)), 400);
+        setTimeout(() => autoActions.forEach(a => onAction(a)), 400);
       }
 
     } catch (e) {
