@@ -491,6 +491,24 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
   if (Number.isFinite(fpe) && fpe > 0 && sectorFwdPe != null && fpe > sectorFwdPe * 1.2) {
     concerns.push(`Forward P/E of ${fpe.toFixed(1)} is ${(((fpe / sectorFwdPe) - 1) * 100).toFixed(0)}% above the sector median of ${sectorFwdPe.toFixed(1)}.`);
   }
+  if (fin?.revenueGrowthYoY != null && fin.revenueGrowthYoY < 0) {
+    concerns.push(`Revenue fell ${Math.abs(fin.revenueGrowthYoY).toFixed(1)}% in the last reported year.`);
+  }
+  if (fin?.marginTrend != null && fin.marginTrend < -1) {
+    concerns.push(`Net margin contracted ${Math.abs(fin.marginTrend).toFixed(1)}pp versus the prior year.`);
+  }
+  if (fin?.freeCashFlow != null && fin.freeCashFlow < 0) {
+    concerns.push(`Free cash flow is negative at ${bigMoney(fin.freeCashFlow)} in the last reported year.`);
+  }
+  if (fin?.sharesChangeYoY != null && fin.sharesChangeYoY > 2) {
+    concerns.push(`Diluted share count rose ${fin.sharesChangeYoY.toFixed(1)}% year over year, above the 2% dilution threshold.`);
+  }
+  if (fin?.debtToEquity != null && fin.debtToEquity > 2) {
+    concerns.push(`Debt / equity of ${fin.debtToEquity.toFixed(2)} is above the 2.0 level where leverage becomes material.`);
+  }
+  if (fin?.currentRatio != null && fin.currentRatio < 1) {
+    concerns.push(`Current ratio of ${fin.currentRatio.toFixed(2)} is below 1.0, so current liabilities exceed current assets.`);
+
   if (dirHitRate <= 0.55) {
     concerns.push(`Model direction hit rate is ${(dirHitRate * 100).toFixed(0)}% across ${v?.windowCount ?? 0} rolling windows, at or below the 55% threshold where direction carries no information.`);
   }
