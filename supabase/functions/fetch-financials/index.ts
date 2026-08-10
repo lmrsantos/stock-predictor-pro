@@ -390,11 +390,16 @@ async function fmpCompanyInfo(symbol: string, key: string): Promise<Partial<Comp
   return out;
 }
 
-async function buildCompanyInfo(symbol: string, key: string | undefined): Promise<CompanyInfo> {
+async function buildCompanyInfo(
+  symbol: string,
+  key: string | undefined,
+  opts: { skipIrProbe?: boolean } = {},
+): Promise<CompanyInfo> {
   const [yahoo, fmpInfo] = await Promise.all([
     yahooCompanyInfo(symbol),
-    key ? fmpCompanyInfo(symbol, key) : Promise.resolve({} as Partial<CompanyInfo>),
+    key && !opts.skipIrProbe ? fmpCompanyInfo(symbol, key) : Promise.resolve({} as Partial<CompanyInfo>),
   ]);
+
 
   const info: CompanyInfo = {
     website: fmpInfo.website ?? yahoo.website ?? null,
