@@ -439,7 +439,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { ticker } = await req.json();
+    const { ticker, calendarOnly } = await req.json();
     const symbol = String(ticker ?? "").trim().toUpperCase();
     if (!symbol || symbol.length > 15) {
       return new Response(JSON.stringify({ error: "Invalid ticker" }), {
@@ -449,9 +449,19 @@ serve(async (req) => {
 
     const key = Deno.env.get("FMP_API_KEY");
 
+    // Fast path: the earnings banner only needs the calendar, so skip the
+    // statement feeds and the IR-URL probe.
+    if (calendarOnly === true) {
+      const info = await buildCompanyInfo(symbol, key, { skipIrProbe: true });
+      return new Response(JSON.stringify({ symbol, companyInfo: info }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Earnings calendar + investor-relations links come from their own
     // providers, so they stay available even when the statement feed does not.
     const companyInfo = await buildCompanyInfo(symbol, key);
+
 
     if (!key) {
       const yahooOnly = await yahooFinancials(symbol);
