@@ -279,9 +279,17 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
     values.a_pe = na(FUND_SRC);
   }
 
-  values.a_ev_ebitda = na(FUND_SRC + " — enterprise value and EBITDA not ingested");
+  values.a_ev_ebitda = fin?.evToEbitda == null
+    ? na(fin ? FIN_SRC + " — EV/EBITDA not returned" : NO_FIN)
+    : val(`EV / EBITDA ${fin.evToEbitda.toFixed(1)}×`, FIN_SRC, finAsOf);
 
-  values.a_ps_pb = na(FUND_SRC + " — revenue and book value per share not ingested");
+  values.a_ps_pb = fin && (fin.priceToSales != null || fin.priceToBook != null)
+    ? val([
+        fin.priceToSales == null ? "P/S not available" : `P/S ${fin.priceToSales.toFixed(2)}`,
+        fin.priceToBook == null ? "P/B not available" : `P/B ${fin.priceToBook.toFixed(2)}`,
+      ].join(" · "), FIN_SRC, finAsOf)
+    : na(fin ? FIN_SRC + " — revenue and book value not returned" : NO_FIN);
+
 
   const hi = Number(fund?.fifty_two_week_high);
   const lo = Number(fund?.fifty_two_week_low);
