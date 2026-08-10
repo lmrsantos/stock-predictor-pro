@@ -22,7 +22,10 @@ import { backtest, type ForecastResult, type BacktestDataPoint } from "@/lib/bac
 import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { BaseRateSection } from "@/components/BaseRateSection";
+import { PreInvestmentChecklist } from "@/components/PreInvestmentChecklist";
 import { useForecastability } from "@/hooks/useForecastability";
+import { runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears, type SymbolBaseRates } from "@/lib/base-rate-pipeline";
+import { ClipboardList } from "lucide-react";
 
 interface SymbolDetailModalProps {
   isOpen: boolean;
