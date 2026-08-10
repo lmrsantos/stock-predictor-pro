@@ -15,6 +15,7 @@ import LinkagesPage from "./pages/LinkagesPage.tsx";
 import IpoIntelligence from "./pages/IpoIntelligence.tsx";
 import Pricing from "./pages/Pricing.tsx";
 import Account from "./pages/Account.tsx";
+import MyChecklists from "./pages/MyChecklists.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Terms from "./pages/Terms.tsx";
 import Disclaimer from "./pages/Disclaimer.tsx";
