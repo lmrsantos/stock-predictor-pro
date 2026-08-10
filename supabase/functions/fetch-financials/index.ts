@@ -76,15 +76,14 @@ serve(async (req) => {
       });
     }
 
-    const [income, balance, cash, ratios, metrics, quote, profile] = await Promise.all([
-      fmp(`income-statement?symbol=${symbol}&limit=5`, key),
-      fmp(`balance-sheet-statement?symbol=${symbol}&limit=5`, key),
-      fmp(`cash-flow-statement?symbol=${symbol}&limit=5`, key),
-      fmp(`ratios?symbol=${symbol}&limit=2`, key),
-      fmp(`key-metrics?symbol=${symbol}&limit=2`, key),
-      fmp(`quote?symbol=${symbol}`, key),
-      fmp(`profile?symbol=${symbol}`, key),
-    ]);
+    const income  = await fmp(`income-statement?symbol=${symbol}&limit=5`, key);
+    const balance = await fmp(`balance-sheet-statement?symbol=${symbol}&limit=5`, key);
+    const cash    = await fmp(`cash-flow-statement?symbol=${symbol}&limit=5`, key);
+    const ratios  = await fmp(`ratios?symbol=${symbol}&limit=2`, key);
+    const metrics = await fmp(`key-metrics?symbol=${symbol}&limit=2`, key);
+    const quote   = await fmp(`quote?symbol=${symbol}`, key);
+    const profile = await fmp(`profile?symbol=${symbol}`, key);
+
 
     if (!income.length && !balance.length && !ratios.length) {
       return new Response(JSON.stringify({ error: "No financial statements available for this symbol", code: "NO_FINANCIALS" }), {
