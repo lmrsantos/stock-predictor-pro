@@ -154,6 +154,7 @@ export function SymbolDetailModal({
 
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-3xl p-0 bg-background border-border overflow-hidden">
         <div className="max-h-[85vh] overflow-y-auto">
@@ -387,6 +388,7 @@ export function SymbolDetailModal({
           )}
         </div>
       </DialogContent>
+    </Dialog>
 
       {checklistOpen && (
         <PreInvestmentChecklist
