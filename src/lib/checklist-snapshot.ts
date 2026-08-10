@@ -105,7 +105,26 @@ export interface FinancialsPayload {
   avgVolume: number | null;
   beta: number | null;
   marketCap: number | null;
+  companyInfo?: CompanyInfo | null;
 }
+
+export interface CompanyInfo {
+  website: string | null;
+  irWebsite: string | null;
+  irSource: string | null;
+  secFilings: string | null;
+  nextEarningsDate: string | null;
+  nextEarningsConfirmed: boolean;
+  nextEarningsTime: string | null;
+  nextEarningsSource: string | null;
+  lastEarningsDate: string | null;
+  lastEpsActual: number | null;
+  lastEpsEstimate: number | null;
+  lastRevenueActual: number | null;
+  lastRevenueEstimate: number | null;
+  lastEarningsSource: string | null;
+}
+
 
 /** Reported statements, live from the provider. null when unavailable. */
 async function fetchFinancials(symbol: string): Promise<FinancialsPayload | null> {
