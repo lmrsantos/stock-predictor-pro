@@ -556,7 +556,9 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               </div>
             ) : (
               <>
-                {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+                {messages.map(msg => (
+                  <MessageBubble key={msg.id} msg={msg} onRunAction={onAction} />
+                ))}
                 <div ref={bottomRef} />
               </>
             )}
