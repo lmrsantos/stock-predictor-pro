@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.fetch-symbol-metadata]
 verify_jwt = false
+
+[functions.fetch-financials]
+verify_jwt = false

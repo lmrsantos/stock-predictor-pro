@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon } from "lucide-react";
+import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon, ClipboardList } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -32,6 +32,7 @@ import { QuantAgentGate } from "@/components/QuantAgentGate";
 import { FeatureGate } from "@/components/FeatureGate";
 
 import { BacktestModal } from "@/components/BacktestModal";
+import { PreInvestmentChecklist } from "@/components/PreInvestmentChecklist";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
 import { backtest, type BacktestResult } from "@/lib/backtest";
 import { analyzeCycles } from "@/lib/cycle-analysis";
@@ -55,6 +56,7 @@ const Index = () => {
   const [activeView, setActiveView] = useState<"chart" | "advisor">("chart");
   const [hotStocksOpen, setHotStocksOpen] = useState(false);
   const [sentimentOpen, setSentimentOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
 
@@ -445,6 +447,14 @@ const Index = () => {
             <FlaskConical className="w-4 h-4" />
             Symbol Backtest
           </button>
+          <button
+            onClick={() => setChecklistOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+          >
+            <ClipboardList className="w-4 h-4" />
+            Checklist
+          </button>
+
           <Link
             to="/sectors"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
@@ -664,6 +674,23 @@ const Index = () => {
           }}
         />
       </QuantAgentGate>
+
+      {checklistOpen && (
+        <PreInvestmentChecklist
+          isOpen={checklistOpen}
+          onClose={() => setChecklistOpen(false)}
+          symbol={ticker}
+          snapshotInput={{
+            symbol: ticker,
+            sector: fundamentals?.sector ?? undefined,
+            companyName: meta?.name || undefined,
+            dates: (stockData ?? []).map(d => d.date),
+            closes: (stockData ?? []).map(d => d.close),
+            forecast: backtestResult,
+            baseRates: null,
+          }}
+        />
+      )}
 
       <BacktestModal
         isOpen={showBacktest}
