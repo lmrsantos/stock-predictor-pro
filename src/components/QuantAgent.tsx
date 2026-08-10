@@ -266,7 +266,22 @@ function MessageBubble({ msg, onRunAction }: { msg: Message; onRunAction?: (a: Q
             <span className="text-[10px]">Searching web + analyzing...</span>
           </div>
         ) : (
-          <AgentMarkdown content={msg.content} />
+          <>
+            <AgentMarkdown content={msg.content} />
+            {!!msg.suggestedActions?.length && onRunAction && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {msg.suggestedActions.map((a, i) => (
+                  <button
+                    key={i}
+                    onClick={() => onRunAction(a)}
+                    className="px-2 py-1 rounded-md text-[10px] border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                  >
+                    {actionLabel(a)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
