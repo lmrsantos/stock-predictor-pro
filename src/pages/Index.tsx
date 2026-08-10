@@ -683,7 +683,7 @@ const Index = () => {
           snapshotInput={{
             symbol: ticker,
             sector: fundamentals?.sector ?? undefined,
-            companyName: stockName ?? undefined,
+            companyName: meta?.name || undefined,
             dates: (stockData ?? []).map(d => d.date),
             closes: (stockData ?? []).map(d => d.close),
             forecast: backtestResult,
