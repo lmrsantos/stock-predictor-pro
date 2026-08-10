@@ -49,6 +49,8 @@ const App = () => (
             <Route path="/ipo-intelligence" element={<IpoIntelligence />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/account" element={<Account />} />
+            <Route path="/my-checklists" element={<MyChecklists />} />
+
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
             <Route path="/methodology" element={<Methodology />} />
