@@ -704,9 +704,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                           ? `Direction correct in ${stock.dirHits} of ${stock.windowCount} windows`
                           : "No single model validated — ensemble mean"}
                       </span>
-
+                      {stock.hold && (
+                        <span
+                          title={describeHoldWindow(stock.hold, stock.symbol)}
+                          className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary cursor-help"
+                        >
+                          ⏱ Typical hold {stock.hold.medianDaysToPeak}d ({stock.hold.p25DaysToPeak}–{stock.hold.p75DaysToPeak}d)
+                        </span>
+                      )}
                     </>
                   )}
+
                   {stock.breakout && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500">
                       🔥 Breakout
