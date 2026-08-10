@@ -15,6 +15,7 @@ import { ChartControls, ForecastModel, forecastModels } from "@/components/Chart
 import { MarketTicker } from "@/components/MarketTicker";
 import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
+import { EarningsAlert } from "@/components/EarningsAlert";
 import { RegressionChart } from "@/components/RegressionChart";
 import { DataTable } from "@/components/DataTable";
 import { PortfolioAdvisor } from "@/components/PortfolioAdvisor";
