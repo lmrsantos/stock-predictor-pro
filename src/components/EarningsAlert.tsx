@@ -4,14 +4,23 @@ export interface EarningsAlertProps {
   ticker: string;
   /** ISO date (YYYY-MM-DD) of the next scheduled earnings report. */
   date: string | null | undefined;
-  confirmed?: boolean;
-  source?: string | null;
+  /** Earnings session code: bmo (before market open), amc (after market close), dmh (during market hours). */
+  time?: string | null;
   /** Show only when the report is this many calendar days away or fewer. */
   windowDays?: number;
 }
 
 const dayLabel = (n: number) =>
   n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`;
+
+function sessionLabel(time: string | null | undefined): string | null {
+  if (!time) return null;
+  const t = time.trim().toLowerCase();
+  if (t === "bmo") return "before market open";
+  if (t === "amc") return "after market close";
+  if (t === "dmh") return "during market hours";
+  return time;
+}
 
 /**
  * Slim banner shown above the main chart when earnings are imminent.
@@ -20,8 +29,7 @@ const dayLabel = (n: number) =>
 export function EarningsAlert({
   ticker,
   date,
-  confirmed,
-  source,
+  time,
   windowDays = 5,
 }: EarningsAlertProps) {
   if (!date) return null;
@@ -40,6 +48,8 @@ export function EarningsAlert({
     day: "numeric",
   });
 
+  const session = sessionLabel(time);
+
   return (
     <div
       className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-accent-warning/40 bg-accent-warning/10 px-3 py-2 text-xs"
@@ -50,13 +60,8 @@ export function EarningsAlert({
         {ticker} earnings {dayLabel(days)}
       </span>
       <span className="text-muted-foreground">· {pretty}</span>
-      <span className="text-muted-foreground">
-        {confirmed ? "· company-confirmed date" : "· date estimated, not yet confirmed"}
-      </span>
-      <span className="text-muted-foreground">
-        · Forecast bands widen around reports — trend models do not price event risk.
-      </span>
-      {source && <span className="sr-only">Source: {source}</span>}
+      {session && <span className="text-muted-foreground">· {session}</span>}
     </div>
   );
 }
+
