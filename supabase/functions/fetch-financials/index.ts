@@ -86,10 +86,19 @@ serve(async (req) => {
 
 
     if (!income.length && !balance.length && !ratios.length) {
+      // Primary provider unavailable (plan limit, delisted, or unsupported
+      // symbol) — fall back to Yahoo's reported statements.
+      const yahoo = await yahooFinancials(symbol);
+      if (yahoo) {
+        return new Response(JSON.stringify(yahoo), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ error: "No financial statements available for this symbol", code: "NO_FINANCIALS" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const i0 = income[0] ?? {}, i1 = income[1] ?? {}, i3 = income[3] ?? {};
     const b0 = balance[0] ?? {}, b1 = balance[1] ?? {};
