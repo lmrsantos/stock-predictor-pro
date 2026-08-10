@@ -266,10 +266,16 @@ async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
     const lastQuarter = quarterly.length ? quarterly[quarterly.length - 1] : null;
 
     const rawDates: unknown[] = ce.earningsDate ?? [];
-    const upcoming = rawDates
-      .map((d) => isoDay(yv(d) ?? d))
-      .filter((d): d is string => !!d)
-      .sort()[0] ?? null;
+    // Keep the epoch seconds so the session (before open / after close) can be
+    // derived from the actual time of day in US market time.
+    const stamps = rawDates
+      .map((d) => yv(d))
+      .filter((s): s is number => s != null)
+      .sort((a, b) => a - b);
+    const upcomingStamp = stamps[0] ?? null;
+    const upcoming = upcomingStamp != null
+      ? isoDay(upcomingStamp)
+      : rawDates.map((d) => isoDay(d)).filter((d): d is string => !!d).sort()[0] ?? null;
 
     return {
       website: ap.website ?? null,
@@ -277,7 +283,7 @@ async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
       irSource: ap.irWebsite ? "Yahoo Finance company profile" : null,
       nextEarningsDate: upcoming,
       nextEarningsConfirmed: ce.isEarningsDateEstimate === false,
-      nextEarningsTime: ce.earningsCallDate ? isoDay(yv(ce.earningsCallDate)) : null,
+      nextEarningsTime: sessionFromStamp(upcomingStamp),
       nextEarningsSource: upcoming ? "Yahoo Finance earnings calendar" : null,
       lastEarningsDate: last ? isoDay(yv(last.quarter)) : null,
       lastEpsActual: last ? yv(last.epsActual) : null,
@@ -286,6 +292,7 @@ async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
       lastRevenueEstimate: null,
       lastEarningsSource: last ? "Yahoo Finance reported earnings history" : null,
     };
+
   } catch {
     return {};
   }
