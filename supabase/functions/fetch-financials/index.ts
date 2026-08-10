@@ -351,7 +351,7 @@ async function fmpCompanyInfo(symbol: string, key: string): Promise<Partial<Comp
     .sort((a, b) => (a.date! < b.date! ? -1 : 1))[0];
   if (upcoming?.date) {
     out.nextEarningsDate = upcoming.date;
-    out.nextEarningsTime = upcoming.time;
+    out.nextEarningsTime = normalizeSession(upcoming.time);
     out.nextEarningsConfirmed = true;
     out.nextEarningsSource = "Financial Modeling Prep earnings calendar";
   }
