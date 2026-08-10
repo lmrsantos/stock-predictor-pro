@@ -59,6 +59,3 @@ verify_jwt = false
 
 [functions.fetch-financials]
 verify_jwt = false
-
-[functions.fmp-probe]
-verify_jwt = false
