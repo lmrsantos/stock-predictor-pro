@@ -126,18 +126,31 @@ export interface CompanyInfo {
 }
 
 
-/** Reported statements, live from the provider. null when unavailable. */
+/**
+ * Reported statements plus company info (earnings calendar, IR links), live
+ * from the providers. When only the statement feed fails, the company-info half
+ * is still returned so the checklist keeps the earnings date and IR link.
+ */
 async function fetchFinancials(symbol: string): Promise<FinancialsPayload | null> {
   try {
     const { data, error } = await supabase.functions.invoke("fetch-financials", {
       body: { ticker: symbol.toUpperCase() },
     });
-    if (error || !data || (data as { error?: string }).error) return null;
-    return data as FinancialsPayload;
+    if (error) {
+      // Non-2xx: the body may still carry companyInfo (statements unavailable).
+      const res = (error as { context?: Response }).context;
+      const body = res && typeof res.json === "function" ? await res.json().catch(() => null) : null;
+      return body?.companyInfo ? (body as FinancialsPayload) : null;
+    }
+    if (!data) return null;
+    const payload = data as FinancialsPayload & { error?: string };
+    if (payload.error) return payload.companyInfo ? payload : null;
+    return payload;
   } catch {
     return null;
   }
 }
+
 
 const num = (v: number | null | undefined, d = 1, suffix = "") =>
   v == null ? null : `${v.toFixed(d)}${suffix}`;
