@@ -204,6 +204,43 @@ const isoDay = (v: unknown): string | null => {
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 };
 
+/** "bmo" / "amc" / "dmh" derived from the report time in US market time. */
+function sessionFromStamp(stamp: number | null): string | null {
+  if (stamp == null) return null;
+  const ms = stamp > 1e11 ? stamp : stamp * 1000;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date(ms));
+  const h = Number(parts.find(p => p.type === "hour")?.value);
+  const m = Number(parts.find(p => p.type === "minute")?.value);
+  if (!Number.isFinite(h)) return null;
+  const mins = h * 60 + (Number.isFinite(m) ? m : 0);
+  // Yahoo often stamps an unknown time as midnight ET — treat that as unknown.
+  if (mins === 0) return null;
+  if (mins < 9 * 60 + 30) return "bmo";
+  if (mins >= 16 * 60) return "amc";
+  return "dmh";
+}
+
+/** Normalizes provider session labels to bmo / amc / dmh. */
+function normalizeSession(raw: unknown): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  if (s.includes("bmo") || s.includes("before")) return "bmo";
+  if (s.includes("amc") || s.includes("after")) return "amc";
+  if (s.includes("dmh") || s.includes("during")) return "dmh";
+  const hm = s.match(/^(\d{1,2}):(\d{2})/);
+  if (hm) {
+    const mins = Number(hm[1]) * 60 + Number(hm[2]);
+    if (mins < 9 * 60 + 30) return "bmo";
+    if (mins >= 16 * 60) return "amc";
+    return "dmh";
+  }
+  return null;
+}
+
+
 async function okUrl(url: string): Promise<boolean> {
   try {
     const ctrl = new AbortController();
