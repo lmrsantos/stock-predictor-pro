@@ -1,7 +1,7 @@
 // supabase/functions/sector-backtest/index.ts
 // ─────────────────────────────────────────────────────────────────────────────
 // Sector Backtest data fetcher.
-// Returns universe + ~6mo daily closes per ticker.
+// Returns universe + ~1 year of daily closes per ticker.
 // Browser runs the full backtest model (same pattern as hot-stocks).
 // ─────────────────────────────────────────────────────────────────────────────
 
