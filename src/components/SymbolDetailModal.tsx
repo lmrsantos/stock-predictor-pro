@@ -406,7 +406,6 @@ export function SymbolDetailModal({
           }}
         />
       )}
-    </Dialog>
-
+    </>
   );
 }
