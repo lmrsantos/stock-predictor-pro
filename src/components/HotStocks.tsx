@@ -6,6 +6,8 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
+import { computeHoldWindow, describeHoldWindow, type HoldWindowStats } from "@/lib/hold-window";
+
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 import { FeatureGate } from "@/components/FeatureGate";
 import { useEntitlement } from "@/hooks/useEntitlement";
