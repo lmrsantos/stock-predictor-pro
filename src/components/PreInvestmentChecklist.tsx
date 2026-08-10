@@ -29,6 +29,9 @@ import {
   type AutoSnapshot, type SnapshotInput,
 } from "@/lib/checklist-snapshot";
 import { exportChecklistExcel, exportChecklistPdf } from "@/lib/checklist-export";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { computeAdminVerdict } from "@/lib/admin-verdict";
+
 
 interface Props {
   isOpen: boolean;
