@@ -297,8 +297,10 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           dirHits: opts.dirHits ?? 0,
           windowCount: opts.windowCount ?? 0,
           expectedMovePct: opts.expectedMovePct ?? 0,
+          hold: opts.signal === "SKIPPED" ? null : computeHoldWindow(c.closes),
         };
       };
+
 
 
       // Add pre-filter rejects
