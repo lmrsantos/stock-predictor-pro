@@ -105,20 +105,52 @@ export interface FinancialsPayload {
   avgVolume: number | null;
   beta: number | null;
   marketCap: number | null;
+  companyInfo?: CompanyInfo | null;
 }
 
-/** Reported statements, live from the provider. null when unavailable. */
+export interface CompanyInfo {
+  website: string | null;
+  irWebsite: string | null;
+  irSource: string | null;
+  secFilings: string | null;
+  nextEarningsDate: string | null;
+  nextEarningsConfirmed: boolean;
+  nextEarningsTime: string | null;
+  nextEarningsSource: string | null;
+  lastEarningsDate: string | null;
+  lastEpsActual: number | null;
+  lastEpsEstimate: number | null;
+  lastRevenueActual: number | null;
+  lastRevenueEstimate: number | null;
+  lastEarningsSource: string | null;
+}
+
+
+/**
+ * Reported statements plus company info (earnings calendar, IR links), live
+ * from the providers. When only the statement feed fails, the company-info half
+ * is still returned so the checklist keeps the earnings date and IR link.
+ */
 async function fetchFinancials(symbol: string): Promise<FinancialsPayload | null> {
   try {
     const { data, error } = await supabase.functions.invoke("fetch-financials", {
       body: { ticker: symbol.toUpperCase() },
     });
-    if (error || !data || (data as { error?: string }).error) return null;
-    return data as FinancialsPayload;
+    if (error) {
+      // Non-2xx: the body may still carry companyInfo (statements unavailable).
+      const res = (error as { context?: Response }).context;
+      const body = res && typeof res.json === "function" ? await res.json().catch(() => null) : null;
+      return body?.companyInfo ? (body as FinancialsPayload) : null;
+    }
+    if (!data) return null;
+    const payload = data as FinancialsPayload & { error?: string };
+    if (payload.error) return payload.companyInfo ? payload : null;
+    return payload;
   } catch {
     return null;
   }
 }
+
 
 const num = (v: number | null | undefined, d = 1, suffix = "") =>
   v == null ? null : `${v.toFixed(d)}${suffix}`;
@@ -187,8 +219,58 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
     [fund?.company_name ?? companyName ?? symbol, effSector ?? "sector unknown", fund?.industry ?? "industry unknown"].join(" · "),
     FUND_SRC, fundAsOf,
   );
-  values.a_next_earnings = na("Earnings calendar is not ingested by this app");
-  values.a_last_quarter  = na("Quarterly results are not ingested by this app");
+  // Earnings calendar and investor-relations links, live from the providers.
+  const ci = fin?.companyInfo ?? null;
+
+  if (ci?.nextEarningsDate) {
+    const days = Math.round(
+      (new Date(ci.nextEarningsDate + "T00:00:00Z").getTime() - Date.now()) / 864e5,
+    );
+    values.a_next_earnings = val(
+      [
+        new Date(ci.nextEarningsDate + "T00:00:00Z").toLocaleDateString(undefined, {
+          year: "numeric", month: "short", day: "numeric", timeZone: "UTC",
+        }),
+        days >= 0 ? `in ${days} calendar day${days === 1 ? "" : "s"}` : `${Math.abs(days)} days ago`,
+        ci.nextEarningsConfirmed ? "date confirmed by the provider" : "date is a provider estimate, not yet confirmed",
+      ].join(" · "),
+      ci.nextEarningsSource ?? "Earnings calendar",
+      today,
+    );
+  } else {
+    values.a_next_earnings = na(
+      "No upcoming earnings date published by the calendar providers for this symbol right now — check the investor-relations page below",
+    );
+  }
+
+  if (ci?.lastEarningsDate || ci?.lastEpsActual != null) {
+    const surprise = ci.lastEpsActual != null && ci.lastEpsEstimate != null && ci.lastEpsEstimate !== 0
+      ? ((ci.lastEpsActual - ci.lastEpsEstimate) / Math.abs(ci.lastEpsEstimate)) * 100
+      : null;
+    values.a_last_quarter = val(
+      [
+        ci.lastEarningsDate ? `Reported ${ci.lastEarningsDate}` : null,
+        ci.lastEpsActual == null ? null : `EPS ${ci.lastEpsActual.toFixed(2)}`,
+        ci.lastEpsEstimate == null ? null : `versus ${ci.lastEpsEstimate.toFixed(2)} expected`,
+        surprise == null ? null : `surprise ${signedPct(surprise)}`,
+        ci.lastRevenueActual == null ? null : `revenue ${bigMoney(ci.lastRevenueActual)}`,
+      ].filter(Boolean).join(" · "),
+      ci.lastEarningsSource ?? "Reported earnings history",
+      ci.lastEarningsDate ?? today,
+    );
+  } else {
+    values.a_last_quarter = na("No reported quarterly result returned by the providers for this symbol right now");
+  }
+
+  const irParts = [
+    ci?.irWebsite ? `Investor relations: ${ci.irWebsite}` : null,
+    ci?.website ? `Company site: ${ci.website}` : null,
+    ci?.secFilings ? `SEC filings (EDGAR): ${ci.secFilings}` : null,
+  ].filter(Boolean);
+  values.a_ir_links = irParts.length
+    ? val(irParts.join("\n"), ci?.irSource ?? "Company profile and SEC EDGAR", today)
+    : na("No company website returned by the providers, so no investor-relations page could be verified");
+
 
   // ── SECTION 2 — reported statements ────────────────────────────────────────
   const FIN_SRC = fin?.source ?? "Reported financial statements";

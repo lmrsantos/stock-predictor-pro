@@ -172,7 +172,217 @@ async function yahooFinancials(symbol: string): Promise<Record<string, unknown> 
   };
 }
 
+// ── Company info: earnings calendar + investor-relations links ───────────────
+// Three independent providers, tried in order, then a deterministic probe of
+// the conventional IR hostnames/paths. Nothing here is guessed: a probed URL is
+// only reported after it answers 200.
+
+export interface CompanyInfo {
+  website: string | null;
+  irWebsite: string | null;
+  irSource: string | null;
+  secFilings: string | null;
+  nextEarningsDate: string | null;
+  nextEarningsConfirmed: boolean;
+  nextEarningsTime: string | null;
+  nextEarningsSource: string | null;
+  lastEarningsDate: string | null;
+  lastEpsActual: number | null;
+  lastEpsEstimate: number | null;
+  lastRevenueActual: number | null;
+  lastRevenueEstimate: number | null;
+  lastEarningsSource: string | null;
+}
+
+const isoDay = (v: unknown): string | null => {
+  if (v == null) return null;
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const ms = v > 1e11 ? v : v * 1000;
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+  const s = String(v).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+};
+
+async function okUrl(url: string): Promise<boolean> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    let res = await fetch(url, { method: "HEAD", headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
+    if (res.status === 405 || res.status === 403) {
+      res = await fetch(url, { method: "GET", headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
+      await res.body?.cancel().catch(() => {});
+    }
+    clearTimeout(t);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Conventional IR locations, probed against the company's own domain. */
+async function probeIrUrl(website: string): Promise<string | null> {
+  let host: string;
+  try {
+    host = new URL(website.startsWith("http") ? website : `https://${website}`).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+  const candidates = [
+    `https://ir.${host}/`,
+    `https://investors.${host}/`,
+    `https://investor.${host}/`,
+    `https://www.${host}/investors`,
+    `https://www.${host}/investor-relations`,
+    `https://www.${host}/company/investor-relations`,
+    `https://www.${host}/about/investors`,
+  ];
+  for (const url of candidates) {
+    if (await okUrl(url)) return url;
+  }
+  return null;
+}
+
+/** SEC EDGAR filing index for the symbol — always a valid public source. */
+const secUrl = (symbol: string) =>
+  `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&ticker=${encodeURIComponent(symbol)}&type=10-&dateb=&owner=include&count=40`;
+
+async function yahooCompanyInfo(symbol: string): Promise<Partial<CompanyInfo>> {
+  const auth = await yahooCrumb();
+  if (!auth) return {};
+  const modules = ["assetProfile", "calendarEvents", "earnings", "earningsHistory"].join("%2C");
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}&crumb=${encodeURIComponent(auth.crumb)}`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Cookie: auth.cookie } });
+    if (!res.ok) return {};
+    const j = await res.json();
+    const r = j?.quoteSummary?.result?.[0];
+    if (!r) return {};
+    const ap = r.assetProfile ?? {};
+    const ce = r.calendarEvents?.earnings ?? {};
+    const hist = r.earningsHistory?.history ?? [];
+    const last = hist.length ? hist[hist.length - 1] : null;
+    const quarterly = r.earnings?.financialsChart?.quarterly ?? [];
+    const lastQuarter = quarterly.length ? quarterly[quarterly.length - 1] : null;
+
+    const rawDates: unknown[] = ce.earningsDate ?? [];
+    const upcoming = rawDates
+      .map((d) => isoDay(yv(d) ?? d))
+      .filter((d): d is string => !!d)
+      .sort()[0] ?? null;
+
+    return {
+      website: ap.website ?? null,
+      irWebsite: ap.irWebsite ?? null,
+      irSource: ap.irWebsite ? "Yahoo Finance company profile" : null,
+      nextEarningsDate: upcoming,
+      nextEarningsConfirmed: ce.isEarningsDateEstimate === false,
+      nextEarningsTime: ce.earningsCallDate ? isoDay(yv(ce.earningsCallDate)) : null,
+      nextEarningsSource: upcoming ? "Yahoo Finance earnings calendar" : null,
+      lastEarningsDate: last ? isoDay(yv(last.quarter)) : null,
+      lastEpsActual: last ? yv(last.epsActual) : null,
+      lastEpsEstimate: last ? yv(last.epsEstimate) : null,
+      lastRevenueActual: lastQuarter ? yv(lastQuarter.revenue) : null,
+      lastRevenueEstimate: null,
+      lastEarningsSource: last ? "Yahoo Finance reported earnings history" : null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+async function fmpCompanyInfo(symbol: string, key: string): Promise<Partial<CompanyInfo>> {
+  const out: Partial<CompanyInfo> = {};
+  const profile = await fmp(`profile?symbol=${symbol}`, key);
+  const p0 = profile[0] ?? {};
+  if (p0.website) out.website = p0.website;
+
+  // Upcoming, provider-confirmed calendar entry.
+  const from = new Date().toISOString().slice(0, 10);
+  const to = new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10);
+  const cal = await fmp(`earnings-calendar?symbol=${symbol}&from=${from}&to=${to}`, key);
+  const upcoming = cal
+    .map((r: any) => ({ date: isoDay(r.date), time: r.time ?? null }))
+    .filter((r) => r.date && r.date >= from)
+    .sort((a, b) => (a.date! < b.date! ? -1 : 1))[0];
+  if (upcoming?.date) {
+    out.nextEarningsDate = upcoming.date;
+    out.nextEarningsTime = upcoming.time;
+    out.nextEarningsConfirmed = true;
+    out.nextEarningsSource = "Financial Modeling Prep earnings calendar";
+  }
+
+  const past = await fmp(`earnings?symbol=${symbol}&limit=8`, key);
+  const reported = past
+    .map((r: any) => ({
+      date: isoDay(r.date),
+      epsActual: n(r.epsActual ?? r.eps),
+      epsEstimate: n(r.epsEstimated ?? r.epsEstimate),
+      revenueActual: n(r.revenueActual ?? r.revenue),
+      revenueEstimate: n(r.revenueEstimated ?? r.revenueEstimate),
+    }))
+    .filter((r) => r.date && r.epsActual != null)
+    .sort((a, b) => (a.date! < b.date! ? 1 : -1))[0];
+  if (reported) {
+    out.lastEarningsDate = reported.date;
+    out.lastEpsActual = reported.epsActual;
+    out.lastEpsEstimate = reported.epsEstimate;
+    out.lastRevenueActual = reported.revenueActual;
+    out.lastRevenueEstimate = reported.revenueEstimate;
+    out.lastEarningsSource = "Financial Modeling Prep reported earnings";
+  }
+  if (!out.nextEarningsDate) {
+    // Some plans only expose the forward date through the earnings list.
+    const future = past
+      .map((r: any) => ({ date: isoDay(r.date), epsActual: n(r.epsActual ?? r.eps) }))
+      .filter((r) => r.date && r.date >= from && r.epsActual == null)
+      .sort((a, b) => (a.date! < b.date! ? -1 : 1))[0];
+    if (future?.date) {
+      out.nextEarningsDate = future.date;
+      out.nextEarningsConfirmed = false;
+      out.nextEarningsSource = "Financial Modeling Prep earnings schedule (estimated)";
+    }
+  }
+  return out;
+}
+
+async function buildCompanyInfo(symbol: string, key: string | undefined): Promise<CompanyInfo> {
+  const [yahoo, fmpInfo] = await Promise.all([
+    yahooCompanyInfo(symbol),
+    key ? fmpCompanyInfo(symbol, key) : Promise.resolve({} as Partial<CompanyInfo>),
+  ]);
+
+  const info: CompanyInfo = {
+    website: fmpInfo.website ?? yahoo.website ?? null,
+    irWebsite: yahoo.irWebsite ?? null,
+    irSource: yahoo.irSource ?? null,
+    secFilings: secUrl(symbol),
+    nextEarningsDate: fmpInfo.nextEarningsDate ?? yahoo.nextEarningsDate ?? null,
+    nextEarningsConfirmed: fmpInfo.nextEarningsDate ? !!fmpInfo.nextEarningsConfirmed : !!yahoo.nextEarningsConfirmed,
+    nextEarningsTime: fmpInfo.nextEarningsTime ?? yahoo.nextEarningsTime ?? null,
+    nextEarningsSource: fmpInfo.nextEarningsSource ?? yahoo.nextEarningsSource ?? null,
+    lastEarningsDate: fmpInfo.lastEarningsDate ?? yahoo.lastEarningsDate ?? null,
+    lastEpsActual: fmpInfo.lastEpsActual ?? yahoo.lastEpsActual ?? null,
+    lastEpsEstimate: fmpInfo.lastEpsEstimate ?? yahoo.lastEpsEstimate ?? null,
+    lastRevenueActual: fmpInfo.lastRevenueActual ?? yahoo.lastRevenueActual ?? null,
+    lastRevenueEstimate: fmpInfo.lastRevenueEstimate ?? null,
+    lastEarningsSource: fmpInfo.lastEarningsSource ?? yahoo.lastEarningsSource ?? null,
+  };
+
+  // No provider-published IR page — probe the conventional locations on the
+  // company's own domain and report only a URL that actually answers.
+  if (!info.irWebsite && info.website) {
+    const probed = await probeIrUrl(info.website);
+    if (probed) {
+      info.irWebsite = probed;
+      info.irSource = "Verified on the company's own domain";
+    }
+  }
+  return info;
+}
+
 serve(async (req) => {
+
 
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -186,9 +396,15 @@ serve(async (req) => {
     }
 
     const key = Deno.env.get("FMP_API_KEY");
+
+    // Earnings calendar + investor-relations links come from their own
+    // providers, so they stay available even when the statement feed does not.
+    const companyInfo = await buildCompanyInfo(symbol, key);
+
     if (!key) {
-      return new Response(JSON.stringify({ error: "Financial-statement provider is not configured" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const yahooOnly = await yahooFinancials(symbol);
+      return new Response(JSON.stringify({ ...(yahooOnly ?? { symbol }), companyInfo }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -206,13 +422,18 @@ serve(async (req) => {
       // symbol) — fall back to Yahoo's reported statements.
       const yahoo = await yahooFinancials(symbol);
       if (yahoo) {
-        return new Response(JSON.stringify(yahoo), {
+        return new Response(JSON.stringify({ ...yahoo, companyInfo }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: "No financial statements available for this symbol", code: "NO_FINANCIALS" }), {
+      return new Response(JSON.stringify({
+        error: "No financial statements available for this symbol",
+        code: "NO_FINANCIALS",
+        companyInfo,
+      }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     }
 
 
@@ -285,6 +506,8 @@ serve(async (req) => {
       avgVolume: n(q0.avgVolume) ?? n(p0.averageVolume),
       beta: n(p0.beta),
       marketCap,
+      companyInfo,
+
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("fetch-financials error", e);

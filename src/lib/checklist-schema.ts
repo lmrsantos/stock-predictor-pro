@@ -62,6 +62,8 @@ export const CHECKLIST_SECTIONS: ChecklistSection[] = [
       { id: "s1_drivers", type: "research", kind: "long", label: "Two or three growth drivers, next 12–24 months", placeholder: "One per line" },
       { id: "a_next_earnings", type: "auto", label: "Next earnings date" },
       { id: "a_last_quarter", type: "auto", label: "Most recent quarter result" },
+      { id: "a_ir_links", type: "auto", label: "Investor relations, company site, SEC filings" },
+
     ],
   },
   {
