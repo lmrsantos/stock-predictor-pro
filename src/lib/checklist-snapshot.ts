@@ -190,15 +190,78 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
   values.a_next_earnings = na("Earnings calendar is not ingested by this app");
   values.a_last_quarter  = na("Quarterly results are not ingested by this app");
 
-  // ── SECTION 2 ──────────────────────────────────────────────────────────────
-  values.a_revenue_growth  = na(FUND_SRC + " — income statement not ingested");
-  values.a_margins         = na(FUND_SRC + " — income statement not ingested");
-  values.a_returns         = na(FUND_SRC + " — return metrics not ingested");
-  values.a_fcf             = na(FUND_SRC + " — cash-flow statement not ingested");
-  values.a_debt_equity     = na(FUND_SRC + " — balance sheet not ingested");
-  values.a_current_ratio   = na(FUND_SRC + " — balance sheet not ingested");
-  values.a_share_count     = na(FUND_SRC + " — share count history not ingested");
+  // ── SECTION 2 — reported statements ────────────────────────────────────────
+  const FIN_SRC = fin?.source ?? "Reported financial statements";
+  const finAsOf = fin?.fiscalDate ? String(fin.fiscalDate).slice(0, 10) : "—";
+  const NO_FIN = "Reported statements could not be retrieved for this symbol right now";
+
+  if (fin) {
+    const rg = fin.revenueGrowthYoY;
+    const cagr = fin.revenueGrowth3yCagr;
+    values.a_revenue_growth = rg == null && cagr == null
+      ? na(FIN_SRC + " — revenue history not returned")
+      : val([
+          rg == null ? "Year-over-year growth not available" : `Revenue ${signedPct(rg)} year over year`,
+          cagr == null ? null : `3-year CAGR ${signedPct(cagr)}`,
+          `fiscal period ${fin.period} ending ${finAsOf}`,
+        ].filter(Boolean).join(" · "), FIN_SRC, finAsOf);
+
+    const marginParts = [
+      num(fin.grossMargin, 1, "%") ? `gross ${num(fin.grossMargin, 1, "%")}` : null,
+      num(fin.operatingMargin, 1, "%") ? `operating ${num(fin.operatingMargin, 1, "%")}` : null,
+      num(fin.netMargin, 1, "%") ? `net ${num(fin.netMargin, 1, "%")}` : null,
+      fin.marginTrend == null ? null
+        : `net margin ${fin.marginTrend >= 0 ? "up" : "down"} ${Math.abs(fin.marginTrend).toFixed(1)}pp versus the prior year`,
+    ].filter(Boolean);
+    values.a_margins = marginParts.length
+      ? val(marginParts.join(" · "), FIN_SRC, finAsOf)
+      : na(FIN_SRC + " — margin inputs not returned");
+
+    values.a_returns = fin.roe == null && fin.roa == null
+      ? na(FIN_SRC + " — return metrics not returned")
+      : val([
+          fin.roe == null ? "ROE not available" : `ROE ${fin.roe.toFixed(1)}%`,
+          fin.roa == null ? "ROA not available" : `ROA ${fin.roa.toFixed(1)}%`,
+        ].join(" · "), FIN_SRC, finAsOf);
+
+    values.a_fcf = fin.freeCashFlow == null
+      ? na(FIN_SRC + " — cash-flow statement not returned")
+      : val([
+          `Free cash flow ${bigMoney(fin.freeCashFlow)} (${fin.currency})`,
+          fin.fcfPositiveYears == null || !fin.fcfYearsChecked
+            ? null
+            : `positive in ${fin.fcfPositiveYears} of the last ${fin.fcfYearsChecked} reported years`,
+        ].filter(Boolean).join(" · "), FIN_SRC, finAsOf);
+
+    values.a_debt_equity = fin.debtToEquity == null
+      ? na(FIN_SRC + " — balance sheet not returned")
+      : val([
+          `Debt / equity ${fin.debtToEquity.toFixed(2)}`,
+          fin.netDebtToEbitda == null ? null : `net debt / EBITDA ${fin.netDebtToEbitda.toFixed(2)}×`,
+        ].filter(Boolean).join(" · "), FIN_SRC, finAsOf);
+
+    values.a_current_ratio = fin.currentRatio == null
+      ? na(FIN_SRC + " — current assets and liabilities not returned")
+      : val(`Current ratio ${fin.currentRatio.toFixed(2)}`, FIN_SRC, finAsOf);
+
+    values.a_share_count = fin.sharesOutstanding == null
+      ? na(FIN_SRC + " — share count not returned")
+      : val([
+          `Diluted shares ${(fin.sharesOutstanding / 1e6).toFixed(1)}M`,
+          fin.sharesChangeYoY == null ? null
+            : `${signedPct(fin.sharesChangeYoY, 2)} year over year (${fin.sharesChangeYoY > 0 ? "dilution" : "buyback"})`,
+        ].filter(Boolean).join(" · "), FIN_SRC, finAsOf);
+  } else {
+    values.a_revenue_growth = na(NO_FIN);
+    values.a_margins        = na(NO_FIN);
+    values.a_returns        = na(NO_FIN);
+    values.a_fcf            = na(NO_FIN);
+    values.a_debt_equity    = na(NO_FIN);
+    values.a_current_ratio  = na(NO_FIN);
+    values.a_share_count    = na(NO_FIN);
+  }
   values.a_credit_ratings  = na("Credit-rating agency data is not ingested by this app");
+
 
   // ── SECTION 3 ──────────────────────────────────────────────────────────────
   const pe = Number(fund?.pe_ratio);
