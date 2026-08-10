@@ -89,16 +89,32 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
   const lastPriceDate = dates.length ? dates[dates.length - 1] : today;
   const currentPrice = forecast?.currentPrice ?? (closes.length ? closes[closes.length - 1] : null);
 
-  // ── Fundamentals cache ─────────────────────────────────────────────────────
-  const { data: fund } = await supabase
+  // ── Fundamentals cache (refreshed on demand when empty) ────────────────────
+  let fund = (await supabase
     .from("stock_fundamentals")
     .select("*")
     .eq("ticker", symbol.toUpperCase())
-    .maybeSingle();
+    .maybeSingle()).data;
+
+  if (!fund) {
+    // Nothing cached yet — pull it once so the checklist is not empty.
+    await supabase.functions.invoke("fetch-stock-data", {
+      body: { ticker: symbol.toUpperCase(), period: "1y" },
+    }).catch(() => null);
+    fund = (await supabase
+      .from("stock_fundamentals")
+      .select("*")
+      .eq("ticker", symbol.toUpperCase())
+      .maybeSingle()).data;
+  }
+
+  // ── Reported financial statements (income, balance sheet, cash flow) ───────
+  const fin = await fetchFinancials(symbol);
 
   const fundAsOf = fund?.updated_at ? String(fund.updated_at).slice(0, 10) : today;
   const FUND_SRC = "Cached fundamentals (stock_fundamentals)";
   const effSector = fund?.sector ?? sector ?? null;
+
 
   // ── Sector medians from the same cache ─────────────────────────────────────
   let sectorPe: number | null = null;
