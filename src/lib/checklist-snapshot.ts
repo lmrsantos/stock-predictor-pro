@@ -508,6 +508,9 @@ export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnaps
   }
   if (fin?.currentRatio != null && fin.currentRatio < 1) {
     concerns.push(`Current ratio of ${fin.currentRatio.toFixed(2)} is below 1.0, so current liabilities exceed current assets.`);
+  }
+
+
 
   if (dirHitRate <= 0.55) {
     concerns.push(`Model direction hit rate is ${(dirHitRate * 100).toFixed(0)}% across ${v?.windowCount ?? 0} rolling windows, at or below the 55% threshold where direction carries no information.`);
