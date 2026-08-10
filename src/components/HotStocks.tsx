@@ -544,8 +544,16 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       "Macro Tailwind": s.thematicHot ? "YES" : "NO",
       "Linkage Tilt": s.linkageTilt ? Number(((s.linkageTilt - 1) * 100).toFixed(2)) : "",
       "Linkage Note": s.linkageNote ?? "",
+      "Typical Hold (days to peak)": s.hold ? s.hold.medianDaysToPeak : "",
+      "Hold Range (days)": s.hold ? `${s.hold.p25DaysToPeak}-${s.hold.p75DaysToPeak}` : "",
+      "Median Peak Gain (%)": s.hold ? Number(s.hold.medianPeakGainPct.toFixed(2)) : "",
+      "Reached Target (%)": s.hold ? Math.round(s.hold.reachTargetRatePct) : "",
+      "Hold Full Window (%)": s.hold ? Number(s.hold.medianHoldFullPct.toFixed(2)) : "",
+      "Give-back vs Peak (pp)": s.hold ? Number(s.hold.medianGiveBackPp.toFixed(2)) : "",
+      "Hold Sample (windows)": s.hold ? s.hold.sampleSize : "",
       Reason: s.reason,
     }));
+
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = Object.keys(rows[0]).map(k =>
       ({ wch: k === "Reason" || k === "Linkage Note" ? 60 : Math.max(12, k.length + 2) })
