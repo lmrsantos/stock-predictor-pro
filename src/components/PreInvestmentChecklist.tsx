@@ -302,6 +302,11 @@ export function PreInvestmentChecklist({
   };
 
   const counts = useMemo(() => countsFor(entries), [entries]);
+  const adminVerdict = useMemo(
+    () => (isAdmin ? computeAdminVerdict(snapshot, snapshotInput) : null),
+    [isAdmin, snapshot, snapshotInput],
+  );
+
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
