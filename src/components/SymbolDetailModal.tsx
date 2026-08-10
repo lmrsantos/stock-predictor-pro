@@ -53,6 +53,10 @@ export function SymbolDetailModal({
   const [result, setResult]   = useState<ForecastResult | null>(null);
   const [points, setPoints]   = useState<BacktestDataPoint[]>([]);
   const [showValidation, setShowValidation] = useState(false);
+  const [checklistOpen, setChecklistOpen]   = useState(false);
+  const [prepping, setPrepping]             = useState(false);
+  const [baseRates, setBaseRates]           = useState<SymbolBaseRates | null>(null);
+
 
   useEffect(() => {
     if (!isOpen || !symbol) return;
