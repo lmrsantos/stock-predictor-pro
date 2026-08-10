@@ -186,6 +186,8 @@ export function PreInvestmentChecklist({
   const { user } = useAuth();
   const sub = useSubscription();
   const canSave = sub.tier !== "free";
+  const { isAdmin } = useIsAdmin();
+
 
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
