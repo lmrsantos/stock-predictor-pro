@@ -238,6 +238,27 @@ const Index = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Step 3.8: Earnings calendar for the active symbol (used by the alert banner)
+  const { data: earnings } = useQuery({
+    queryKey: ["earnings-calendar", ticker],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-financials", {
+        body: { ticker },
+      });
+      if (error) return null;
+      const info = (data as { companyInfo?: Record<string, unknown> } | null)?.companyInfo;
+      if (!info) return null;
+      return {
+        date: (info.nextEarningsDate as string | null) ?? null,
+        confirmed: !!info.nextEarningsConfirmed,
+        source: (info.nextEarningsSource as string | null) ?? null,
+      };
+    },
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
+  });
+
+
   const fundamentals = meta?.fundamentals || dbFundamentals || null;
   const analystRating = meta?.analystRating || null;
   const website = meta?.website || null;
