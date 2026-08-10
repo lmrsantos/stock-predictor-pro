@@ -396,9 +396,15 @@ serve(async (req) => {
     }
 
     const key = Deno.env.get("FMP_API_KEY");
+
+    // Earnings calendar + investor-relations links come from their own
+    // providers, so they stay available even when the statement feed does not.
+    const companyInfo = await buildCompanyInfo(symbol, key);
+
     if (!key) {
-      return new Response(JSON.stringify({ error: "Financial-statement provider is not configured" }), {
-        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const yahooOnly = await yahooFinancials(symbol);
+      return new Response(JSON.stringify({ ...(yahooOnly ?? { symbol }), companyInfo }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -416,13 +422,18 @@ serve(async (req) => {
       // symbol) — fall back to Yahoo's reported statements.
       const yahoo = await yahooFinancials(symbol);
       if (yahoo) {
-        return new Response(JSON.stringify(yahoo), {
+        return new Response(JSON.stringify({ ...yahoo, companyInfo }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: "No financial statements available for this symbol", code: "NO_FINANCIALS" }), {
+      return new Response(JSON.stringify({
+        error: "No financial statements available for this symbol",
+        code: "NO_FINANCIALS",
+        companyInfo,
+      }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     }
 
 
