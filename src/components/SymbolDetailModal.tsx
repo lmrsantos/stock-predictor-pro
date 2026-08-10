@@ -135,6 +135,24 @@ export function SymbolDetailModal({
   const dirHits      = v ? Math.round(v.directionHitRate * v.windowCount) : 0;
   const dirReliable  = (v?.directionHitRate ?? 0) > 0.55;
 
+  /** Gathers the base-rate evidence, then opens the checklist for this symbol. */
+  const openChecklist = async () => {
+    setPrepping(true);
+    try {
+      const pipeline = await runBaseRatePipeline();
+      const listingYears = await fetchListingYears(symbol);
+      const series = makeSymbolSeries(symbol, priceDates, priceCloses, sector, null, listingYears);
+      setBaseRates(baseRatesForSymbol(pipeline, symbol, series));
+    } catch {
+      setBaseRates(null);
+    } finally {
+      setPrepping(false);
+      setChecklistOpen(true);
+    }
+  };
+
+
+
   return (
     <Dialog open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-3xl p-0 bg-background border-border overflow-hidden">
