@@ -357,7 +357,28 @@ export function SymbolDetailModal({
                 </p>
               </section>
 
-              {/* 7 — DISCLAIMER */}
+              {/* 7 — PRE-INVESTMENT CHECKLIST */}
+              <section className="rounded-xl border border-border bg-card/40 p-4">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
+                  Pre-investment checklist
+                </p>
+                <p className="text-[11px] font-mono text-muted-foreground leading-relaxed mb-3">
+                  A worksheet that gathers the evidence for {symbol} — platform facts pre-filled,
+                  research and judgement left to you. It reaches no conclusion.
+                </p>
+                <button
+                  onClick={openChecklist}
+                  disabled={prepping}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-[11px] font-mono text-foreground hover:border-primary/50 disabled:opacity-50"
+                >
+                  {prepping
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <ClipboardList className="w-3.5 h-3.5" />}
+                  Pre-investment checklist
+                </button>
+              </section>
+
+              {/* 8 — DISCLAIMER */}
               <p className="text-[10px] font-mono text-muted-foreground leading-relaxed border-t border-border pt-3">
                 Model output is statistical, not advice. Direction at these horizons is weakly
                 predictable at best. Position sizing matters more than any single signal here.
@@ -366,6 +387,24 @@ export function SymbolDetailModal({
           )}
         </div>
       </DialogContent>
+
+      {checklistOpen && (
+        <PreInvestmentChecklist
+          isOpen={checklistOpen}
+          onClose={() => setChecklistOpen(false)}
+          symbol={symbol}
+          snapshotInput={{
+            symbol,
+            sector,
+            companyName,
+            dates: priceDates,
+            closes: priceCloses,
+            forecast: result,
+            baseRates,
+          }}
+        />
+      )}
     </Dialog>
+
   );
 }
