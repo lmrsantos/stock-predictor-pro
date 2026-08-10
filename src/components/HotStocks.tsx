@@ -743,6 +743,18 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 <p className={`text-[10px] font-mono leading-relaxed pt-0.5 ${stock.hot ? "text-foreground/80" : "text-muted-foreground"}`}>
                   {stock.hot ? "✓ " : "· "}{stock.reason}
                 </p>
+                {stock.hot && stock.hold && (
+                  <p className="text-[10px] font-mono text-muted-foreground pt-0.5 leading-relaxed">
+                    ⏱ Best close historically landed <span className="text-foreground/80">~{stock.hold.medianDaysToPeak} trading days</span> after
+                    a setup like today's (typical {stock.hold.p25DaysToPeak}–{stock.hold.p75DaysToPeak}d) ·
+                    median best gain {stock.hold.medianPeakGainPct >= 0 ? "+" : ""}{stock.hold.medianPeakGainPct.toFixed(1)}% ·
+                    {" "}{Math.round(stock.hold.reachTargetRatePct)}% of {stock.hold.sampleSize} windows reached +{stock.hold.targetGainPct}% ·
+                    holding all {stock.hold.maxHoldDays}d instead returned {stock.hold.medianHoldFullPct >= 0 ? "+" : ""}{stock.hold.medianHoldFullPct.toFixed(1)}%
+                    {" "}({stock.hold.medianGiveBackPp.toFixed(1)}pp given back)
+                    {!stock.hold.reliable && <span className="opacity-80"> · thin sample</span>}
+                  </p>
+                )}
+
                 {(() => {
                   const br = baseRates[stock.symbol];
                   if (!br) return null;
