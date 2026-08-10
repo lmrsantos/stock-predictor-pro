@@ -46,6 +46,7 @@ interface Message {
   timestamp: Date;
   thinking?: boolean;
   streaming?: boolean;
+  suggestedActions?: QuantAgentAction[];
 }
 
 export type QuantAgentAction =
