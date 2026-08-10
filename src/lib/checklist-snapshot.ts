@@ -78,7 +78,58 @@ function pctChangeOverBars(closes: number[], bars: number): number | null {
   return a > 0 ? ((b - a) / a) * 100 : null;
 }
 
+export interface FinancialsPayload {
+  fiscalDate: string | null;
+  period: string;
+  currency: string;
+  source: string;
+  revenueGrowthYoY: number | null;
+  revenueGrowth3yCagr: number | null;
+  grossMargin: number | null;
+  operatingMargin: number | null;
+  netMargin: number | null;
+  marginTrend: number | null;
+  roe: number | null;
+  roa: number | null;
+  freeCashFlow: number | null;
+  fcfPositiveYears: number | null;
+  fcfYearsChecked: number | null;
+  debtToEquity: number | null;
+  netDebtToEbitda: number | null;
+  currentRatio: number | null;
+  sharesOutstanding: number | null;
+  sharesChangeYoY: number | null;
+  evToEbitda: number | null;
+  priceToSales: number | null;
+  priceToBook: number | null;
+  avgVolume: number | null;
+  beta: number | null;
+  marketCap: number | null;
+}
+
+/** Reported statements, live from the provider. null when unavailable. */
+async function fetchFinancials(symbol: string): Promise<FinancialsPayload | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-financials", {
+      body: { ticker: symbol.toUpperCase() },
+    });
+    if (error || !data || (data as { error?: string }).error) return null;
+    return data as FinancialsPayload;
+  } catch {
+    return null;
+  }
+}
+
+const num = (v: number | null | undefined, d = 1, suffix = "") =>
+  v == null ? null : `${v.toFixed(d)}${suffix}`;
+
+const bigMoney = (v: number) =>
+  Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(2)}B`
+  : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(1)}M`
+  : `$${v.toLocaleString()}`;
+
 // ─────────────────────────────────────────────────────────────────────────────
+
 
 export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnapshot> {
   const { symbol, sector, companyName, dates, closes, forecast, baseRates } = input;
