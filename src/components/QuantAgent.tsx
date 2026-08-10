@@ -215,7 +215,7 @@ function InlineMarkdown({ text }: { text: string }) {
   );
 }
 
-function MessageBubble({ msg }: { msg: Message }) {
+function MessageBubble({ msg, onRunAction }: { msg: Message; onRunAction?: (a: QuantAgentAction) => void }) {
   const isAgent = msg.role === "agent";
   const [copied, setCopied] = useState(false);
 
