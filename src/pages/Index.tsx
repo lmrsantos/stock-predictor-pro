@@ -626,6 +626,14 @@ const Index = () => {
           </FeatureGate>
         ) : (
           <>
+            <EarningsAlert
+              ticker={ticker}
+              date={earnings?.date}
+              confirmed={earnings?.confirmed}
+              source={earnings?.source}
+              windowDays={5}
+            />
+
             <RegressionStatsBar
               regression={regression}
               lastPrice={lastPrice}
