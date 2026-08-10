@@ -6,6 +6,8 @@ import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
+import { computeHoldWindow, describeHoldWindow, type HoldWindowStats } from "@/lib/hold-window";
+
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 import { FeatureGate } from "@/components/FeatureGate";
 import { useEntitlement } from "@/hooks/useEntitlement";
@@ -49,7 +51,10 @@ interface HotStock {
   dirHits: number;
   windowCount: number;
   expectedMovePct: number;
+  // Historical hold-window (how long it usually takes to reach the best close)
+  hold?: HoldWindowStats | null;
 }
+
 
 
 interface SymbolData {
@@ -292,8 +297,10 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
           dirHits: opts.dirHits ?? 0,
           windowCount: opts.windowCount ?? 0,
           expectedMovePct: opts.expectedMovePct ?? 0,
+          hold: opts.signal === "SKIPPED" ? null : computeHoldWindow(c.closes),
         };
       };
+
 
 
       // Add pre-filter rejects
@@ -537,8 +544,16 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       "Macro Tailwind": s.thematicHot ? "YES" : "NO",
       "Linkage Tilt": s.linkageTilt ? Number(((s.linkageTilt - 1) * 100).toFixed(2)) : "",
       "Linkage Note": s.linkageNote ?? "",
+      "Typical Hold (days to peak)": s.hold ? s.hold.medianDaysToPeak : "",
+      "Hold Range (days)": s.hold ? `${s.hold.p25DaysToPeak}-${s.hold.p75DaysToPeak}` : "",
+      "Median Peak Gain (%)": s.hold ? Number(s.hold.medianPeakGainPct.toFixed(2)) : "",
+      "Reached Target (%)": s.hold ? Math.round(s.hold.reachTargetRatePct) : "",
+      "Hold Full Window (%)": s.hold ? Number(s.hold.medianHoldFullPct.toFixed(2)) : "",
+      "Give-back vs Peak (pp)": s.hold ? Number(s.hold.medianGiveBackPp.toFixed(2)) : "",
+      "Hold Sample (windows)": s.hold ? s.hold.sampleSize : "",
       Reason: s.reason,
     }));
+
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = Object.keys(rows[0]).map(k =>
       ({ wch: k === "Reason" || k === "Linkage Note" ? 60 : Math.max(12, k.length + 2) })
@@ -697,9 +712,17 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                           ? `Direction correct in ${stock.dirHits} of ${stock.windowCount} windows`
                           : "No single model validated — ensemble mean"}
                       </span>
-
+                      {stock.hold && (
+                        <span
+                          title={describeHoldWindow(stock.hold, stock.symbol)}
+                          className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary cursor-help"
+                        >
+                          ⏱ Typical hold {stock.hold.medianDaysToPeak}d ({stock.hold.p25DaysToPeak}–{stock.hold.p75DaysToPeak}d)
+                        </span>
+                      )}
                     </>
                   )}
+
                   {stock.breakout && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-500">
                       🔥 Breakout
@@ -728,6 +751,18 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
                 <p className={`text-[10px] font-mono leading-relaxed pt-0.5 ${stock.hot ? "text-foreground/80" : "text-muted-foreground"}`}>
                   {stock.hot ? "✓ " : "· "}{stock.reason}
                 </p>
+                {stock.hot && stock.hold && (
+                  <p className="text-[10px] font-mono text-muted-foreground pt-0.5 leading-relaxed">
+                    ⏱ Best close historically landed <span className="text-foreground/80">~{stock.hold.medianDaysToPeak} trading days</span> after
+                    a setup like today's (typical {stock.hold.p25DaysToPeak}–{stock.hold.p75DaysToPeak}d) ·
+                    median best gain {stock.hold.medianPeakGainPct >= 0 ? "+" : ""}{stock.hold.medianPeakGainPct.toFixed(1)}% ·
+                    {" "}{Math.round(stock.hold.reachTargetRatePct)}% of {stock.hold.sampleSize} windows reached +{stock.hold.targetGainPct}% ·
+                    holding all {stock.hold.maxHoldDays}d instead returned {stock.hold.medianHoldFullPct >= 0 ? "+" : ""}{stock.hold.medianHoldFullPct.toFixed(1)}%
+                    {" "}({stock.hold.medianGiveBackPp.toFixed(1)}pp given back)
+                    {!stock.hold.reliable && <span className="opacity-80"> · thin sample</span>}
+                  </p>
+                )}
+
                 {(() => {
                   const br = baseRates[stock.symbol];
                   if (!br) return null;
