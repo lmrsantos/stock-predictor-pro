@@ -492,13 +492,15 @@ serve(async (req) => {
     const companyInfo = await buildCompanyInfo(symbol, key);
 
 
-    if (!key) {
+    if (!key || fmpBlocked()) {
       const yahooOnly = await yahooFinancials(symbol);
       return new Response(JSON.stringify({ ...(yahooOnly ?? { symbol }), companyInfo }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // The statement feeds run first; if the provider blocks mid-way the
+    // remaining calls short-circuit and Yahoo answers instead.
     const income  = await fmp(`income-statement?symbol=${symbol}&limit=5`, key);
     const balance = await fmp(`balance-sheet-statement?symbol=${symbol}&limit=5`, key);
     const cash    = await fmp(`cash-flow-statement?symbol=${symbol}&limit=5`, key);
@@ -506,6 +508,7 @@ serve(async (req) => {
     const metrics = await fmp(`key-metrics?symbol=${symbol}&limit=2`, key);
     const quote   = await fmp(`quote?symbol=${symbol}`, key);
     const profile = await fmp(`profile?symbol=${symbol}`, key);
+
 
 
     if (!income.length && !balance.length && !ratios.length) {
