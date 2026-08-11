@@ -378,7 +378,8 @@ export default function Portfolio() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
-      setNewTicker(""); setNewShares(""); setNewCost(""); setNewDate(""); setShowAdd(false);
+      setNewTicker(""); setNewShares(""); setNewCost(""); setNewTotal(""); setNewDate("");
+      setLatestPrice(null); setNewCompanyName(null); setShowAdd(false);
       toast.success("Holding added to portfolio");
     },
     onError: (err: any) => {
