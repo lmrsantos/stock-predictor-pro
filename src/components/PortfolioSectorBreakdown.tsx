@@ -20,9 +20,10 @@ interface SectorBreakdownItem {
 interface PortfolioSectorBreakdownProps {
   holdings: { id: string; ticker: string }[];
   projections: Record<string, HoldingProjection | null>;
+  showTitle?: boolean;
 }
 
-export function PortfolioSectorBreakdown({ holdings, projections }: PortfolioSectorBreakdownProps) {
+export function PortfolioSectorBreakdown({ holdings, projections, showTitle = true }: PortfolioSectorBreakdownProps) {
   const tickers = useMemo(() => holdings.map((h) => h.ticker.toUpperCase()), [holdings]);
 
   const { data: fundamentals } = useQuery({
