@@ -301,7 +301,7 @@ serve(async (req) => {
     if (!isFresh("curve_10y2y")) tasks.push(getCurve10y2y(us10yRow.value).then(upsert));
     if (!isFresh("cpi_yoy")) tasks.push(getCpiYoy().then(upsert));
     if (!isFresh("fed_funds")) tasks.push(getFedFunds().then(upsert));
-    if (!isFresh("cape_proxy")) tasks.push(getCapeProxy().then(upsert));
+    if (!isFresh("cape_proxy")) tasks.push(getCapeProxy(cacheMap.get("cape_proxy")?.value ?? null).then(upsert));
     await Promise.all(tasks);
 
     const { data: fresh } = await supabase.from("macro_indicators").select("*");
