@@ -290,7 +290,67 @@ export default function Portfolio() {
   const [newTicker, setNewTicker] = useState("");
   const [newShares, setNewShares] = useState("");
   const [newCost, setNewCost] = useState("");
+  const [newTotal, setNewTotal] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [latestPrice, setLatestPrice] = useState<number | null>(null);
+  const [newCompanyName, setNewCompanyName] = useState<string | null>(null);
+
+  // Prefill Avg Cost with the latest price once a ticker is picked.
+  const prefillFromQuote = useCallback(async (symbol: string) => {
+    const sym = symbol.trim().toUpperCase();
+    if (!sym) return;
+    setQuoteLoading(true);
+    setLatestPrice(null);
+    try {
+      let price: number | null = null;
+      let name: string | null = null;
+      const cached = await getStockDataFromDB(sym, "1mo").catch(() => []);
+      if (cached.length) price = cached[cached.length - 1].close;
+      if (price == null) {
+        const fetched = await fetchAndStoreStockData(sym, "1mo");
+        name = fetched.name || null;
+        if (fetched.prices.length) price = fetched.prices[fetched.prices.length - 1].close;
+      }
+      if (price != null && price > 0) {
+        setLatestPrice(price);
+        setNewCost(price.toFixed(2));
+        setNewCompanyName(name);
+        setNewShares((prevShares) => {
+          const sh = Number(prevShares);
+          if (sh > 0) setNewTotal((sh * price!).toFixed(2));
+          return prevShares;
+        });
+      }
+    } catch {
+      /* leave the field empty so the user can type it manually */
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, []);
+
+  const handleSharesChange = (value: string) => {
+    setNewShares(value);
+    const sh = Number(value);
+    const cost = Number(newCost);
+    if (sh > 0 && cost > 0) setNewTotal((sh * cost).toFixed(2));
+    else if (!value) setNewTotal("");
+  };
+
+  const handleCostChange = (value: string) => {
+    setNewCost(value);
+    const sh = Number(newShares);
+    const cost = Number(value);
+    if (sh > 0 && cost > 0) setNewTotal((sh * cost).toFixed(2));
+  };
+
+  // Typing a total back-solves the average cost per share.
+  const handleTotalChange = (value: string) => {
+    setNewTotal(value);
+    const total = Number(value);
+    const sh = Number(newShares);
+    if (total > 0 && sh > 0) setNewCost((total / sh).toFixed(4));
+  };
 
   const [showAdd, setShowAdd] = useState(false);
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
