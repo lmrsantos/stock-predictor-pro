@@ -130,13 +130,21 @@ async function getVix(): Promise<IndicatorRow> {
   return { indicator_key: "vix", value: null, previous_value: null, change_30d: null, as_of_date: null };
 }
 
+// ^TNX has historically been quoted as yield * 10 (42.8 == 4.28%) but Yahoo now
+// returns the yield directly. Normalize to a percent in the 0.1–25 range.
+function normalizeYield(v: number | null | undefined): number | null {
+  if (v == null || !isFinite(v)) return null;
+  return v > 25 ? v / 10 : v;
+}
+
 async function getUs10y(): Promise<IndicatorRow> {
-  // ^TNX quotes yield * 10 (e.g. 42.8 == 4.28%)
   const s = await fetchYahooSeries("^TNX");
   if (s) {
-    const last = s.closes[s.closes.length - 1] / 10;
-    const prev = s.closes.length > 1 ? s.closes[s.closes.length - 2] / 10 : null;
-    return { indicator_key: "us10y", value: last, previous_value: prev, change_30d: null, as_of_date: s.dates[s.dates.length - 1] };
+    const last = normalizeYield(s.closes[s.closes.length - 1]);
+    const prev = normalizeYield(s.closes.length > 1 ? s.closes[s.closes.length - 2] : null);
+    if (last != null) {
+      return { indicator_key: "us10y", value: last, previous_value: prev, change_30d: null, as_of_date: s.dates[s.dates.length - 1] };
+    }
   }
   const f = await fetchFredSeries("DGS10", 35);
   if (f && f.length) return { indicator_key: "us10y", value: f[0].value, previous_value: f[1]?.value ?? null, change_30d: null, as_of_date: f[0].date };
