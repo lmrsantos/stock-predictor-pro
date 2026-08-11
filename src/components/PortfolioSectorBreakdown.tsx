@@ -18,7 +18,7 @@ interface SectorBreakdownItem {
 }
 
 interface PortfolioSectorBreakdownProps {
-  holdings: { ticker: string }[];
+  holdings: { id: string; ticker: string }[];
   projections: Record<string, HoldingProjection | null>;
 }
 
