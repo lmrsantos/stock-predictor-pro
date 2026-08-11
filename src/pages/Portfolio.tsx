@@ -13,6 +13,7 @@ import { PortfolioIntradaySparkline, usePortfolioIntraday, MiniSparkline } from 
 import { PortfolioBacktest } from "@/components/PortfolioBacktest";
 import { FeatureGate } from "@/components/FeatureGate";
 import { TradePlanPanel } from "@/components/TradePlanPanel";
+import { PortfolioSectorBreakdown } from "@/components/PortfolioSectorBreakdown";
 import { History } from "lucide-react";
 
 interface Holding {
