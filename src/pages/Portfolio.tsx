@@ -290,7 +290,67 @@ export default function Portfolio() {
   const [newTicker, setNewTicker] = useState("");
   const [newShares, setNewShares] = useState("");
   const [newCost, setNewCost] = useState("");
+  const [newTotal, setNewTotal] = useState("");
   const [newDate, setNewDate] = useState("");
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [latestPrice, setLatestPrice] = useState<number | null>(null);
+  const [newCompanyName, setNewCompanyName] = useState<string | null>(null);
+
+  // Prefill Avg Cost with the latest price once a ticker is picked.
+  const prefillFromQuote = useCallback(async (symbol: string) => {
+    const sym = symbol.trim().toUpperCase();
+    if (!sym) return;
+    setQuoteLoading(true);
+    setLatestPrice(null);
+    try {
+      let price: number | null = null;
+      let name: string | null = null;
+      const cached = await getStockDataFromDB(sym, "1mo").catch(() => []);
+      if (cached.length) price = cached[cached.length - 1].close;
+      if (price == null) {
+        const fetched = await fetchAndStoreStockData(sym, "1mo");
+        name = fetched.name || null;
+        if (fetched.prices.length) price = fetched.prices[fetched.prices.length - 1].close;
+      }
+      if (price != null && price > 0) {
+        setLatestPrice(price);
+        setNewCost(price.toFixed(2));
+        setNewCompanyName(name);
+        setNewShares((prevShares) => {
+          const sh = Number(prevShares);
+          if (sh > 0) setNewTotal((sh * price!).toFixed(2));
+          return prevShares;
+        });
+      }
+    } catch {
+      /* leave the field empty so the user can type it manually */
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, []);
+
+  const handleSharesChange = (value: string) => {
+    setNewShares(value);
+    const sh = Number(value);
+    const cost = Number(newCost);
+    if (sh > 0 && cost > 0) setNewTotal((sh * cost).toFixed(2));
+    else if (!value) setNewTotal("");
+  };
+
+  const handleCostChange = (value: string) => {
+    setNewCost(value);
+    const sh = Number(newShares);
+    const cost = Number(value);
+    if (sh > 0 && cost > 0) setNewTotal((sh * cost).toFixed(2));
+  };
+
+  // Typing a total back-solves the average cost per share.
+  const handleTotalChange = (value: string) => {
+    setNewTotal(value);
+    const total = Number(value);
+    const sh = Number(newShares);
+    if (total > 0 && sh > 0) setNewCost((total / sh).toFixed(4));
+  };
 
   const [showAdd, setShowAdd] = useState(false);
   const [projections, setProjections] = useState<Record<string, HoldingProjection | null>>({});
@@ -318,7 +378,8 @@ export default function Portfolio() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio-holdings"] });
-      setNewTicker(""); setNewShares(""); setNewCost(""); setNewDate(""); setShowAdd(false);
+      setNewTicker(""); setNewShares(""); setNewCost(""); setNewTotal(""); setNewDate("");
+      setLatestPrice(null); setNewCompanyName(null); setShowAdd(false);
       toast.success("Holding added to portfolio");
     },
     onError: (err: any) => {
@@ -359,7 +420,7 @@ export default function Portfolio() {
       toast.error("Please fill in all fields with valid values");
       return;
     }
-    addMutation.mutate({ ticker, shares, avgCost, purchaseDate: newDate || null });
+    addMutation.mutate({ ticker, shares, avgCost, purchaseDate: newDate || null, companyName: newCompanyName || undefined });
   };
 
   const handleProjection = useCallback((id: string, p: HoldingProjection | null) => {
@@ -471,26 +532,42 @@ export default function Portfolio() {
         {showAdd && (
           <div className="chart-surface p-5 space-y-4">
             <h3 className="text-sm font-mono font-bold">Add New Holding</h3>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
               <div className="space-y-1"><label className="text-xs text-muted-foreground">Ticker</label>
-                <TickerSearch value={newTicker} onChange={setNewTicker} onSelect={(symbol) => setNewTicker(symbol)} />
+                <TickerSearch
+                  value={newTicker}
+                  onChange={setNewTicker}
+                  onSelect={(symbol) => { setNewTicker(symbol); prefillFromQuote(symbol); }}
+                />
               </div>
               <div className="space-y-1"><label className="text-xs text-muted-foreground">Shares</label>
-                <input type="number" value={newShares} onChange={(e) => setNewShares(e.target.value)} placeholder="100" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
+                <input type="number" value={newShares} onChange={(e) => handleSharesChange(e.target.value)} placeholder="100" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
               </div>
-              <div className="space-y-1"><label className="text-xs text-muted-foreground">Avg Cost per Share ($)</label>
-                <input type="number" value={newCost} onChange={(e) => setNewCost(e.target.value)} placeholder="150.00" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Avg Cost per Share ($)</label>
+                <input type="number" value={newCost} onChange={(e) => handleCostChange(e.target.value)} placeholder="150.00" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
+                <div className="text-[10px] text-muted-foreground h-3">
+                  {quoteLoading ? "Loading latest price…"
+                    : latestPrice != null ? `Prefilled with last close $${latestPrice.toFixed(2)} — edit if you paid a different price`
+                    : ""}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Total Cost ($)</label>
+                <input type="number" value={newTotal} onChange={(e) => handleTotalChange(e.target.value)} placeholder="15000.00" min="0.01" step="0.01" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
+                <div className="text-[10px] text-muted-foreground h-3">Shares × avg cost — or type it to back-solve the cost</div>
               </div>
               <div className="space-y-1"><label className="text-xs text-muted-foreground">Purchase Date</label>
                 <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} max={new Date().toISOString().split("T")[0]} className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm font-mono input-focus" />
               </div>
 
-              <div className="flex items-end">
+              <div className="flex flex-col justify-start md:pt-5">
                 <button onClick={handleAdd} disabled={addMutation.isPending} className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-mono font-bold hover:bg-primary/90 transition-colors disabled:opacity-50">
                   {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Add"}
                 </button>
               </div>
             </div>
+
           </div>
         )}
 
