@@ -19,8 +19,12 @@ import { readCachedLinkages } from "@/lib/run-linkages";
 import { computeRegimeBadge, type MacroIndicatorMap } from "@/lib/regime-signal";
 import { SECTOR_ETF_PROXY } from "@/lib/sector-etf-mapping";
 import type { SectorName } from "@/lib/sector-universes";
-import type { ForecastResult } from "@/lib/backtest";
-import type { SymbolBaseRates } from "@/lib/base-rate-pipeline";
+import { backtest, type ForecastResult } from "@/lib/backtest";
+import {
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears,
+  type SymbolBaseRates,
+} from "@/lib/base-rate-pipeline";
+
 
 export interface AutoValue {
   value: string;
