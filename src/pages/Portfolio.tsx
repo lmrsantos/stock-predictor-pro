@@ -706,6 +706,8 @@ export default function Portfolio() {
 
 
 
+        <PortfolioSectorBreakdown holdings={holdings} projections={projections} />
+
         <div className="text-[10px] text-muted-foreground text-center">
           Projections are based on the Enhanced-V2 regression model. Past performance does not guarantee future results. Not financial advice.
         </div>
