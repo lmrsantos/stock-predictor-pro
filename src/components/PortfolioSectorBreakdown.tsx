@@ -80,10 +80,12 @@ export function PortfolioSectorBreakdown({ holdings, projections, showTitle = tr
 
   return (
     <div className="chart-surface p-5 space-y-4">
-      <div className="flex items-center gap-2">
-        <PieChart className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-mono font-bold uppercase tracking-widest">Portfolio Sector Distribution</h3>
-      </div>
+      {showTitle && (
+        <div className="flex items-center gap-2">
+          <PieChart className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-mono font-bold uppercase tracking-widest">Portfolio Sector Distribution</h3>
+        </div>
+      )}
       <div className="space-y-3">
         {breakdown.map((item) => (
           <div key={item.sector} className="space-y-1">
