@@ -182,6 +182,13 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
     data.forEach((d) => {
       if (d.actual != null && d.actual > 0) vals.push(d.actual);
       if (d.predicted != null && d.predicted > 0) vals.push(d.predicted);
+      // Forecast probability bands live above/below the price line at the right
+      // edge — include them so the cone is never clipped.
+      const anyD = d as unknown as Record<string, number | null | undefined>;
+      (["upper1Sigma", "upper2Sigma", "lower1Sigma", "lower2Sigma"] as const).forEach((k) => {
+        const v = anyD[k];
+        if (v != null && isFinite(v) && v > 0) vals.push(v);
+      });
     });
     if (!vals.length) return [0, 1];
     const lo = Math.min(...vals);
