@@ -19,8 +19,12 @@ import { readCachedLinkages } from "@/lib/run-linkages";
 import { computeRegimeBadge, type MacroIndicatorMap } from "@/lib/regime-signal";
 import { SECTOR_ETF_PROXY } from "@/lib/sector-etf-mapping";
 import type { SectorName } from "@/lib/sector-universes";
-import type { ForecastResult } from "@/lib/backtest";
-import type { SymbolBaseRates } from "@/lib/base-rate-pipeline";
+import { backtest, type ForecastResult } from "@/lib/backtest";
+import {
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears,
+  type SymbolBaseRates,
+} from "@/lib/base-rate-pipeline";
+
 
 export interface AutoValue {
   value: string;
@@ -162,15 +166,106 @@ const bigMoney = (v: number) =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Deep daily close history from the price cache, fetched once when the caller
+ *  only had a short window (e.g. the 1d/1mo view on the terminal). */
+async function fetchDeepSeries(
+  symbol: string,
+): Promise<{ dates: string[]; closes: number[] } | null> {
+  const from = new Date(Date.now() - 5 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+  let { data } = await supabase
+    .from("stock_prices")
+    .select("date, close")
+    .eq("ticker", symbol.toUpperCase())
+    .gte("date", from)
+    .order("date", { ascending: false })
+    .range(0, 2999);
+
+  if (!data || data.length < 260) {
+    // Nothing (or too little) cached — pull it once so section 7 can compute.
+    await supabase.functions.invoke("fetch-stock-data", {
+      body: { ticker: symbol.toUpperCase(), period: "5y" },
+    }).catch(() => null);
+    data = (await supabase
+      .from("stock_prices")
+      .select("date, close")
+      .eq("ticker", symbol.toUpperCase())
+      .gte("date", from)
+      .order("date", { ascending: false })
+      .range(0, 2999)).data;
+  }
+  if (!data?.length) return null;
+
+  const rows = data.slice().reverse();
+  const dates: string[] = [];
+  const closes: number[] = [];
+  for (const r of rows) {
+    const c = Number(r.close);
+    if (!Number.isFinite(c) || c <= 0) continue;
+    dates.push(String(r.date));
+    closes.push(c);
+  }
+  return { dates, closes };
+}
+
+/** Run the forecast engine on the series. Returns null only when the series is
+ *  genuinely too short for calibration. */
+function runForecast(dates: string[], closes: number[]): ForecastResult | null {
+  if (closes.length < 60) return null;
+  try {
+    return backtest(
+      dates.map((d, i) => ({ date: d, timestamp: new Date(d).getTime(), actual: closes[i] })),
+      6,
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Conditioned base rates for this symbol, running the cross-sectional pipeline
+ *  when it has not been run in this session. */
+async function resolveBaseRates(
+  symbol: string,
+  dates: string[],
+  closes: number[],
+  sector?: string,
+): Promise<SymbolBaseRates | null> {
+  if (closes.length < 60) return null;
+  try {
+    const pipeline = await runBaseRatePipeline();
+    const listingYears = await fetchListingYears(symbol).catch(() => null);
+    const series = makeSymbolSeries(symbol, dates, closes, sector, null, listingYears);
+    return baseRatesForSymbol(pipeline, symbol, series);
+  } catch {
+    return null;
+  }
+}
+
 
 export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnapshot> {
-  const { symbol, sector, companyName, dates, closes, forecast, baseRates } = input;
+  const { symbol, sector, companyName } = input;
   const values: Record<string, AutoValue> = {};
   const concerns: string[] = [];
   const capturedAt = new Date().toISOString();
   const today = new Date().toISOString().slice(0, 10);
+
+  // Section 7 must never be blank just because the caller had not opened the
+  // backtest or the base-rate pipeline. Fill the series, then the engine, here.
+  let dates = input.dates ?? [];
+  let closes = input.closes ?? [];
+  if (closes.length < 260) {
+    const deeper = await fetchDeepSeries(symbol);
+    if (deeper && deeper.closes.length > closes.length) {
+      dates = deeper.dates;
+      closes = deeper.closes;
+    }
+  }
+
+  const forecast = input.forecast ?? runForecast(dates, closes);
+  const baseRates = input.baseRates ?? await resolveBaseRates(symbol, dates, closes, sector);
+
   const lastPriceDate = dates.length ? dates[dates.length - 1] : today;
   const currentPrice = forecast?.currentPrice ?? (closes.length ? closes[closes.length - 1] : null);
+
 
   // ── Fundamentals cache (refreshed on demand when empty) ────────────────────
   let fund = (await supabase
