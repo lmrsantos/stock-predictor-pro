@@ -35,14 +35,35 @@ const ratio = (a: number | null, b: number | null): number | null =>
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-/** Sequential + 429-aware: the provider rate-limits parallel bursts. */
+/**
+ * Sequential + quota-aware. When the provider rate-limits (429) or refuses on
+ * plan limits (401/402/403), every further call in this isolate is skipped for
+ * a cool-off window instead of retried — retrying seven feeds ate ~90s and made
+ * the checklist time out with no data at all. The Yahoo fallback is used then.
+ */
+let fmpBlockedUntil = 0;
+export const fmpBlocked = () => Date.now() < fmpBlockedUntil;
+
 async function fmp(path: string, key: string, attempt = 0): Promise<any[]> {
+  if (fmpBlocked()) return [];
   const url = `https://financialmodelingprep.com/stable/${path}${path.includes("?") ? "&" : "?"}apikey=${key}`;
   try {
     const res = await fetch(url);
-    if (res.status === 429 && attempt < 3) {
-      await sleep(1200 * (attempt + 1));
-      return fmp(path, key, attempt + 1);
+    if (res.status === 429) {
+      await res.body?.cancel().catch(() => {});
+      if (attempt < 1) {
+        await sleep(800);
+        return fmp(path, key, attempt + 1);
+      }
+      fmpBlockedUntil = Date.now() + 60_000;
+      console.warn("FMP rate-limited — falling back to Yahoo for 60s");
+      return [];
+    }
+    if (res.status === 401 || res.status === 402 || res.status === 403) {
+      await res.body?.cancel().catch(() => {});
+      fmpBlockedUntil = Date.now() + 300_000;
+      console.warn("FMP refused", path, res.status);
+      return [];
     }
     if (!res.ok) {
       console.warn("FMP", path, res.status);
@@ -59,7 +80,13 @@ async function fmp(path: string, key: string, attempt = 0): Promise<any[]> {
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+/** One Yahoo session per isolate (10 min) — it was re-minted on every lookup. */
+let crumbCache: { crumb: string; cookie: string; at: number } | null = null;
+
 async function yahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  if (crumbCache && Date.now() - crumbCache.at < 600_000) {
+    return { crumb: crumbCache.crumb, cookie: crumbCache.cookie };
+  }
   try {
     const cookieRes = await fetch("https://fc.yahoo.com/", { headers: { "User-Agent": UA }, redirect: "manual" });
     const cookie = (cookieRes.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
@@ -71,11 +98,13 @@ async function yahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
     if (!crumbRes.ok) return null;
     const crumb = await crumbRes.text();
     if (!crumb || crumb.includes("<")) return null;
+    crumbCache = { crumb, cookie, at: Date.now() };
     return { crumb, cookie };
   } catch {
     return null;
   }
 }
+
 
 const yv = (o: unknown): number | null => {
   if (o == null) return null;
@@ -463,13 +492,15 @@ serve(async (req) => {
     const companyInfo = await buildCompanyInfo(symbol, key);
 
 
-    if (!key) {
+    if (!key || fmpBlocked()) {
       const yahooOnly = await yahooFinancials(symbol);
       return new Response(JSON.stringify({ ...(yahooOnly ?? { symbol }), companyInfo }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // The statement feeds run first; if the provider blocks mid-way the
+    // remaining calls short-circuit and Yahoo answers instead.
     const income  = await fmp(`income-statement?symbol=${symbol}&limit=5`, key);
     const balance = await fmp(`balance-sheet-statement?symbol=${symbol}&limit=5`, key);
     const cash    = await fmp(`cash-flow-statement?symbol=${symbol}&limit=5`, key);
@@ -477,6 +508,7 @@ serve(async (req) => {
     const metrics = await fmp(`key-metrics?symbol=${symbol}&limit=2`, key);
     const quote   = await fmp(`quote?symbol=${symbol}`, key);
     const profile = await fmp(`profile?symbol=${symbol}`, key);
+
 
 
     if (!income.length && !balance.length && !ratios.length) {
