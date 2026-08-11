@@ -400,7 +400,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
 
 
       <ResponsiveContainer width="100%" height="90%">
-        <ComposedChart data={stackedData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+        <ComposedChart data={stackedData} margin={{ top: 18, right: 34, left: 10, bottom: 10 }}>
           <CartesianGrid
             stroke={gridColor}
             strokeDasharray="3 3"
@@ -414,6 +414,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={60}
+            padding={{ left: 0, right: 12 }}
           />
           <YAxis
             domain={priceDomain}
