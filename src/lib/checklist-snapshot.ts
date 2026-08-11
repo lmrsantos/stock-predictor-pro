@@ -164,13 +164,30 @@ const bigMoney = (v: number) =>
 
 
 export async function buildAutoSnapshot(input: SnapshotInput): Promise<AutoSnapshot> {
-  const { symbol, sector, companyName, dates, closes, forecast, baseRates } = input;
+  const { symbol, sector, companyName } = input;
   const values: Record<string, AutoValue> = {};
   const concerns: string[] = [];
   const capturedAt = new Date().toISOString();
   const today = new Date().toISOString().slice(0, 10);
+
+  // Section 7 must never be blank just because the caller had not opened the
+  // backtest or the base-rate pipeline. Fill the series, then the engine, here.
+  let dates = input.dates ?? [];
+  let closes = input.closes ?? [];
+  if (closes.length < 260) {
+    const deeper = await fetchDeepSeries(symbol);
+    if (deeper && deeper.closes.length > closes.length) {
+      dates = deeper.dates;
+      closes = deeper.closes;
+    }
+  }
+
+  const forecast = input.forecast ?? runForecast(dates, closes);
+  const baseRates = input.baseRates ?? await resolveBaseRates(symbol, dates, closes, sector);
+
   const lastPriceDate = dates.length ? dates[dates.length - 1] : today;
   const currentPrice = forecast?.currentPrice ?? (closes.length ? closes[closes.length - 1] : null);
+
 
   // ── Fundamentals cache (refreshed on demand when empty) ────────────────────
   let fund = (await supabase
