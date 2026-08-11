@@ -22,7 +22,7 @@ const TILE_ORDER: { key: string; label: string; fmt: (v: number) => string; delt
   { key: "vix", label: "VIX", fmt: (v) => v.toFixed(1), deltaMode: "prev" },
   { key: "wti", label: "WTI Crude", fmt: (v) => `$${v.toFixed(2)}`, deltaMode: "30d" },
   { key: "gold", label: "Gold", fmt: (v) => `$${v.toFixed(0)}`, deltaMode: "30d" },
-  { key: "cape_proxy", label: "PE (trailing)", fmt: (v) => v.toFixed(1), deltaMode: "prev" },
+  { key: "cape_proxy", label: "S&P 500 P/E", fmt: (v) => v.toFixed(1), deltaMode: "prev" },
 ];
 
 const toneClasses: Record<RegimeTone, { pill: string; border: string; dot: string }> = {
