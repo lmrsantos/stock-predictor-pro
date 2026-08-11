@@ -776,9 +776,14 @@ export default function Portfolio() {
                     </div>
                   ))}
                 </div>
-                {analysis.concentrationRisk === "high" && (
-                  <p className="text-[11px] text-muted-foreground">Historically, portfolios with &gt;40% in a single name show larger drawdowns during single-stock shocks.</p>
-                )}
+              {analysis.concentrationRisk === "high" && (
+                <p className="text-[11px] text-muted-foreground">Historically, portfolios with &gt;40% in a single name show larger drawdowns during single-stock shocks.</p>
+              )}
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sector Distribution</h3>
+                <PortfolioSectorBreakdown holdings={holdings} projections={projections} showTitle={false} />
               </div>
 
               {analysis.laggards.length > 0 && (
