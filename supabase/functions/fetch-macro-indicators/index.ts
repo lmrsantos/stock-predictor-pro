@@ -205,20 +205,59 @@ async function getFedFunds(): Promise<IndicatorRow> {
   return { indicator_key: "fed_funds", value: null, previous_value: null, change_30d: null, as_of_date: null };
 }
 
-async function getCapeProxy(): Promise<IndicatorRow> {
-  // Trailing 12M PE proxy for S&P 500 via FMP
-  if (!FMP_KEY) return { indicator_key: "cape_proxy", value: null, previous_value: null, change_30d: null, as_of_date: null };
-  const q = await safeJson(`https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=${FMP_KEY}`);
-  const spx = Array.isArray(q) ? q[0]?.price : null;
-  const pe = Array.isArray(q) ? q[0]?.pe : null;
+// Yahoo needs a cookie + crumb pair for quoteSummary
+async function yahooCrumb(): Promise<{ cookie: string; crumb: string } | null> {
+  try {
+    const r = await fetch("https://fc.yahoo.com", { headers: { "User-Agent": "Mozilla/5.0" }, redirect: "manual", signal: AbortSignal.timeout(7000) });
+    await r.text().catch(() => "");
+    const raw = r.headers.get("set-cookie") ?? "";
+    const cookie = raw.split(",").map((c) => c.trim().split(";")[0]).filter(Boolean).join("; ");
+    if (!cookie) return null;
+    const cr = await fetch("https://query1.finance.yahoo.com/v1/test/getcrumb", {
+      headers: { "User-Agent": "Mozilla/5.0", cookie }, signal: AbortSignal.timeout(7000),
+    });
+    const crumb = (await cr.text()).trim();
+    if (!crumb || crumb.length > 40) return null;
+    return { cookie, crumb };
+  } catch { return null; }
+}
+
+async function yahooTrailingPe(symbol: string): Promise<number | null> {
+  const sess = await yahooCrumb();
+  if (!sess) return null;
+  try {
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,defaultKeyStatistics&crumb=${encodeURIComponent(sess.crumb)}`;
+    const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", cookie: sess.cookie }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) { await r.text(); return null; }
+    const j = await r.json();
+    const res = j?.quoteSummary?.result?.[0];
+    const pe = res?.summaryDetail?.trailingPE?.raw ?? res?.defaultKeyStatistics?.trailingPE?.raw ?? null;
+    return typeof pe === "number" && isFinite(pe) && pe > 0 ? pe : null;
+  } catch { return null; }
+}
+
+async function getCapeProxy(previous: number | null): Promise<IndicatorRow> {
   const asOf = new Date().toISOString().split("T")[0];
-  if (typeof pe === "number" && isFinite(pe)) {
-    return { indicator_key: "cape_proxy", value: pe, previous_value: null, change_30d: null, as_of_date: asOf };
+
+  // 1) FMP quote on the index (when a key is configured)
+  if (FMP_KEY) {
+    const q = await safeJson(`https://financialmodelingprep.com/stable/quote?symbol=%5EGSPC&apikey=${FMP_KEY}`)
+      ?? await safeJson(`https://financialmodelingprep.com/api/v3/quote/%5EGSPC?apikey=${FMP_KEY}`);
+    const pe = Array.isArray(q) ? q[0]?.pe : null;
+    if (typeof pe === "number" && isFinite(pe) && pe > 0) {
+      return { indicator_key: "cape_proxy", value: pe, previous_value: previous, change_30d: null, as_of_date: asOf };
+    }
   }
-  if (spx && typeof spx === "number") {
-    // Fallback: leave value null, we tried
+
+  // 2) Yahoo trailing P/E on S&P 500 ETF proxies
+  for (const sym of ["SPY", "IVV", "VOO"]) {
+    const pe = await yahooTrailingPe(sym);
+    if (pe != null) {
+      return { indicator_key: "cape_proxy", value: pe, previous_value: previous, change_30d: null, as_of_date: asOf };
+    }
   }
-  return { indicator_key: "cape_proxy", value: null, previous_value: null, change_30d: null, as_of_date: asOf };
+
+  return { indicator_key: "cape_proxy", value: null, previous_value: previous, change_30d: null, as_of_date: asOf };
 }
 
 async function upsert(row: IndicatorRow) {
