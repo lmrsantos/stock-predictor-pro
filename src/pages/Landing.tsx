@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowUp,
   LineChart,
   Sparkles,
   Network,
@@ -687,7 +688,39 @@ export default function Landing() {
           For informational and educational purposes only.
         </div>
       </footer>
+
+      <BackToTop />
     </div>
+  );
+}
+
+/** Floating "back to top" pill; appears after the first screen. */
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const on = () => setShow(window.scrollY > 600);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return (
+    <button
+      type="button"
+      aria-label="Back to top"
+      onClick={() =>
+        window.scrollTo({
+          top: 0,
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+        })
+      }
+      className={`fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#07071a]/80 backdrop-blur-xl px-4 py-2.5 text-sm text-white/80 shadow-lg transition-all hover:text-white hover:border-white/30 ${
+        show ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-3"
+      }`}
+    >
+      <ArrowUp className="w-4 h-4" /> Top
+    </button>
   );
 }
 
