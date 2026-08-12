@@ -238,10 +238,11 @@ export default function Landing() {
       </section>
 
       {/* ─── 5. FEATURE GRID ─────────────────────────────────── */}
-      <section id="product" className="scroll-mt-56 py-32">
+      <section className="py-32">
         <div className="max-w-7xl mx-auto px-6">
           <Reveal>
-            <div className="max-w-2xl mb-16">
+            <div id="product" className="scroll-mt-24 max-w-2xl mb-16">
+
               <div className="text-xs uppercase tracking-widest text-indigo-300 mb-3">
                 The platform
               </div>
