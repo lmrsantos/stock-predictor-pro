@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowUp,
   LineChart,
   Sparkles,
   Network,
@@ -53,9 +54,10 @@ export default function Landing() {
             <a href="#product" className="hover:text-white">Product</a>
             <a href="#evidence" className="hover:text-white">Evidence</a>
             <a href="#linkages" className="hover:text-white">Linkage Engine</a>
-            <Link to="/ipo-intelligence" className="hover:text-white">IPO Intelligence</Link>
-            <Link to="/pricing" className="hover:text-white">Pricing</Link>
+            <a href="#ipo" className="hover:text-white">IPO Intelligence</a>
+            <a href="#pricing" className="hover:text-white">Pricing</a>
           </nav>
+
           <div className="flex items-center gap-2">
             {user ? (
               <Link
@@ -236,7 +238,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 5. FEATURE GRID ─────────────────────────────────── */}
-      <section id="product" className="py-32">
+      <section id="product" className="scroll-mt-20 py-32">
         <div className="max-w-7xl mx-auto px-6">
           <Reveal>
             <div className="max-w-2xl mb-16">
@@ -307,16 +309,19 @@ export default function Landing() {
             />
             <FeatureCard
               icon={<BarChart3 className="w-5 h-5" />}
-              title="Portfolio Advisor"
+              title="Portfolio Insights"
               body="Liquidity-aware allocations with no duplicated tickers, 30D and 1Y trajectory projections, and clearly labeled annual yield vs. liquidity."
               accent="from-teal-500/20 to-transparent"
             />
-            <FeatureCard
-              icon={<Rocket className="w-5 h-5" />}
-              title="IPO Intelligence"
-              body="Fresh listings scored on lockup risk, float, and dilution pressure — the part of the market where price history can't help you."
-              accent="from-orange-500/20 to-transparent"
-            />
+            <div id="ipo" className="scroll-mt-24">
+              <FeatureCard
+                icon={<Rocket className="w-5 h-5" />}
+                title="IPO Intelligence"
+                body="Fresh listings scored on lockup risk, float, and dilution pressure — the part of the market where price history can't help you."
+                accent="from-orange-500/20 to-transparent"
+              />
+            </div>
+
             <FeatureCard
               icon={<Clock className="w-5 h-5" />}
               title="Extended-Hours Prices"
@@ -334,7 +339,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 6. LINKAGE SPOTLIGHT ────────────────────────────── */}
-      <section id="linkages" className="py-32 border-t border-white/5 relative overflow-hidden">
+      <section id="linkages" className="scroll-mt-20 py-32 border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/40 via-transparent to-transparent pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal>
@@ -376,7 +381,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 7. EVIDENCE / METHODOLOGY ───────────────────────── */}
-      <section id="evidence" className="py-32 border-t border-white/5 relative overflow-hidden">
+      <section id="evidence" className="scroll-mt-20 py-32 border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/30 via-transparent to-transparent pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal>
@@ -438,7 +443,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 8. QUANTAGENT SPOTLIGHT ─────────────────────────── */}
-      <section id="quantagent" className="py-24 border-t border-white/5 relative overflow-hidden">
+      <section id="quantagent" className="scroll-mt-20 py-24 border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 -right-32 w-[520px] h-[520px] rounded-full bg-fuchsia-600/20 blur-3xl" />
           <div className="absolute bottom-0 -left-32 w-[520px] h-[520px] rounded-full bg-indigo-600/25 blur-3xl" />
@@ -508,7 +513,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 9. HOW IT WORKS ─────────────────────────────────── */}
-      <section id="how" className="py-32 border-t border-white/5">
+      <section id="how" className="scroll-mt-20 py-32 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           <Reveal>
             <div className="max-w-2xl mb-16">
@@ -525,7 +530,7 @@ export default function Landing() {
               { n: "01", t: "Search any symbol", b: "Daily closes, fundamentals, analyst consensus — plus the live pre-market or after-hours print when the session calls for it." },
               { n: "02", t: "Read the forecast", b: "Shrunk regression slope, 1σ/2σ cones, cycle pivots and nearby Fibonacci levels. Every metric explains itself." },
               { n: "03", t: "Check the receipts", b: "Out-of-sample model fit and conditioned base rates tell you how often this setup actually worked before." },
-              { n: "04", t: "Position it", b: "Sector linkages, Hot Stocks tilts and the liquidity-aware Portfolio Advisor turn the thesis into an allocation." },
+              { n: "04", t: "Position it", b: "Sector linkages, Hot Stocks tilts and the liquidity-aware Portfolio Insights turn the thesis into an allocation." },
             ].map((s, i) => (
               <Reveal key={s.n} delay={i * 80}>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 h-full">
@@ -567,7 +572,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 11. PRICING TEASER ──────────────────────────────── */}
-      <section className="py-32 border-t border-white/5 bg-gradient-to-b from-transparent to-indigo-950/30">
+      <section id="pricing" className="scroll-mt-20 py-32 border-t border-white/5 bg-gradient-to-b from-transparent to-indigo-950/30">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <Reveal>
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
@@ -683,7 +688,39 @@ export default function Landing() {
           For informational and educational purposes only.
         </div>
       </footer>
+
+      <BackToTop />
     </div>
+  );
+}
+
+/** Floating "back to top" pill; appears after the first screen. */
+function BackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const on = () => setShow(window.scrollY > 600);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+  return (
+    <button
+      type="button"
+      aria-label="Back to top"
+      onClick={() =>
+        window.scrollTo({
+          top: 0,
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+        })
+      }
+      className={`fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#07071a]/80 backdrop-blur-xl px-4 py-2.5 text-sm text-white/80 shadow-lg transition-all hover:text-white hover:border-white/30 ${
+        show ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-3"
+      }`}
+    >
+      <ArrowUp className="w-4 h-4" /> Top
+    </button>
   );
 }
 
