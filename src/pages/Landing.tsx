@@ -51,10 +51,10 @@ export default function Landing() {
             <span className="font-bold tracking-tight">QuantForecast</span>
           </Link>
           <nav className="hidden md:flex items-center gap-7 text-sm text-white/70">
-            <a href="#product" className="hover:text-white">Product</a>
-            <a href="#evidence" className="hover:text-white">Evidence</a>
-            <a href="#linkages" className="hover:text-white">Linkage Engine</a>
-            <a href="#ipo" className="hover:text-white">IPO Intelligence</a>
+            <a href="#product" className="hover:text-white">Products</a>
+            <a href="#evidence" className="hover:text-white">Forecast Methodology</a>
+            <a href="#quantagent" className="hover:text-white">QuantAgent</a>
+            <a href="#educational" className="hover:text-white">Educational</a>
             <a href="#pricing" className="hover:text-white">Pricing</a>
           </nav>
 
