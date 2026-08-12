@@ -330,8 +330,8 @@ export default function Landing() {
             />
             <FeatureCard
               icon={<BookOpen className="w-5 h-5" />}
-              title="Explains Itself"
-              body="Every metric ships with a 'what is it / how to read it' tooltip, plus a full methodology page. Learn the math while you use it."
+              title="Portfolio Analyses"
+              body="Break down your holdings by sector, see concentration risk, and track projected value over time — all in one place."
               accent="from-indigo-500/20 to-transparent"
             />
           </div>
