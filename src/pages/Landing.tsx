@@ -308,16 +308,19 @@ export default function Landing() {
             />
             <FeatureCard
               icon={<BarChart3 className="w-5 h-5" />}
-              title="Portfolio Advisor"
+              title="Portfolio Insights"
               body="Liquidity-aware allocations with no duplicated tickers, 30D and 1Y trajectory projections, and clearly labeled annual yield vs. liquidity."
               accent="from-teal-500/20 to-transparent"
             />
-            <FeatureCard
-              icon={<Rocket className="w-5 h-5" />}
-              title="IPO Intelligence"
-              body="Fresh listings scored on lockup risk, float, and dilution pressure — the part of the market where price history can't help you."
-              accent="from-orange-500/20 to-transparent"
-            />
+            <div id="ipo" className="scroll-mt-24">
+              <FeatureCard
+                icon={<Rocket className="w-5 h-5" />}
+                title="IPO Intelligence"
+                body="Fresh listings scored on lockup risk, float, and dilution pressure — the part of the market where price history can't help you."
+                accent="from-orange-500/20 to-transparent"
+              />
+            </div>
+
             <FeatureCard
               icon={<Clock className="w-5 h-5" />}
               title="Extended-Hours Prices"
