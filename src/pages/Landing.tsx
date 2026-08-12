@@ -53,9 +53,10 @@ export default function Landing() {
             <a href="#product" className="hover:text-white">Product</a>
             <a href="#evidence" className="hover:text-white">Evidence</a>
             <a href="#linkages" className="hover:text-white">Linkage Engine</a>
-            <Link to="/ipo-intelligence" className="hover:text-white">IPO Intelligence</Link>
-            <Link to="/pricing" className="hover:text-white">Pricing</Link>
+            <a href="#ipo" className="hover:text-white">IPO Intelligence</a>
+            <a href="#pricing" className="hover:text-white">Pricing</a>
           </nav>
+
           <div className="flex items-center gap-2">
             {user ? (
               <Link
