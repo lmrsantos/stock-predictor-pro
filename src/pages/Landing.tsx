@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -19,12 +20,11 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import quantAgentHero from "@/assets/quantagent-hero.jpg";
 
 /**
  * QuantForecast marketing landing page.
- * Inspired by mercury.com / stripe.com / schwab.com — narrative full-width
- * sections, deep indigo gradients, generous type, product proof.
+ * Narrative full-width sections, deep indigo gradients, generous type,
+ * product proof. All motion respects prefers-reduced-motion.
  */
 export default function Landing() {
   const { user } = useAuth();
@@ -40,7 +40,7 @@ export default function Landing() {
         href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap"
       />
 
-      {/* ─── NAV ─────────────────────────────────────────────── */}
+      {/* ─── 1. NAV ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#07071a]/70 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
@@ -81,78 +81,7 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* ─── QUANTAGENT SPOTLIGHT ────────────────────────────── */}
-      <section id="quantagent" className="py-24 border-b border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-10 -right-32 w-[520px] h-[520px] rounded-full bg-fuchsia-600/20 blur-3xl" />
-          <div className="absolute bottom-0 -left-32 w-[520px] h-[520px] rounded-full bg-indigo-600/25 blur-3xl" />
-        </div>
-        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="relative order-2 lg:order-1">
-            <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-fuchsia-500/30 via-indigo-500/30 to-sky-500/20 blur-2xl" />
-            <div className="relative rounded-2xl border border-white/10 overflow-hidden shadow-[0_30px_120px_-20px_rgba(139,92,246,0.5)]">
-              <img
-                src={quantAgentHero}
-                alt="QuantAgent — an AI quant analyst driving the QuantForecast terminal"
-                width={1280}
-                height={960}
-                loading="lazy"
-                className="w-full h-auto"
-              />
-            </div>
-          </div>
-
-          <div className="order-1 lg:order-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 text-xs text-fuchsia-200 mb-6">
-              <Bot className="w-3 h-3" />
-              Meet QuantAgent
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight">
-              An AI quant that <span className="bg-gradient-to-r from-fuchsia-300 via-indigo-300 to-sky-300 bg-clip-text text-transparent">drives the terminal</span> for you.
-            </h2>
-            <p className="text-white/70 text-lg leading-relaxed mb-8">
-              Talk to QuantAgent like a senior desk analyst — it reads your regression,
-              backtest, macro regime, and linkage graph in context, and it can{" "}
-              <span className="text-white">actually navigate the platform</span> when
-              you ask. Say <em>"switch to NVDA"</em>, <em>"open Hot Stocks"</em>, or{" "}
-              <em>"take me to the Linkage Engine"</em> — and it just happens.
-            </p>
-            <ul className="space-y-3 mb-10">
-              {[
-                'Type "switch to TSLA" → the chart reloads instantly',
-                'Type "open the Linkage Engine" → the page opens',
-                "Grounded on your live model, fundamentals & macro context",
-                "Every reply cites the numbers — no vibes, no hallucinated tickers",
-              ].map((f) => (
-                <li key={f} className="flex items-start gap-3 text-white/80">
-                  <Check className="w-5 h-5 text-fuchsia-300 shrink-0 mt-0.5" /> {f}
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                to={user ? "/terminal" : "/auth"}
-                className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-semibold text-[#07071a] bg-gradient-to-r from-fuchsia-300 via-indigo-200 to-sky-300 shadow-[0_0_40px_-5px_rgba(217,70,239,0.7)] hover:shadow-[0_0_60px_-5px_rgba(217,70,239,0.9)] transition-shadow"
-              >
-                <Sparkles className="w-4 h-4" />
-                Try QuantAgent free
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-              <Link
-                to="/terminal"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/15 text-white/80 hover:bg-white/5 hover:text-white text-sm"
-              >
-                See it in the terminal →
-              </Link>
-            </div>
-            <p className="text-xs text-white/40 mt-4">
-              No card required. Educational analysis — not financial advice.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── HERO ────────────────────────────────────────────── */}
+      {/* ─── 2. HERO ─────────────────────────────────────────── */}
       <section className="relative pt-24 pb-32 overflow-hidden">
         {/* aurora bg */}
         <div className="absolute inset-0 pointer-events-none">
@@ -161,94 +90,168 @@ export default function Landing() {
           <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-sky-500/20 blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-white/70 mb-8">
-            <Sparkles className="w-3 h-3 text-indigo-300" />
-            New: base-rate evidence &amp; out-of-sample scoring
-          </div>
-          <h1
-            className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 max-w-4xl mx-auto"
-            style={{ fontFamily: "'Sora',sans-serif" }}
-          >
-            Forecasts you can{" "}
-            <span className="bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-sky-300 bg-clip-text text-transparent">
-              actually audit.
-            </span>
-          </h1>
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Regression cones, out-of-sample backtests, conditioned base rates, a lead-lag
-            sector linkage graph, and an AI quant that drives it all — the toolkit desks
-            pay $2k/month for, with the scorecard attached.
-          </p>
+        {/* animated linkage particle field */}
+        <ParticleField />
 
-          <div className="flex items-center justify-center gap-3 mb-16">
-            <Link
-              to={user ? "/terminal" : "/auth"}
-              className="px-6 py-3 rounded-full bg-white text-[#07071a] font-semibold hover:bg-white/90 flex items-center gap-2"
+        <div className="relative max-w-7xl mx-auto px-6 text-center">
+          <Reveal>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-white/70 mb-8">
+              <Sparkles className="w-3 h-3 text-indigo-300" />
+              Every signal ships with its own error rate
+            </div>
+          </Reveal>
+          <Reveal delay={80}>
+            <h1
+              className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05] mb-6 max-w-4xl mx-auto"
+              style={{ fontFamily: "'Sora',sans-serif" }}
             >
-              {user ? "Open terminal" : "Start free"} <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/terminal"
-              className="px-6 py-3 rounded-full border border-white/15 hover:bg-white/5 font-medium"
-            >
-              See live demo →
-            </Link>
-          </div>
+              Most stock tools never say &ldquo;I don&rsquo;t know.&rdquo;
+              <br />
+              <span className="bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-sky-300 bg-clip-text text-transparent">
+                This one does. Often.
+              </span>
+            </h1>
+          </Reveal>
+          <Reveal delay={160}>
+            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
+              Regression forecasts, out-of-sample scoring, and historical base rates —
+              each with its sample size and track record attached. When the models can&rsquo;t
+              read a stock, QuantForecast says so, instead of inventing a signal.
+            </p>
+          </Reveal>
+
+          <Reveal delay={240}>
+            <div className="flex items-center justify-center gap-3 mb-16">
+              <Link
+                to={user ? "/terminal" : "/auth"}
+                className="px-6 py-3 rounded-full bg-white text-[#07071a] font-semibold hover:bg-white/90 flex items-center gap-2"
+              >
+                {user ? "Open terminal" : "Start free"} <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/terminal"
+                className="px-6 py-3 rounded-full border border-white/15 hover:bg-white/5 font-medium"
+              >
+                See live demo →
+              </Link>
+            </div>
+          </Reveal>
 
           {/* Product screenshot / mock */}
-          <div className="relative mx-auto max-w-5xl">
-            <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 blur-2xl" />
-            <div className="relative rounded-2xl border border-white/10 bg-[#0d0d24] p-4 shadow-2xl">
-              <div className="flex items-center gap-1.5 mb-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
-                <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
-                <div className="ml-3 text-[10px] text-white/40 font-mono">
-                  quant-forecast.com/terminal
+          <Reveal delay={320}>
+            <div className="relative mx-auto max-w-5xl">
+              <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 blur-2xl" />
+              <div className="relative rounded-2xl border border-white/10 bg-[#0d0d24] p-4 shadow-2xl">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
+                  <div className="ml-3 text-[10px] text-white/40 font-mono">
+                    quant-forecast.com/terminal
+                  </div>
                 </div>
+                <MockTerminal />
               </div>
-              <MockTerminal />
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ─── LOGO STRIP ──────────────────────────────────────── */}
-      <section className="border-y border-white/5 bg-white/[0.02] py-8">
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-xs uppercase tracking-widest text-white/40 mb-4">
-            Modeled after professional terminals like
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-white/50 text-sm font-medium">
-            <span>Bloomberg</span>
-            <span>·</span>
-            <span>FactSet</span>
-            <span>·</span>
-            <span>Koyfin</span>
-            <span>·</span>
-            <span>YCharts</span>
-            <span>·</span>
-            <span>Refinitiv</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── FEATURE GRID ────────────────────────────────────── */}
-      <section id="product" className="py-32">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="max-w-2xl mb-16">
-            <div className="text-xs uppercase tracking-widest text-indigo-300 mb-3">
-              The platform
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-              One terminal. Every quant workflow.
-            </h2>
-            <p className="text-white/60 text-lg">
-              Forecast it, prove it out-of-sample, check the historical base rate, then
-              size it. Nine modules, one context — no spreadsheet stitching.
+      {/* ─── 3. BLOOMBERG COMPARISON LINE ────────────────────── */}
+      <section className="border-y border-white/5 bg-white/[0.02] py-10">
+        <Reveal>
+          <div className="max-w-3xl mx-auto px-6 text-center">
+            <p className="text-lg md:text-2xl font-semibold leading-snug">
+              A Bloomberg terminal costs about $65 a day.
+              <br className="hidden md:block" />{" "}
+              <span className="bg-gradient-to-r from-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">
+                This one starts at $1.63.
+              </span>
+            </p>
+            <p className="text-[11px] text-white/40 mt-4">
+              Bloomberg is a trademark of Bloomberg L.P. QuantForecast is not affiliated
+              with Bloomberg.
             </p>
           </div>
+        </Reveal>
+      </section>
+
+      {/* ─── 4. PROOF ────────────────────────────────────────── */}
+      <section className="py-28 border-b border-white/5">
+        <div className="max-w-6xl mx-auto px-6">
+          <Reveal>
+            <div className="text-center mb-14">
+              <div className="text-xs uppercase tracking-widest text-indigo-300 mb-3">
+                What honesty looks like
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+                Here is our product refusing to answer.
+              </h2>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Reveal delay={80}>
+              <ProofCard header="CSX · symbol detail">
+                <ProofLine>Direction not reliable — correct in 6 of 12 windows</ProofLine>
+                <ProofLine>Expected move ±9.9% over 30 days</ProofLine>
+                <ProofLine>Model fit 25/100</ProofLine>
+                <ProofLine>Ensemble mean — no single model validated</ProofLine>
+                <ProofLine>No defined setups match this symbol</ProofLine>
+                <ProofLine>No validated cross-sector linkages for this sector</ProofLine>
+                <p className="text-white/45 text-sm leading-relaxed mt-5">
+                  The models contribute nothing here. Any decision rests on fundamentals,
+                  valuation, and your own judgement.
+                </p>
+              </ProofCard>
+            </Reveal>
+
+            <Reveal delay={160}>
+              <ProofCard header="Track record filter">
+                <ProofLine>
+                  <span className="text-white/70">Conservative only</span>
+                  <span className="text-white/25"> ......... </span>
+                  <span className="text-white">0 of 290</span>
+                </ProofLine>
+                <ProofLine>
+                  <span className="text-white/70">Hot only</span>
+                  <span className="text-white/25"> .................. </span>
+                  <span className="text-white">5 of 290</span>
+                </ProofLine>
+                <p className="text-white/45 text-sm leading-relaxed mt-5">
+                  Most days, almost nothing clears the evidence bar. We show you the empty
+                  list rather than filling it.
+                </p>
+              </ProofCard>
+            </Reveal>
+          </div>
+
+          <Reveal delay={240}>
+            <p className="text-center text-sm text-white/45 mt-10 max-w-2xl mx-auto">
+              These are real screens from the product, not mockups. Tools that always have
+              a signal are selling you one.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ─── 5. FEATURE GRID ─────────────────────────────────── */}
+      <section id="product" className="py-32">
+        <div className="max-w-7xl mx-auto px-6">
+          <Reveal>
+            <div className="max-w-2xl mb-16">
+              <div className="text-xs uppercase tracking-widest text-indigo-300 mb-3">
+                The platform
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+                One terminal. Every quant workflow.
+              </h2>
+              <p className="text-white/60 text-lg">
+                Forecast it, prove it out-of-sample, check the historical base rate, then
+                size it. Twelve modules, one context — no spreadsheet stitching.
+              </p>
+            </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <FeatureCard
@@ -274,7 +277,7 @@ export default function Landing() {
             <FeatureCard
               icon={<Network className="w-5 h-5" />}
               title="Linkage Engine"
-              body="22 economically-motivated lead-lag pairs, BH-corrected & split-half validated. See which sector moves first — and what usually follows."
+              body="22 economically-motivated lead-lag pairs, corrected for false positives and validated on both halves of the history. See which sector moves first — and what usually follows."
               accent="from-fuchsia-500/20 to-transparent"
               badge="Signature"
             />
@@ -317,7 +320,7 @@ export default function Landing() {
             <FeatureCard
               icon={<Clock className="w-5 h-5" />}
               title="Extended-Hours Prices"
-              body="Pre-market and after-hours prints appear next to the last close automatically, Yahoo-style, based on the session you're actually in."
+              body="Pre-market and after-hours prints appear next to the last close automatically, based on the session you're actually in."
               accent="from-lime-500/20 to-transparent"
             />
             <FeatureCard
@@ -330,185 +333,275 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── EVIDENCE / HONESTY SPOTLIGHT ────────────────────── */}
-      <section id="evidence" className="py-32 border-t border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/30 via-transparent to-transparent pointer-events-none" />
-        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs text-emerald-200 mb-6">
-              <Scale className="w-3 h-3" />
-              Proof, not promises
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              Most tools show you a forecast. We show you its track record.
-            </h2>
-            <p className="text-white/70 text-lg leading-relaxed mb-8">
-              Every projection is scored the hard way: the model is blinded to the most
-              recent 30 bars, forced to forecast, and graded against what actually
-              happened. When the fit is weak, we cap the confidence instead of dressing
-              it up.
-            </p>
-            <ul className="space-y-3 mb-8">
-              {[
-                "True out-of-sample holdout — no lookahead, ever",
-                "Conditioned base rates vs. volatility-bucket baselines",
-                "Excess hit rate and sample size shown on every setup",
-                "Confidence gate caps the score when calibration error is high",
-              ].map((f) => (
-                <li key={f} className="flex items-start gap-3 text-white/80">
-                  <Check className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" /> {f}
-                </li>
-              ))}
-            </ul>
-            <a
-              href="/methodology"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#07071a] font-medium hover:bg-white/90"
-            >
-              Read the methodology <ArrowRight className="w-4 h-4" />
-            </a>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { k: "Blind horizon", v: "30 bars", d: "Model sees nothing after the cutoff" },
-              { k: "Linkage pairs", v: "22", d: "BH-corrected & split-half validated" },
-              { k: "Backtest universe", v: "227 symbols", d: "Across 13 curated sectors" },
-              { k: "Evidence gate", v: "+5pp", d: "Minimum excess over baseline" },
-            ].map((s) => (
-              <div key={s.k} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-                <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2">{s.k}</div>
-                <div className="text-2xl font-bold mb-1">{s.v}</div>
-                <p className="text-white/50 text-xs leading-relaxed">{s.d}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-
-      {/* ─── LINKAGE SPOTLIGHT ───────────────────────────────── */}
+      {/* ─── 6. LINKAGE SPOTLIGHT ────────────────────────────── */}
       <section id="linkages" className="py-32 border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-indigo-950/40 via-transparent to-transparent pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-400/30 bg-indigo-500/10 text-xs text-indigo-200 mb-6">
-              <Sparkles className="w-3 h-3" />
-              The unfair advantage
+          <Reveal>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-400/30 bg-indigo-500/10 text-xs text-indigo-200 mb-6">
+                <Sparkles className="w-3 h-3" />
+                The unfair advantage
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+                Watch sectors talk to each other.
+              </h2>
+              <p className="text-white/70 text-lg leading-relaxed mb-8">
+                The Cross-Sector Linkage Graph maps 22 hand-curated causal relationships —
+                semiconductors leading software, energy leading transports, credit spreads
+                leading small caps — each one tested before it is shown.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  "Corrected for the false positives that appear when you test many pairs at once",
+                  "Each relationship must hold in both halves of the history, not just one",
+                  "Feeds Hot Stocks rankings and QuantAgent's macro reasoning",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-white/80">
+                    <Check className="w-5 h-5 text-indigo-300 shrink-0 mt-0.5" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/linkages"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#07071a] font-medium hover:bg-white/90"
+              >
+                Explore the graph <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
-              Watch sectors talk to each other.
-            </h2>
-            <p className="text-white/70 text-lg leading-relaxed mb-8">
-              The Cross-Sector Linkage Graph maps 22 hand-curated causal relationships —
-              semiconductors leading software, energy leading transports, credit spreads
-              leading small caps — validated with proper multiple-testing correction.
-            </p>
-            <ul className="space-y-3 mb-8">
-              {[
-                "Bonferroni-Holm & Benjamini-Hochberg corrected",
-                "Split-half validated to weed out false positives",
-                "Powers Hot Stocks confidence & QuantAgent macro reasoning",
-              ].map((f) => (
-                <li key={f} className="flex items-start gap-3 text-white/80">
-                  <Check className="w-5 h-5 text-indigo-300 shrink-0 mt-0.5" /> {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              to="/linkages"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#07071a] font-medium hover:bg-white/90"
-            >
-              Explore the graph <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+          </Reveal>
 
           <MockLinkageGraph />
         </div>
       </section>
 
+      {/* ─── 7. EVIDENCE / METHODOLOGY ───────────────────────── */}
+      <section id="evidence" className="py-32 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/30 via-transparent to-transparent pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <Reveal>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-400/30 bg-emerald-500/10 text-xs text-emerald-200 mb-6">
+                <Scale className="w-3 h-3" />
+                Proof, not promises
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+                Most tools show you a forecast. We show you its track record.
+              </h2>
+              <p className="text-white/70 text-lg leading-relaxed mb-8">
+                Every projection is scored the hard way: the model is blinded to the most
+                recent 30 bars, forced to forecast, and graded against what actually
+                happened.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  "True out-of-sample holdout — no lookahead, ever",
+                  "Conditioned base rates vs. volatility-bucket baselines",
+                  "Every setup shows how often it beat its baseline, and on how many occurrences",
+                  "When the model fits badly, we cap the score instead of dressing it up",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-white/80">
+                    <Check className="w-5 h-5 text-emerald-300 shrink-0 mt-0.5" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="/methodology"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#07071a] font-medium hover:bg-white/90"
+              >
+                Read the methodology <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { k: "Blind horizon", to: 30, suffix: " bars", d: "Model sees nothing after the cutoff" },
+              { k: "Linkage pairs", to: 22, suffix: "", d: "Multiple-testing corrected & split-half validated" },
+              { k: "Backtest universe", to: 227, suffix: " symbols", d: "Across 13 curated sectors" },
+              { k: "Evidence gate", to: 5, prefix: "+", suffix: "pp", d: "Minimum excess over baseline" },
+            ].map((s, i) => (
+              <Reveal key={s.k} delay={i * 80}>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 h-full">
+                  <div className="text-[10px] uppercase tracking-widest text-white/40 mb-2">{s.k}</div>
+                  <div className="text-2xl font-bold mb-1">
+                    <CountUp to={s.to} prefix={s.prefix} suffix={s.suffix} />
+                  </div>
+                  <p className="text-white/50 text-xs leading-relaxed">{s.d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 8. QUANTAGENT SPOTLIGHT ─────────────────────────── */}
+      <section id="quantagent" className="py-24 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-10 -right-32 w-[520px] h-[520px] rounded-full bg-fuchsia-600/20 blur-3xl" />
+          <div className="absolute bottom-0 -left-32 w-[520px] h-[520px] rounded-full bg-indigo-600/25 blur-3xl" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <Reveal>
+            <div className="relative order-2 lg:order-1">
+              <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-fuchsia-500/30 via-indigo-500/30 to-sky-500/20 blur-2xl" />
+              <MockAgentChat />
+            </div>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <div className="order-1 lg:order-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 text-xs text-fuchsia-200 mb-6">
+                <Bot className="w-3 h-3" />
+                Meet QuantAgent
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6 leading-tight">
+                An AI quant that{" "}
+                <span className="bg-gradient-to-r from-fuchsia-300 via-indigo-300 to-sky-300 bg-clip-text text-transparent">
+                  drives the terminal
+                </span>{" "}
+                for you.
+              </h2>
+              <p className="text-white/70 text-lg leading-relaxed mb-8">
+                Talk to QuantAgent like a senior desk analyst — it reads your regression,
+                backtest, macro regime, and linkage graph in context, and it can{" "}
+                <span className="text-white">actually navigate the platform</span> when
+                you ask. Say <em>"switch to NVDA"</em>, <em>"open Hot Stocks"</em>, or{" "}
+                <em>"take me to the Linkage Engine"</em> — and it just happens.
+              </p>
+              <ul className="space-y-3 mb-10">
+                {[
+                  'Type "switch to TSLA" → the chart reloads instantly',
+                  'Type "open the Linkage Engine" → the page opens',
+                  "Grounded on your live model, fundamentals & macro context",
+                  "Every reply cites the numbers — and says so when the numbers are thin",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-white/80">
+                    <Check className="w-5 h-5 text-fuchsia-300 shrink-0 mt-0.5" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  to={user ? "/terminal" : "/auth"}
+                  className="group inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-semibold text-[#07071a] bg-gradient-to-r from-fuchsia-300 via-indigo-200 to-sky-300 shadow-[0_0_40px_-5px_rgba(217,70,239,0.7)] hover:shadow-[0_0_60px_-5px_rgba(217,70,239,0.9)] transition-shadow"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Try QuantAgent free
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to="/terminal"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/15 text-white/80 hover:bg-white/5 hover:text-white text-sm"
+                >
+                  See it in the terminal →
+                </Link>
+              </div>
+              <p className="text-xs text-white/40 mt-4">
+                No card required. Educational analysis — not financial advice.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ─── 9. HOW IT WORKS ─────────────────────────────────── */}
       <section id="how" className="py-32 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="max-w-2xl mb-16">
-            <div className="text-xs uppercase tracking-widest text-indigo-300 mb-3">
-              How it works
+          <Reveal>
+            <div className="max-w-2xl mb-16">
+              <div className="text-xs uppercase tracking-widest text-indigo-300 mb-3">
+                How it works
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
+                From ticker to thesis in under a minute.
+              </h2>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-              From ticker to thesis in under a minute.
-            </h2>
-          </div>
+          </Reveal>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               { n: "01", t: "Search any symbol", b: "Daily closes, fundamentals, analyst consensus — plus the live pre-market or after-hours print when the session calls for it." },
               { n: "02", t: "Read the forecast", b: "Shrunk regression slope, 1σ/2σ cones, cycle pivots and nearby Fibonacci levels. Every metric explains itself." },
               { n: "03", t: "Check the receipts", b: "Out-of-sample model fit and conditioned base rates tell you how often this setup actually worked before." },
               { n: "04", t: "Position it", b: "Sector linkages, Hot Stocks tilts and the liquidity-aware Portfolio Advisor turn the thesis into an allocation." },
-            ].map((s) => (
-              <div key={s.n} className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-                <div className="text-xs font-mono text-indigo-300 mb-4">{s.n}</div>
-                <h3 className="font-semibold text-lg mb-2">{s.t}</h3>
-                <p className="text-white/60 text-sm leading-relaxed">{s.b}</p>
-              </div>
+            ].map((s, i) => (
+              <Reveal key={s.n} delay={i * 80}>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 h-full">
+                  <div className="text-xs font-mono text-indigo-300 mb-4">{s.n}</div>
+                  <h3 className="font-semibold text-lg mb-2">{s.t}</h3>
+                  <p className="text-white/60 text-sm leading-relaxed">{s.b}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── TRUST / SECURITY ────────────────────────────────── */}
+      {/* ─── 10. TRUST / SECURITY ────────────────────────────── */}
       <section className="py-24 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <TrustBlock
-            icon={<ShieldCheck className="w-5 h-5" />}
-            title="Educational, not advisory"
-            body="QuantForecast is not a registered investment adviser. Every metric ships with context so you decide."
-          />
-          <TrustBlock
-            icon={<Layers className="w-5 h-5" />}
-            title="Your data, your control"
-            body="Portfolios and preferences are encrypted at rest, protected by row-level security, and never sold."
-          />
-          <TrustBlock
-            icon={<Zap className="w-5 h-5" />}
-            title="Live prices, cached math"
-            body="Daily closes stream from Yahoo & FMP. Heavy models run in-browser or on-cache for zero lag."
-          />
+          {[
+            {
+              icon: <ShieldCheck className="w-5 h-5" />,
+              title: "Educational, not advisory",
+              body: "QuantForecast is not a registered investment adviser. Every metric ships with context so you decide.",
+            },
+            {
+              icon: <Layers className="w-5 h-5" />,
+              title: "Your data, your control",
+              body: "Portfolios and preferences are encrypted at rest, protected by row-level security, and never sold.",
+            },
+            {
+              icon: <Zap className="w-5 h-5" />,
+              title: "Live prices, cached math",
+              body: "Daily closes stream from Yahoo & FMP. Heavy models run in-browser or on-cache for zero lag.",
+            },
+          ].map((t, i) => (
+            <Reveal key={t.title} delay={i * 80}>
+              <TrustBlock icon={t.icon} title={t.title} body={t.body} />
+            </Reveal>
+          ))}
         </div>
       </section>
 
-      {/* ─── PRICING TEASER ──────────────────────────────────── */}
+      {/* ─── 11. PRICING TEASER ──────────────────────────────── */}
       <section className="py-32 border-t border-white/5 bg-gradient-to-b from-transparent to-indigo-950/30">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-            Simple pricing. No seat math.
-          </h2>
-          <p className="text-white/60 text-lg mb-10">
-            Start free. Upgrade when the terminal pays for itself.
-          </p>
+          <Reveal>
+            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+              Simple pricing. No seat math.
+            </h2>
+            <p className="text-white/60 text-lg mb-10">
+              Start free. Upgrade when the terminal pays for itself.
+            </p>
+          </Reveal>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-left">
             {[
               { name: "Market Pulse", price: "$0", who: "Light user", actions: "20 AI actions / mo", desc: "Regression chart on any ticker, 30-day horizon, 2 linkages unlocked." },
               { name: "Sector Intel", price: "$49", who: "Medium user", actions: "500 AI actions / mo", desc: "All 22 linkages, event catalog, backtests, all Hot Stocks tiers, CSV exports.", highlight: true },
               { name: "Signal Pro", price: "$89", who: "Heavy user", actions: "1,200 AI actions / mo", desc: "Everything in Sector Intel plus live linkage re-runs, custom horizons and room to work all day." },
               { name: "Custom Intel", price: "$149", who: "Power user", actions: "2,500 AI actions / mo", desc: "Your own leader → follower pairs, saved & monitored, plus API access." },
-            ].map((p) => (
-              <div
-                key={p.name}
-                className={`rounded-2xl p-6 border ${
-                  p.highlight
-                    ? "border-indigo-400/50 bg-indigo-500/10"
-                    : "border-white/10 bg-white/[0.02]"
-                }`}
-              >
-                <div className="text-sm text-white/60 mb-1">{p.name}</div>
-                <div className="text-3xl font-bold mb-2">
-                  {p.price}
-                  <span className="text-sm font-normal text-white/50">/mo</span>
+            ].map((p, i) => (
+              <Reveal key={p.name} delay={i * 70}>
+                <div
+                  className={`rounded-2xl p-6 border h-full ${
+                    p.highlight
+                      ? "border-indigo-400/50 bg-indigo-500/10"
+                      : "border-white/10 bg-white/[0.02]"
+                  }`}
+                >
+                  <div className="text-sm text-white/60 mb-1">{p.name}</div>
+                  <div className="text-3xl font-bold mb-2">
+                    {p.price}
+                    <span className="text-sm font-normal text-white/50">/mo</span>
+                  </div>
+                  <div className="text-[11px] font-mono uppercase tracking-widest text-white/50 mb-1">{p.who}</div>
+                  <div className="text-sm text-white/80 mb-2">{p.actions}</div>
+                  <p className="text-sm text-white/60">{p.desc}</p>
                 </div>
-                <div className="text-[11px] font-mono uppercase tracking-widest text-white/50 mb-1">{p.who}</div>
-                <div className="text-sm text-white/80 mb-2">{p.actions}</div>
-                <p className="text-sm text-white/60">{p.desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
           <p className="text-xs text-white/40 mt-6">
@@ -526,28 +619,30 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── FINAL CTA ───────────────────────────────────────── */}
+      {/* ─── 12. FINAL CTA ───────────────────────────────────── */}
       <section className="py-32 border-t border-white/5">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Ready to trade with{" "}
-            <span className="bg-gradient-to-r from-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">
-              conviction?
-            </span>
-          </h2>
-          <p className="text-white/60 text-lg mb-10">
-            Open the terminal in your browser. No install, no card, no wait.
-          </p>
-          <Link
-            to={user ? "/terminal" : "/auth"}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-[#07071a] font-semibold text-lg hover:bg-white/90"
-          >
-            {user ? "Open terminal" : "Start free"} <ArrowRight className="w-5 h-5" />
-          </Link>
+          <Reveal>
+            <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
+              Stop guessing which{" "}
+              <span className="bg-gradient-to-r from-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">
+                signals are real.
+              </span>
+            </h2>
+            <p className="text-white/60 text-lg mb-10">
+              Open the terminal in your browser. No install, no card, no wait.
+            </p>
+            <Link
+              to={user ? "/terminal" : "/auth"}
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-[#07071a] font-semibold text-lg hover:bg-white/90"
+            >
+              {user ? "Open terminal" : "Start free"} <ArrowRight className="w-5 h-5" />
+            </Link>
+          </Reveal>
         </div>
       </section>
 
-      {/* ─── FOOTER ──────────────────────────────────────────── */}
+      {/* ─── 13. FOOTER ──────────────────────────────────────── */}
       <footer className="border-t border-white/5 py-12 text-sm text-white/50">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
@@ -592,7 +687,221 @@ export default function Landing() {
   );
 }
 
+/* ─── MOTION PRIMITIVES ──────────────────────────────────────── */
+
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const on = () => setReduced(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return reduced;
+}
+
+/** Fires once when the element scrolls into view. */
+function useInViewOnce<T extends HTMLElement>(rootMargin = "-10% 0px") {
+  const ref = useRef<T | null>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || seen) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setSeen(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setSeen(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin, threshold: 0.15 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [seen, rootMargin]);
+  return { ref, seen };
+}
+
+/** Fade up 16px, 400ms, once. Disabled under reduced motion. */
+function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const reduced = usePrefersReducedMotion();
+  const { ref, seen } = useInViewOnce<HTMLDivElement>();
+  const on = reduced || seen;
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: on ? 1 : 0,
+        transform: on ? "translateY(0)" : "translateY(16px)",
+        transition: reduced ? undefined : `opacity 400ms ease-out ${delay}ms, transform 400ms ease-out ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CountUp({ to, prefix = "", suffix = "" }: { to: number; prefix?: string; suffix?: string }) {
+  const reduced = usePrefersReducedMotion();
+  const { ref, seen } = useInViewOnce<HTMLSpanElement>();
+  const [val, setVal] = useState(0);
+
+  useEffect(() => {
+    if (!seen) return;
+    if (reduced) {
+      setVal(to);
+      return;
+    }
+    const start = performance.now();
+    const dur = 800;
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(Math.round(to * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [seen, reduced, to]);
+
+  return (
+    <span ref={ref}>
+      {prefix}
+      {val}
+      {suffix}
+    </span>
+  );
+}
+
+/** Slow-drifting particles connected by faint proximity lines, behind the hero. */
+function ParticleField() {
+  const reduced = usePrefersReducedMotion();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (reduced) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let w = 0;
+    let h = 0;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const COUNT = 60;
+    const LINK = 140;
+
+    type P = { x: number; y: number; vx: number; vy: number; c: string };
+    let pts: P[] = [];
+
+    const resize = () => {
+      const rect = canvas.parentElement?.getBoundingClientRect();
+      w = rect?.width ?? window.innerWidth;
+      h = rect?.height ?? 600;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const seed = () => {
+      pts = Array.from({ length: COUNT }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.18,
+        vy: (Math.random() - 0.5) * 0.18,
+        c: Math.random() > 0.5 ? "165,180,252" : "240,171,252",
+      }));
+    };
+
+    resize();
+    seed();
+
+    let raf = 0;
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      for (const p of pts) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
+      }
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const dx = pts[i].x - pts[j].x;
+          const dy = pts[i].y - pts[j].y;
+          const d = Math.hypot(dx, dy);
+          if (d < LINK) {
+            ctx.strokeStyle = `rgba(165,180,252,${(1 - d / LINK) * 0.09})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+      for (const p of pts) {
+        ctx.fillStyle = `rgba(${p.c},0.14)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+
+    const onResize = () => {
+      resize();
+      seed();
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [reduced]);
+
+  if (reduced) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      className="absolute inset-0 pointer-events-none select-none"
+    />
+  );
+}
+
 /* ─── PRESENTATIONAL SUB-COMPONENTS ─────────────────────────── */
+
+function ProofCard({ header, children }: { header: string; children: React.ReactNode }) {
+  return (
+    <div className="h-full rounded-2xl border border-white/10 bg-[#0d0d24] p-5 shadow-2xl">
+      <div className="flex items-center gap-1.5 mb-4">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
+        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
+        <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
+        <div className="ml-3 text-[10px] text-white/40 font-mono">{header}</div>
+      </div>
+      <div className="rounded-xl bg-[#07071a] border border-white/5 p-4">{children}</div>
+    </div>
+  );
+}
+
+function ProofLine({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="font-mono text-[13px] leading-relaxed text-white/70 py-1 border-b border-white/5 last:border-0">
+      {children}
+    </div>
+  );
+}
 
 function FeatureCard({
   icon,
@@ -633,7 +942,7 @@ function TrustBlock({
   body: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 h-full">
       <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center mb-4 text-indigo-300">
         {icon}
       </div>
@@ -732,7 +1041,61 @@ function MockTerminal() {
   );
 }
 
+/** Styled mock of the QuantAgent chat panel, using the MockTerminal card treatment. */
+function MockAgentChat() {
+  return (
+    <div className="relative rounded-2xl border border-white/10 bg-[#0d0d24] p-4 shadow-[0_30px_120px_-20px_rgba(139,92,246,0.5)]">
+      <div className="flex items-center gap-1.5 mb-3">
+        <div className="w-2.5 h-2.5 rounded-full bg-red-400/60" />
+        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/60" />
+        <div className="w-2.5 h-2.5 rounded-full bg-green-400/60" />
+        <div className="ml-3 text-[10px] text-white/40 font-mono">
+          quant-forecast.com/terminal · QuantAgent
+        </div>
+      </div>
+      <div className="rounded-xl bg-[#07071a] border border-white/5 p-4 space-y-3">
+        <div className="flex justify-end">
+          <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-indigo-500/20 border border-indigo-400/20 px-3.5 py-2 text-sm text-indigo-50">
+            switch to NVDA and tell me if the trend is real
+          </div>
+        </div>
+        <div className="flex justify-start">
+          <div className="max-w-[92%] rounded-2xl rounded-bl-sm bg-white/[0.04] border border-white/10 px-3.5 py-2.5 text-sm text-white/80 leading-relaxed">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-fuchsia-300 mb-2">
+              <Bot className="w-3 h-3" /> QuantAgent
+            </div>
+            Chart switched to NVDA. The 90-day slope is positive, but out-of-sample model
+            fit is 41/100 and direction was correct in 7 of 12 windows — that is close to a
+            coin flip.
+            <div className="mt-2 font-mono text-[12px] text-white/55 space-y-0.5">
+              <div>model fit ......... 41/100</div>
+              <div>direction ........ 7 of 12 windows</div>
+              <div>expected move .... ±7.2% / 30d</div>
+            </div>
+            <div className="mt-2 text-white/60">
+              I would not call this trend validated. Treat it as weak evidence.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {["Open Hot Stocks", "Show base rates", "Run the backtest"].map((s) => (
+            <span
+              key={s}
+              className="text-[11px] px-2.5 py-1 rounded-full border border-white/10 text-white/55"
+            >
+              {s}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MockLinkageGraph() {
+  const reduced = usePrefersReducedMotion();
+  const { ref, seen } = useInViewOnce<HTMLDivElement>();
+
   const nodes = [
     { x: 80, y: 40, l: "Semis" },
     { x: 240, y: 30, l: "Software" },
@@ -746,22 +1109,64 @@ function MockLinkageGraph() {
   const edges: [number, number][] = [
     [0, 1], [1, 2], [0, 2], [3, 4], [4, 5], [5, 2], [3, 6], [6, 4], [5, 7], [4, 7],
   ];
+
+  const active = reduced || seen;
+
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-[#0d0d24] p-6 aspect-square max-w-[500px] mx-auto">
+    <div
+      ref={ref}
+      className="relative rounded-2xl border border-white/10 bg-[#0d0d24] p-6 aspect-square max-w-[500px] mx-auto"
+    >
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10" />
+      <style>{`
+        @keyframes qf-draw { to { stroke-dashoffset: 0; } }
+        @keyframes qf-pulse-travel { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+      `}</style>
       <svg viewBox="0 0 420 380" className="relative w-full h-full">
-        {edges.map(([a, b], i) => (
-          <line
-            key={i}
-            x1={nodes[a].x}
-            y1={nodes[a].y}
-            x2={nodes[b].x}
-            y2={nodes[b].y}
-            stroke="#818cf8"
-            strokeOpacity="0.4"
-            strokeWidth="1.5"
-          />
-        ))}
+        {edges.map(([a, b], i) => {
+          const len = Math.hypot(nodes[b].x - nodes[a].x, nodes[b].y - nodes[a].y);
+          return (
+            <line
+              key={`e${i}`}
+              x1={nodes[a].x}
+              y1={nodes[a].y}
+              x2={nodes[b].x}
+              y2={nodes[b].y}
+              stroke="#818cf8"
+              strokeOpacity="0.4"
+              strokeWidth="1.5"
+              strokeDasharray={reduced ? undefined : len}
+              strokeDashoffset={reduced ? undefined : active ? undefined : len}
+              style={
+                reduced
+                  ? undefined
+                  : {
+                      strokeDashoffset: active ? 0 : len,
+                      animation: active
+                        ? `qf-draw 600ms ease-out ${i * 80}ms both`
+                        : undefined,
+                    }
+              }
+            />
+          );
+        })}
+
+        {/* travelling pulse leader → follower */}
+        {!reduced &&
+          active &&
+          edges.map(([a, b], i) => (
+            <circle
+              key={`p${i}`}
+              r="3"
+              fill="#f0abfc"
+              fillOpacity="0.9"
+              style={{
+                offsetPath: `path('M ${nodes[a].x} ${nodes[a].y} L ${nodes[b].x} ${nodes[b].y}')`,
+                animation: `qf-pulse-travel 3.2s linear ${800 + i * 80}ms infinite`,
+              }}
+            />
+          ))}
+
         {nodes.map((n, i) => (
           <g key={i}>
             <circle cx={n.x} cy={n.y} r="22" fill="#4f46e5" fillOpacity="0.25" />
