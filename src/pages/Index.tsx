@@ -648,7 +648,7 @@ const Index = () => {
             />
 
 
-            <div className="flex justify-start -mt-2">
+            <div className="flex justify-start -mt-2 relative z-20">
               <button
                 onClick={() => setShowTable(!showTable)}
                 title={showTable ? "Hide data table" : "Show data table"}
