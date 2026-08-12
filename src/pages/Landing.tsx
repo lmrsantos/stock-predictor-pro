@@ -544,7 +544,81 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── 10. TRUST / SECURITY ────────────────────────────── */}
+      {/* ─── 10. EDUCATIONAL ─────────────────────────────────── */}
+      <section id="educational" className="scroll-mt-20 py-32 border-t border-white/5 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-sky-950/30 via-transparent to-transparent pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <Reveal>
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-sky-400/30 bg-sky-500/10 text-xs text-sky-200 mb-6">
+                <BookOpen className="w-3 h-3" />
+                Learn as you analyze
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+                Every metric explains itself.
+              </h2>
+              <p className="text-white/70 text-lg leading-relaxed mb-8">
+                QuantForecast is a teaching terminal, not a black box. Hover any number
+                and you get a plain-English <span className="text-white">&ldquo;What is it?&rdquo;</span> and{" "}
+                <span className="text-white">&ldquo;How to read it?&rdquo;</span> with a worked example — so you
+                understand the slope, the cone, and the base rate before you act on them.
+              </p>
+              <ul className="space-y-3 mb-8">
+                {[
+                  "Plain-English definitions and worked examples on every metric",
+                  "Regression cones, base rates, and linkage tilts each show their own math",
+                  "Market-structure labels (HH, HL, LH, LL) drawn directly on the chart",
+                  "Built for the curious investor — no jargon wall, no separate course",
+                ].map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-white/80">
+                    <Check className="w-5 h-5 text-sky-300 shrink-0 mt-0.5" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to={user ? "/terminal" : "/auth"}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#07071a] font-medium hover:bg-white/90"
+              >
+                Try the terminal <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </Reveal>
+
+          <Reveal delay={80}>
+            <div className="relative">
+              <div className="absolute -inset-6 rounded-3xl bg-gradient-to-br from-sky-500/20 via-indigo-500/20 to-fuchsia-500/10 blur-2xl" />
+              <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6 space-y-4">
+                <div className="text-xs uppercase tracking-widest text-white/40">
+                  A metric, explained
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#0b0b22] p-4">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-white/80 text-sm">1σ probability cone</span>
+                    <span className="text-sky-300 font-mono text-sm">+/- $3.40</span>
+                  </div>
+                  <div className="h-px bg-white/10 my-3" />
+                  <div className="text-xs text-white/50 leading-relaxed">
+                    <span className="text-white/70 font-medium">What is it?</span> The
+                    band where the model expects the price to land ~68% of the time over
+                    the forecast horizon, based on residual volatility.
+                  </div>
+                  <div className="text-xs text-white/50 leading-relaxed mt-2">
+                    <span className="text-white/70 font-medium">How to read it:</span> A
+                    narrow cone means low disagreement (but low expected move). A wide
+                    cone means the model is honest about uncertainty — treat the
+                    forecast accordingly.
+                  </div>
+                </div>
+                <p className="text-xs text-white/40 text-center">
+                  Every metric on the terminal works this way.
+                </p>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ─── 11. TRUST / SECURITY ────────────────────────────── */}
       <section className="py-24 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
