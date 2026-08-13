@@ -11,11 +11,13 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   ReferenceDot,
+  ReferenceArea,
 } from "recharts";
 import { ChartDataPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/regression";
 import { analyzeCycles } from "@/lib/cycle-analysis";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
+import type { TrendOverlay } from "@/hooks/useTrendAnimation";
 
 interface RegressionChartProps {
   data: ChartDataPoint[];
@@ -23,6 +25,8 @@ interface RegressionChartProps {
   slopePositive: boolean;
   /** 1-day view: x-axis shows intraday times instead of dates */
   intraday?: boolean;
+  /** Animated trend term-structure line drawn over the price series */
+  trendOverlay?: TrendOverlay | null;
 }
 
 
@@ -124,7 +128,7 @@ function CustomTooltip({ active, payload }: any) {
   );
 }
 
-export function RegressionChart({ data, isLoading, slopePositive, intraday = false }: RegressionChartProps) {
+export function RegressionChart({ data, isLoading, slopePositive, intraday = false, trendOverlay = null }: RegressionChartProps) {
   const [showVolume, setShowVolume] = useState(true);
   const [showStructure, setShowStructure] = useState(true);
   // Zigzag sensitivity: minimum % reversal required to register a swing pivot
@@ -580,6 +584,62 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
               );
             })}
 
+
+          {/* ── Trend term structure overlay (pivots about the right edge) ── */}
+          {trendOverlay && (
+            <>
+              <ReferenceArea
+                x1={trendOverlay.startDate}
+                x2={trendOverlay.endDate}
+                fill="hsl(var(--primary))"
+                fillOpacity={0.06}
+                ifOverflow="visible"
+              />
+              {trendOverlay.ghost && (
+                <ReferenceLine
+                  segment={[
+                    { x: trendOverlay.ghost.startDate, y: trendOverlay.ghost.startValue },
+                    { x: trendOverlay.ghost.endDate, y: trendOverlay.ghost.endValue },
+                  ]}
+                  stroke={isDark ? "hsl(0,0%,60%)" : "hsl(0,0%,45%)"}
+                  strokeWidth={1}
+                  strokeDasharray="4 5"
+                  strokeOpacity={0.45}
+                  ifOverflow="visible"
+                />
+              )}
+              <ReferenceLine
+                segment={[
+                  { x: trendOverlay.startDate, y: trendOverlay.startValue },
+                  { x: trendOverlay.endDate, y: trendOverlay.endValue },
+                ]}
+                stroke={trendOverlay.color}
+                strokeWidth={2.2}
+                strokeDasharray={trendOverlay.dashed ? "6 5" : undefined}
+                ifOverflow="visible"
+              />
+              <ReferenceDot
+                x={trendOverlay.endDate}
+                y={trendOverlay.endValue}
+                r={5}
+                fill={trendOverlay.color}
+                stroke={isDark ? "hsl(0,0%,10%)" : "hsl(0,0%,100%)"}
+                strokeWidth={2}
+                isFront
+                ifOverflow="visible"
+                label={{
+                  value: trendOverlay.sublabel
+                    ? `${trendOverlay.label} (${trendOverlay.sublabel})`
+                    : trendOverlay.label,
+                  position: "left",
+                  offset: 10,
+                  fill: trendOverlay.color,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              />
+            </>
+          )}
 
         </ComposedChart>
       </ResponsiveContainer>
