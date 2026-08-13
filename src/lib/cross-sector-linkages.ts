@@ -149,6 +149,87 @@ export const LINKAGE_MAP: DirectedPair[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Full-universe (all-pairs) map
+// ---------------------------------------------------------------------------
+
+/** Documented channel for a pair, if the curated map has one. */
+const CURATED_CHANNEL = new Map<string, DirectedPair>(
+  LINKAGE_MAP.map((p) => [`${p.leader}→${p.follower}`, p]),
+);
+
+/**
+ * Membership containment: |A ∩ B| / min(|A|,|B|).
+ * A subsector nested inside its parent basket (e.g. "Semis: Memory" inside
+ * "Semiconductors") scores near 1 — testing those against each other is
+ * self-contamination, not a linkage, so those pairs are excluded.
+ */
+export const MAX_MEMBERSHIP_OVERLAP = 0.6;
+
+export function membershipOverlap(a: string[], b: string[]): number {
+  if (!a.length || !b.length) return 0;
+  const setB = new Set(b);
+  let hits = 0;
+  for (const s of a) if (setB.has(s)) hits++;
+  return hits / Math.min(a.length, b.length);
+}
+
+/**
+ * Build the exhaustive directed-pair map across the ENTIRE curated universe:
+ *   - every ordered sector → sector pair (both directions tested separately)
+ *   - every macro series → every sector
+ * Pairs whose membership overlaps beyond MAX_MEMBERSHIP_OVERLAP are dropped.
+ * Curated pairs keep their written economic channel; everything else is flagged
+ * exploratory, so the UI can separate "we expected this" from "the data
+ * surfaced this". Multiple-testing burden is handled by BH across all tests.
+ */
+export function buildAllPairsMap(
+  membership: Record<string, string[]> = CURATED_SECTOR_UNIVERSES,
+  sectors: SectorName[] = SECTOR_NAMES,
+): DirectedPair[] {
+  const pairs: DirectedPair[] = [];
+
+  for (const leader of sectors) {
+    for (const follower of sectors) {
+      if (leader === follower) continue;
+      const overlap = membershipOverlap(
+        membership[leader] ?? [],
+        membership[follower] ?? [],
+      );
+      if (overlap > MAX_MEMBERSHIP_OVERLAP) continue;
+      const curated = CURATED_CHANNEL.get(`${leader}→${follower}`);
+      pairs.push(
+        curated ?? {
+          leader,
+          follower,
+          channel: `Exploratory: ${leader} → ${follower}, no pre-registered channel`,
+          exploratory: true,
+        },
+      );
+    }
+  }
+
+  for (const leader of MACRO_SERIES_NAMES) {
+    for (const follower of sectors) {
+      const curated = CURATED_CHANNEL.get(`${leader}→${follower}`);
+      pairs.push(
+        curated ?? {
+          leader,
+          follower,
+          channel: `Exploratory: ${leader} → ${follower}, no pre-registered channel`,
+          exploratory: true,
+        },
+      );
+    }
+  }
+
+  return pairs;
+}
+
+/** The full map over all 43 baskets + 4 macro series. */
+export const FULL_LINKAGE_MAP: DirectedPair[] = buildAllPairsMap();
+
+
+// ---------------------------------------------------------------------------
 // Composites
 // ---------------------------------------------------------------------------
 
