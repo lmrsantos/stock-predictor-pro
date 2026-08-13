@@ -23,36 +23,19 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type SectorName =
-  | "Semiconductors"
-  | "Software"
-  | "Mega-cap Tech"
-  | "Banks"
-  | "Biotech & Pharma"
-  | "Energy"
-  | "Consumer Staples"
-  | "Consumer Discretionary"
-  | "Industrials & Defense"
-  | "Utilities"
-  | "Real Estate"
-  | "Quantum Computing"
-  | "Aerospace & Space";
+// Sector names now cover the FULL curated universe (43 baskets / 371 symbols),
+// re-exported from sector-universes.ts so there is a single source of truth.
+export type { SectorName } from "@/lib/sector-universes";
+import {
+  SECTOR_NAMES as ALL_SECTOR_NAMES,
+  CURATED_SECTOR_UNIVERSES,
+  type SectorName,
+} from "@/lib/sector-universes";
 
-export const SECTOR_NAMES: SectorName[] = [
-  "Aerospace & Space",
-  "Banks",
-  "Biotech & Pharma",
-  "Consumer Discretionary",
-  "Consumer Staples",
-  "Energy",
-  "Industrials & Defense",
-  "Mega-cap Tech",
-  "Quantum Computing",
-  "Real Estate",
-  "Semiconductors",
-  "Software",
-  "Utilities",
-];
+export const SECTOR_NAMES: SectorName[] = [...ALL_SECTOR_NAMES].sort((a, b) =>
+  a.localeCompare(b),
+);
+
 
 export type MacroSeriesName = "OIL" | "GOLD" | "US10Y" | "XLY_XLP_RATIO";
 
