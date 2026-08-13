@@ -651,7 +651,6 @@ const Index = () => {
               intraday={isIntraday}
             />
 
-            {showTrendStructure && (<div data-dbg>{`DBG intraday=${isIntraday} n=${stockData?.length ?? 0}`}</div>)}
             {showTrendStructure && !isIntraday && (stockData?.length ?? 0) >= 20 && (
               <TrendStructurePanel
                 symbol={ticker}
