@@ -13,7 +13,7 @@ const LINES: { text: string; value: string; amber?: boolean }[] = [
   { text: "scoring models out-of-sample", value: "12 rolling windows" },
   { text: "checking setup base rates", value: "0 of 290 clear the bar today", amber: true },
   { text: "market regime", value: "late-cycle · caution", amber: true },
-  { text: "terminal ready", value: "", done: true } as never,
+  { text: "terminal ready", value: "" },
 ];
 
 const STEP_MS = 240;
