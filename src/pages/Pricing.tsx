@@ -55,7 +55,7 @@ const PLANS = [
       "🔗 All 22 cross-sector linkages unlocked",
       "Event catalog — what moves each sector",
       "Ticker-level linkage view",
-      "Sector & symbol backtests",
+      "Sector Backtest engine (371 curated symbols)",
       "Cycle Analysis + QuantAgent + Portfolio Insights",
       "All 3 Hot Stocks risk tiers",
       "Custom linkage analysis — buy a single run for $29 (one-off, kept forever)",
