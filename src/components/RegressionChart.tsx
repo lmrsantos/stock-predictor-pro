@@ -322,7 +322,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
   const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 75%)";
 
   return (
-    <div className="flex-1 chart-surface min-h-[240px] p-3 lg:p-4">
+    <div className="h-[64vh] min-h-[380px] shrink-0 chart-surface p-3 lg:p-4 flex flex-col">
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-wrap">
         <span className="flex items-center gap-1.5">
