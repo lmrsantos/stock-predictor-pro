@@ -18,6 +18,7 @@ import { StockHeader } from "@/components/StockHeader";
 import { EarningsAlert } from "@/components/EarningsAlert";
 import { RegressionChart } from "@/components/RegressionChart";
 import { TrendStructurePanel } from "@/components/TrendStructurePanel";
+import { useTrendAnimation } from "@/hooks/useTrendAnimation";
 import { DataTable } from "@/components/DataTable";
 import { PortfolioAdvisor } from "@/components/PortfolioAdvisor";
 import { HotStocks } from "@/components/HotStocks";
@@ -649,13 +650,14 @@ const Index = () => {
               isLoading={isLoading}
               slopePositive={regression ? regression.slope >= 0 : true}
               intraday={isIntraday}
+              trendOverlay={trendActive ? trendAnim.overlay : null}
             />
 
-            {showTrendStructure && !isIntraday && (stockData?.length ?? 0) >= 20 && (
+            {trendActive && (
               <TrendStructurePanel
                 symbol={ticker}
-                dates={(stockData ?? []).map((d) => d.date)}
-                closes={(stockData ?? []).map((d) => d.close)}
+                closes={trendCloses}
+                anim={trendAnim}
               />
             )}
 
