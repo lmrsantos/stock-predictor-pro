@@ -643,6 +643,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
 
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
