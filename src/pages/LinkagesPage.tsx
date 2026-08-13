@@ -229,6 +229,14 @@ export default function LinkagesPage() {
                     onChange={(e) => setOnlyValidated(e.target.checked)} />
                   Validated only
                 </label>
+                <label className="text-xs font-mono flex items-center gap-1" title="Show only pairs with a pre-registered economic channel (hide the exploratory all-pairs scan)">
+                  <input type="checkbox" checked={documentedOnly}
+                    onChange={(e) => setDocumentedOnly(e.target.checked)} />
+                  Documented channels only
+                </label>
+                <span className="text-xs font-mono text-muted-foreground">
+                  {visibleRows.length} of {rows.length}
+                </span>
                 <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}
                   className="ml-auto bg-secondary border border-border rounded px-2 py-1 text-xs">
                   <option value="validated">Sort: validated first</option>
@@ -286,6 +294,11 @@ export default function LinkagesPage() {
                             <span className="text-foreground">{r.leader}</span>
                             <span className="text-muted-foreground"> → </span>
                             <span className="text-foreground">{r.follower}</span>
+                            {r.exploratory && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">
+                                exploratory
+                              </span>
+                            )}
                             {r.regimeSignFlip && (
                               <span className="ml-2 px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 text-[10px]">
                                 regime
@@ -314,6 +327,14 @@ export default function LinkagesPage() {
                         </tr>
                       );
                     })}
+                    {!showAllRows && rows.length > visibleRows.length && (
+                      <tr><td colSpan={8} className="px-3 py-3 text-center">
+                        <button onClick={() => setShowAllRows(true)}
+                          className="text-xs font-mono text-primary hover:underline">
+                          Show all {rows.length} tested pairs
+                        </button>
+                      </td></tr>
+                    )}
                     {rows.length === 0 && (
                       <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                         No rows.
