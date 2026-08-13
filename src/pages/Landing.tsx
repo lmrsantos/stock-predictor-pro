@@ -906,10 +906,10 @@ function ParticleField() {
     let w = 0;
     let h = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const COUNT = 60;
-    const LINK = 140;
+    const COUNT = 50;
+    const LINK = 108;
 
-    type P = { x: number; y: number; vx: number; vy: number; c: string };
+    type P = { x: number; y: number; vx: number; vy: number };
     let pts: P[] = [];
 
     const resize = () => {
@@ -927,9 +927,8 @@ function ParticleField() {
       pts = Array.from({ length: COUNT }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.18,
-        c: Math.random() > 0.5 ? "165,180,252" : "240,171,252",
+        vx: (Math.random() - 0.5) * 0.16,
+        vy: (Math.random() - 0.5) * 0.16,
       }));
     };
 
@@ -937,6 +936,8 @@ function ParticleField() {
     seed();
 
     let raf = 0;
+    let running = true;
+
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
       for (const p of pts) {
@@ -945,14 +946,14 @@ function ParticleField() {
         if (p.x < 0 || p.x > w) p.vx *= -1;
         if (p.y < 0 || p.y > h) p.vy *= -1;
       }
+      ctx.lineWidth = 0.6;
       for (let i = 0; i < pts.length; i++) {
         for (let j = i + 1; j < pts.length; j++) {
           const dx = pts[i].x - pts[j].x;
           const dy = pts[i].y - pts[j].y;
           const d = Math.hypot(dx, dy);
           if (d < LINK) {
-            ctx.strokeStyle = `rgba(165,180,252,${(1 - d / LINK) * 0.09})`;
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = `rgba(129,140,248,${(1 - d / LINK) * 0.15})`;
             ctx.beginPath();
             ctx.moveTo(pts[i].x, pts[i].y);
             ctx.lineTo(pts[j].x, pts[j].y);
@@ -960,15 +961,34 @@ function ParticleField() {
           }
         }
       }
+      ctx.fillStyle = "rgba(165,180,252,0.15)";
       for (const p of pts) {
-        ctx.fillStyle = `rgba(${p.c},0.14)`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
-      raf = requestAnimationFrame(draw);
+      if (running) raf = requestAnimationFrame(draw);
     };
     draw();
+
+    // Pause the loop while the hero is off-screen.
+    let io: IntersectionObserver | undefined;
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.some((e) => e.isIntersecting);
+          if (visible && !running) {
+            running = true;
+            raf = requestAnimationFrame(draw);
+          } else if (!visible && running) {
+            running = false;
+            cancelAnimationFrame(raf);
+          }
+        },
+        { threshold: 0 },
+      );
+      io.observe(canvas);
+    }
 
     const onResize = () => {
       resize();
@@ -976,7 +996,9 @@ function ParticleField() {
     };
     window.addEventListener("resize", onResize);
     return () => {
+      running = false;
       cancelAnimationFrame(raf);
+      io?.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, [reduced]);
@@ -987,6 +1009,7 @@ function ParticleField() {
       ref={canvasRef}
       aria-hidden="true"
       className="absolute inset-0 pointer-events-none select-none"
+      style={{ pointerEvents: "none" }}
     />
   );
 }
