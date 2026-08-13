@@ -286,6 +286,14 @@ const Index = () => {
 
   const lastPrice = stockData?.length ? stockData[stockData.length - 1].close : 0;
 
+  // ── Trend term structure: line animates over the main chart ───────────────
+  const trendDates = useMemo(() => (stockData ?? []).map((d) => d.date), [stockData]);
+  const trendCloses = useMemo(() => (stockData ?? []).map((d) => d.close), [stockData]);
+  const trendAnim = useTrendAnimation(trendDates, trendCloses);
+  const trendActive = showTrendStructure && !isIntraday && trendCloses.length >= 20;
+
+
+
   // Build unified chart data
   const chartData: ChartDataPoint[] = [];
   const volumeByDate = new Map<string, { volume: number; up: boolean }>();
