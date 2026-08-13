@@ -21,6 +21,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { BootPreloader } from "@/components/BootPreloader";
 
 /**
  * QuantForecast marketing landing page.
@@ -29,6 +30,7 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 export default function Landing() {
   const { user } = useAuth();
+  const [booted, setBooted] = useState(false);
 
   return (
     <div
@@ -41,6 +43,23 @@ export default function Landing() {
         href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap"
       />
 
+      {/* Animated left-in underline for nav & inline text links */}
+      <style>{`
+        .qf-link { position: relative; }
+        .qf-link::after {
+          content: ""; position: absolute; left: 0; bottom: -2px;
+          height: 1px; width: 100%; background: currentColor;
+          transform: scaleX(0); transform-origin: left;
+          transition: transform 180ms ease-out;
+        }
+        .qf-link:hover::after { transform: scaleX(1); }
+        @media (prefers-reduced-motion: reduce) {
+          .qf-link::after { transition: none; }
+        }
+      `}</style>
+
+      <BootPreloader onDone={() => setBooted(true)} />
+
       {/* ─── 1. NAV ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#07071a]/70 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -51,12 +70,13 @@ export default function Landing() {
             <span className="font-bold tracking-tight">QuantForecast</span>
           </Link>
           <nav className="hidden md:flex items-center gap-7 text-sm text-white/70">
-            <a href="#product" className="hover:text-white">Products</a>
-            <a href="#evidence" className="hover:text-white">Forecast Methodology</a>
-            <a href="#quantagent" className="hover:text-white">QuantAgent</a>
-            <a href="#educational" className="hover:text-white">Educational</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
+            <a href="#product" className="qf-link hover:text-white">Products</a>
+            <a href="#evidence" className="qf-link hover:text-white">Forecast Methodology</a>
+            <a href="#quantagent" className="qf-link hover:text-white">QuantAgent</a>
+            <a href="#educational" className="qf-link hover:text-white">Educational</a>
+            <a href="#pricing" className="qf-link hover:text-white">Pricing</a>
           </nav>
+
 
           <div className="flex items-center gap-2">
             {user ? (
@@ -84,7 +104,10 @@ export default function Landing() {
       </header>
 
       {/* ─── 2. HERO ─────────────────────────────────────────── */}
-      <section className="relative pt-24 pb-32 overflow-hidden">
+      <section
+        className="relative pt-24 pb-32 overflow-hidden"
+        style={{ opacity: booted ? 1 : 0, transition: "opacity 500ms ease-out" }}
+      >
         {/* aurora bg */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-indigo-600/30 blur-3xl" />
@@ -870,7 +893,7 @@ function CountUp({ to, prefix = "", suffix = "" }: { to: number; prefix?: string
       return;
     }
     const start = performance.now();
-    const dur = 800;
+    const dur = 850;
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / dur);
@@ -906,10 +929,10 @@ function ParticleField() {
     let w = 0;
     let h = 0;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const COUNT = 60;
-    const LINK = 140;
+    const COUNT = 50;
+    const LINK = 108;
 
-    type P = { x: number; y: number; vx: number; vy: number; c: string };
+    type P = { x: number; y: number; vx: number; vy: number };
     let pts: P[] = [];
 
     const resize = () => {
@@ -927,9 +950,8 @@ function ParticleField() {
       pts = Array.from({ length: COUNT }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.18,
-        vy: (Math.random() - 0.5) * 0.18,
-        c: Math.random() > 0.5 ? "165,180,252" : "240,171,252",
+        vx: (Math.random() - 0.5) * 0.16,
+        vy: (Math.random() - 0.5) * 0.16,
       }));
     };
 
@@ -937,6 +959,8 @@ function ParticleField() {
     seed();
 
     let raf = 0;
+    let running = true;
+
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
       for (const p of pts) {
@@ -945,14 +969,14 @@ function ParticleField() {
         if (p.x < 0 || p.x > w) p.vx *= -1;
         if (p.y < 0 || p.y > h) p.vy *= -1;
       }
+      ctx.lineWidth = 0.6;
       for (let i = 0; i < pts.length; i++) {
         for (let j = i + 1; j < pts.length; j++) {
           const dx = pts[i].x - pts[j].x;
           const dy = pts[i].y - pts[j].y;
           const d = Math.hypot(dx, dy);
           if (d < LINK) {
-            ctx.strokeStyle = `rgba(165,180,252,${(1 - d / LINK) * 0.09})`;
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = `rgba(129,140,248,${(1 - d / LINK) * 0.15})`;
             ctx.beginPath();
             ctx.moveTo(pts[i].x, pts[i].y);
             ctx.lineTo(pts[j].x, pts[j].y);
@@ -960,15 +984,34 @@ function ParticleField() {
           }
         }
       }
+      ctx.fillStyle = "rgba(165,180,252,0.15)";
       for (const p of pts) {
-        ctx.fillStyle = `rgba(${p.c},0.14)`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
-      raf = requestAnimationFrame(draw);
+      if (running) raf = requestAnimationFrame(draw);
     };
     draw();
+
+    // Pause the loop while the hero is off-screen.
+    let io: IntersectionObserver | undefined;
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.some((e) => e.isIntersecting);
+          if (visible && !running) {
+            running = true;
+            raf = requestAnimationFrame(draw);
+          } else if (!visible && running) {
+            running = false;
+            cancelAnimationFrame(raf);
+          }
+        },
+        { threshold: 0 },
+      );
+      io.observe(canvas);
+    }
 
     const onResize = () => {
       resize();
@@ -976,7 +1019,9 @@ function ParticleField() {
     };
     window.addEventListener("resize", onResize);
     return () => {
+      running = false;
       cancelAnimationFrame(raf);
+      io?.disconnect();
       window.removeEventListener("resize", onResize);
     };
   }, [reduced]);
@@ -987,6 +1032,7 @@ function ParticleField() {
       ref={canvasRef}
       aria-hidden="true"
       className="absolute inset-0 pointer-events-none select-none"
+      style={{ pointerEvents: "none" }}
     />
   );
 }
@@ -1072,11 +1118,11 @@ function FooterCol({ title, links }: { title: string; links: [string, string][] 
         {links.map(([label, href]) => (
           <li key={label}>
             {href.startsWith("mailto:") ? (
-              <a href={href} className="hover:text-white">
+              <a href={href} className="qf-link hover:text-white">
                 {label}
               </a>
             ) : (
-              <Link to={href} className="hover:text-white">
+              <Link to={href} className="qf-link hover:text-white">
                 {label}
               </Link>
             )}
@@ -1204,25 +1250,70 @@ function MockAgentChat() {
   );
 }
 
+type LinkNode = { x: number; y: number; l: string; macro?: boolean };
+
+const LG_NODES: LinkNode[] = [
+  { x: 80, y: 55, l: "Semis" },
+  { x: 250, y: 42, l: "Software" },
+  { x: 355, y: 115, l: "Mega Tech" },
+  { x: 330, y: 245, l: "Banks" },
+  { x: 70, y: 175, l: "Energy" },
+  { x: 205, y: 315, l: "Transports" },
+  { x: 195, y: 160, l: "10Y", macro: true },
+  { x: 62, y: 300, l: "Oil", macro: true },
+  { x: 355, y: 340, l: "Gold", macro: true },
+];
+
+/** [leader, follower, sign (+1 positive / -1 inverse), lag label] */
+const LG_EDGES: [number, number, 1 | -1, string][] = [
+  [6, 3, -1, "3d"],
+  [7, 4, 1, "2d"],
+  [0, 1, 1, "3d"],
+  [1, 2, 1, "2d"],
+  [4, 5, -1, "4d"],
+  [8, 3, -1, "3d"],
+  [0, 2, 1, "2d"],
+  [7, 5, -1, "3d"],
+];
+
+/** Quadratic curve leader→follower with a gentle perpendicular bow. */
+function lgCurve(a: LinkNode, b: LinkNode) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const cx = mx + (-dy / len) * len * 0.16;
+  const cy = my + (dx / len) * len * 0.16;
+  const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+  // midpoint of the quadratic (t = 0.5) for the lag label
+  const lx = 0.25 * a.x + 0.5 * cx + 0.25 * b.x;
+  const ly = 0.25 * a.y + 0.5 * cy + 0.25 * b.y;
+  // sampled arc length for the stroke-dash draw
+  let approx = 0;
+  let px = a.x;
+  let py = a.y;
+  for (let i = 1; i <= 16; i++) {
+    const t = i / 16;
+    const qx = (1 - t) ** 2 * a.x + 2 * (1 - t) * t * cx + t * t * b.x;
+    const qy = (1 - t) ** 2 * a.y + 2 * (1 - t) * t * cy + t * t * b.y;
+    approx += Math.hypot(qx - px, qy - py);
+    px = qx;
+    py = qy;
+  }
+  return { d, len: approx, lx, ly };
+}
+
+const EDGE_MS = 620;
+const EDGE_STAGGER = 110;
+const NODE_STAGGER = 70;
+
 function MockLinkageGraph() {
   const reduced = usePrefersReducedMotion();
   const { ref, seen } = useInViewOnce<HTMLDivElement>();
-
-  const nodes = [
-    { x: 80, y: 40, l: "Semis" },
-    { x: 240, y: 30, l: "Software" },
-    { x: 360, y: 80, l: "Mega Tech" },
-    { x: 60, y: 180, l: "Energy" },
-    { x: 200, y: 220, l: "Transports" },
-    { x: 340, y: 200, l: "Banks" },
-    { x: 140, y: 300, l: "Small Cap" },
-    { x: 310, y: 310, l: "Biotech" },
-  ];
-  const edges: [number, number][] = [
-    [0, 1], [1, 2], [0, 2], [3, 4], [4, 5], [5, 2], [3, 6], [6, 4], [5, 7], [4, 7],
-  ];
-
   const active = reduced || seen;
+
+  const nodesDone = LG_NODES.length * NODE_STAGGER;
 
   return (
     <div
@@ -1232,70 +1323,125 @@ function MockLinkageGraph() {
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10" />
       <style>{`
         @keyframes qf-draw { to { stroke-dashoffset: 0; } }
-        @keyframes qf-pulse-travel { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+        @keyframes qf-fade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes qf-travel { from { offset-distance: 0% } to { offset-distance: 100% } }
       `}</style>
       <svg viewBox="0 0 420 380" className="relative w-full h-full">
-        {edges.map(([a, b], i) => {
-          const len = Math.hypot(nodes[b].x - nodes[a].x, nodes[b].y - nodes[a].y);
+        {/* edges */}
+        {LG_EDGES.map(([a, b, sign, lag], i) => {
+          const { d, len, lx, ly } = lgCurve(LG_NODES[a], LG_NODES[b]);
+          const color = sign > 0 ? "#34d399" : "#f87171";
+          const delay = nodesDone + i * EDGE_STAGGER;
           return (
-            <line
-              key={`e${i}`}
-              x1={nodes[a].x}
-              y1={nodes[a].y}
-              x2={nodes[b].x}
-              y2={nodes[b].y}
-              stroke="#818cf8"
-              strokeOpacity="0.4"
-              strokeWidth="1.5"
-              strokeDasharray={reduced ? undefined : len}
-              strokeDashoffset={reduced ? undefined : active ? undefined : len}
-              style={
-                reduced
-                  ? undefined
-                  : {
-                      strokeDashoffset: active ? 0 : len,
-                      animation: active
-                        ? `qf-draw 600ms ease-out ${i * 80}ms both`
-                        : undefined,
-                    }
-              }
-            />
+            <g key={`e${i}`}>
+              <path
+                d={d}
+                fill="none"
+                stroke={color}
+                strokeOpacity="0.5"
+                strokeWidth="1.5"
+                strokeDasharray={reduced ? undefined : len}
+                style={
+                  reduced
+                    ? undefined
+                    : {
+                        strokeDashoffset: active ? 0 : len,
+                        animation: active ? `qf-draw ${EDGE_MS}ms ease-out ${delay}ms both` : undefined,
+                      }
+                }
+              />
+              {/* glowing dot travelling leader → follower, after the edge completes */}
+              {!reduced && active && (
+                <circle
+                  r="3"
+                  fill={color}
+                  fillOpacity="0.9"
+                  style={{
+                    offsetPath: `path('${d}')`,
+                    filter: `drop-shadow(0 0 4px ${color})`,
+                    animation: `qf-travel 2.1s linear ${delay + EDGE_MS}ms infinite, qf-fade 300ms ease-out ${delay + EDGE_MS}ms both`,
+                  }}
+                />
+              )}
+              {/* lag label at the curve midpoint */}
+              <text
+                x={lx}
+                y={ly}
+                textAnchor="middle"
+                fill={color}
+                fontSize="9"
+                fontFamily="'Geist Mono',monospace"
+                opacity={reduced ? 1 : 0}
+                style={
+                  reduced
+                    ? undefined
+                    : { animation: active ? `qf-fade 300ms ease-out ${delay + EDGE_MS}ms both` : undefined }
+                }
+              >
+                {lag}
+              </text>
+            </g>
           );
         })}
 
-        {/* travelling pulse leader → follower */}
-        {!reduced &&
-          active &&
-          edges.map(([a, b], i) => (
-            <circle
-              key={`p${i}`}
-              r="3"
-              fill="#f0abfc"
-              fillOpacity="0.9"
-              style={{
-                offsetPath: `path('M ${nodes[a].x} ${nodes[a].y} L ${nodes[b].x} ${nodes[b].y}')`,
-                animation: `qf-pulse-travel 3.2s linear ${800 + i * 80}ms infinite`,
-              }}
-            />
-          ))}
-
-        {nodes.map((n, i) => (
-          <g key={i}>
-            <circle cx={n.x} cy={n.y} r="22" fill="#4f46e5" fillOpacity="0.25" />
-            <circle cx={n.x} cy={n.y} r="10" fill="#a5b4fc" />
+        {/* nodes: sectors = rounded rects, macro = diamonds */}
+        {LG_NODES.map((n, i) => (
+          <g
+            key={n.l}
+            opacity={reduced ? 1 : 0}
+            style={
+              reduced
+                ? undefined
+                : { animation: active ? `qf-fade 320ms ease-out ${i * NODE_STAGGER}ms both` : undefined }
+            }
+          >
+            {n.macro ? (
+              <rect
+                x={n.x - 13}
+                y={n.y - 13}
+                width="26"
+                height="26"
+                rx="4"
+                fill="#1e1b4b"
+                stroke="#fbbf24"
+                strokeOpacity="0.7"
+                transform={`rotate(45 ${n.x} ${n.y})`}
+              />
+            ) : (
+              <rect
+                x={n.x - 34}
+                y={n.y - 13}
+                width="68"
+                height="26"
+                rx="8"
+                fill="#1e1b4b"
+                stroke="#818cf8"
+                strokeOpacity="0.7"
+              />
+            )}
             <text
               x={n.x}
-              y={n.y + 38}
+              y={n.macro ? n.y + 30 : n.y + 4}
               textAnchor="middle"
               fill="#e0e7ff"
-              fontSize="11"
-              fontFamily="Manrope"
+              fontSize={n.macro ? 10 : 10}
+              fontFamily="'Geist Mono',monospace"
             >
               {n.l}
             </text>
           </g>
         ))}
       </svg>
+
+      <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-4 text-[10px] text-white/45 font-mono">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-[2px] bg-emerald-400 inline-block" /> positive
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-[2px] bg-red-400 inline-block" /> inverse
+        </span>
+        <span>◆ macro</span>
+      </div>
     </div>
   );
 }
