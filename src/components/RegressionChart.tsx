@@ -615,7 +615,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
                   { x: trendOverlay.endDate, y: trendOverlay.endValue },
                 ]}
                 stroke={trendOverlay.color}
-                strokeWidth={2.2}
+                strokeWidth={3}
                 strokeDasharray={trendOverlay.dashed ? "6 5" : undefined}
                 ifOverflow="visible"
               />
