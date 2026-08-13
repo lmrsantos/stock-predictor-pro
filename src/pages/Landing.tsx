@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 export default function Landing() {
   const { user } = useAuth();
+  const [booted, setBooted] = useState(false);
 
   return (
     <div
@@ -41,6 +42,23 @@ export default function Landing() {
         href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap"
       />
 
+      {/* Animated left-in underline for nav & inline text links */}
+      <style>{`
+        .qf-link { position: relative; }
+        .qf-link::after {
+          content: ""; position: absolute; left: 0; bottom: -2px;
+          height: 1px; width: 100%; background: currentColor;
+          transform: scaleX(0); transform-origin: left;
+          transition: transform 180ms ease-out;
+        }
+        .qf-link:hover::after { transform: scaleX(1); }
+        @media (prefers-reduced-motion: reduce) {
+          .qf-link::after { transition: none; }
+        }
+      `}</style>
+
+      <BootPreloader onDone={() => setBooted(true)} />
+
       {/* ─── 1. NAV ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#07071a]/70 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -51,12 +69,13 @@ export default function Landing() {
             <span className="font-bold tracking-tight">QuantForecast</span>
           </Link>
           <nav className="hidden md:flex items-center gap-7 text-sm text-white/70">
-            <a href="#product" className="hover:text-white">Products</a>
-            <a href="#evidence" className="hover:text-white">Forecast Methodology</a>
-            <a href="#quantagent" className="hover:text-white">QuantAgent</a>
-            <a href="#educational" className="hover:text-white">Educational</a>
-            <a href="#pricing" className="hover:text-white">Pricing</a>
+            <a href="#product" className="qf-link hover:text-white">Products</a>
+            <a href="#evidence" className="qf-link hover:text-white">Forecast Methodology</a>
+            <a href="#quantagent" className="qf-link hover:text-white">QuantAgent</a>
+            <a href="#educational" className="qf-link hover:text-white">Educational</a>
+            <a href="#pricing" className="qf-link hover:text-white">Pricing</a>
           </nav>
+
 
           <div className="flex items-center gap-2">
             {user ? (
