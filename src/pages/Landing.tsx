@@ -104,7 +104,10 @@ export default function Landing() {
       </header>
 
       {/* ─── 2. HERO ─────────────────────────────────────────── */}
-      <section className="relative pt-24 pb-32 overflow-hidden">
+      <section
+        className="relative pt-24 pb-32 overflow-hidden"
+        style={{ opacity: booted ? 1 : 0, transition: "opacity 500ms ease-out" }}
+      >
         {/* aurora bg */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-indigo-600/30 blur-3xl" />
@@ -1115,11 +1118,11 @@ function FooterCol({ title, links }: { title: string; links: [string, string][] 
         {links.map(([label, href]) => (
           <li key={label}>
             {href.startsWith("mailto:") ? (
-              <a href={href} className="hover:text-white">
+              <a href={href} className="qf-link hover:text-white">
                 {label}
               </a>
             ) : (
-              <Link to={href} className="hover:text-white">
+              <Link to={href} className="qf-link hover:text-white">
                 {label}
               </Link>
             )}
