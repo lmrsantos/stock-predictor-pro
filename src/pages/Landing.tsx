@@ -870,7 +870,7 @@ function CountUp({ to, prefix = "", suffix = "" }: { to: number; prefix?: string
       return;
     }
     const start = performance.now();
-    const dur = 800;
+    const dur = 850;
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / dur);
