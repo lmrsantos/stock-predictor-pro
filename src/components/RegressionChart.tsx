@@ -403,8 +403,8 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
       )}
 
 
-      <ResponsiveContainer width="100%" height="90%">
-        <ComposedChart data={stackedData} margin={{ top: 18, right: 34, left: 10, bottom: 10 }}>
+      <div className={`relative flex-1 min-h-0 ${trendOverlay ? "trend-blur" : ""}`}>
+      <ResponsiveContainer width="100%" height="100%">
           <CartesianGrid
             stroke={gridColor}
             strokeDasharray="3 3"
