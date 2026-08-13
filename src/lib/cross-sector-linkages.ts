@@ -54,6 +54,7 @@ export interface DirectedPair {
   follower: SectorName;
   channel: string;          // economic rationale (documentation + QuantAgent context)
   regimeSignFlip?: boolean; // e.g. Energy -> Industrials: sign depends on demand vs supply regime
+  exploratory?: boolean;    // true = all-pairs scan, no pre-registered channel
 }
 
 export interface ReturnSeries {
@@ -75,6 +76,7 @@ export interface LinkageResult {
   validated: boolean;
   channel: string;
   regimeSignFlip: boolean;
+  exploratory: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -569,6 +571,7 @@ export function runLinkageTests(
       validated: pAdj[i] < BH_ALPHA && halvesAgree,
       channel: r.pair.channel,
       regimeSignFlip: r.pair.regimeSignFlip ?? false,
+      exploratory: r.pair.exploratory ?? false,
     };
   });
 }
