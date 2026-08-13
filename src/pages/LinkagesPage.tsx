@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Activity, Loader2, Check, X, AlertTriangle, Lock, Sparkles, Crown } from "lucide-react";
 import { runLinkages, readCachedLinkages, type LinkagePayload, type RunProgress } from "@/lib/run-linkages";
-import type { LinkageResult } from "@/lib/cross-sector-linkages";
+import { FULL_LINKAGE_MAP, SECTOR_NAMES, type LinkageResult } from "@/lib/cross-sector-linkages";
 import { InfoTooltip, metricInfo } from "@/components/InfoTooltip";
 import SectorLinkageGraph from "@/components/SectorLinkageGraph";
 import { SECTOR_MEMBERSHIP } from "@/config/sector-membership";
@@ -23,6 +23,8 @@ export default function LinkagesPage() {
   const [progress, setProgress] = useState<RunProgress | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("validated");
   const [onlyValidated, setOnlyValidated] = useState(false);
+  const [documentedOnly, setDocumentedOnly] = useState(false);
+  const [showAllRows, setShowAllRows] = useState(false);
 
   useEffect(() => { setPayload(readCachedLinkages()); }, []);
 
@@ -47,6 +49,7 @@ export default function LinkagesPage() {
     if (!payload) return [];
     let r = [...payload.results];
     if (onlyValidated) r = r.filter((x) => x.validated);
+    if (documentedOnly) r = r.filter((x) => !x.exploratory);
     r.sort((a, b) => {
       if (sortKey === "validated") {
         if (a.validated !== b.validated) return a.validated ? -1 : 1;
@@ -58,6 +61,9 @@ export default function LinkagesPage() {
     });
     return r;
   })();
+
+  const ROW_CAP = 250;
+  const visibleRows = showAllRows ? rows : rows.slice(0, ROW_CAP);
 
   if (!entLoading && !canView) {
     return (
@@ -82,7 +88,8 @@ export default function LinkagesPage() {
             <div>
               <h2 className="text-2xl font-bold mb-2">Unlock the Cross-Sector Linkage Engine</h2>
               <p className="text-muted-foreground max-w-lg mx-auto">
-                Granger-style lag regressions across a curated map of <span className="text-foreground font-mono">22 economically-motivated pairs</span> —
+                Granger-style lag regressions across every ordered sector pair in the curated universe —
+                <span className="text-foreground font-mono"> {FULL_LINKAGE_MAP.length} directed tests</span> spanning {SECTOR_NAMES.length} baskets and 371 symbols —
                 BH-corrected, split-half validated, and rendered as an interactive causal graph.
                 The same engine powers Hot Stocks confidence tilts and QuantAgent's macro reasoning.
               </p>
@@ -127,10 +134,13 @@ export default function LinkagesPage() {
         <div className="max-w-6xl mx-auto space-y-6">
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Granger-style lag regressions across a curated map of {" "}
-              <span className="text-foreground font-mono">22 directed pairs</span> {" "}
-              spanning the 13 sector composites and macro proxies (OIL, GOLD, US10Y, XLY/XLP risk-appetite spread).
-              Each pair is tested only if the economic channel is documented; results are BH-corrected and split-half validated.
+              Granger-style lag regressions across the full curated universe: {" "}
+              <span className="text-foreground font-mono">{FULL_LINKAGE_MAP.length} directed pairs</span> {" "}
+              built from every ordered combination of the {SECTOR_NAMES.length} sector and subsector composites (371 symbols),
+              plus macro proxies (OIL, GOLD, US10Y, XLY/XLP risk-appetite spread) against every basket.
+              Pairs whose membership overlaps too heavily (a subsector inside its parent) are excluded as self-contamination.
+              Every test enters one Benjamini-Hochberg correction and must hold its sign and significance in both halves of the window to be validated —
+              so an exhaustive scan does not buy easier passes, it buys a harsher bar.
             </p>
             <div className="flex items-center gap-3 flex-wrap">
               {canRun ? (
@@ -219,6 +229,14 @@ export default function LinkagesPage() {
                     onChange={(e) => setOnlyValidated(e.target.checked)} />
                   Validated only
                 </label>
+                <label className="text-xs font-mono flex items-center gap-1" title="Show only pairs with a pre-registered economic channel (hide the exploratory all-pairs scan)">
+                  <input type="checkbox" checked={documentedOnly}
+                    onChange={(e) => setDocumentedOnly(e.target.checked)} />
+                  Documented channels only
+                </label>
+                <span className="text-xs font-mono text-muted-foreground">
+                  {visibleRows.length} of {rows.length}
+                </span>
                 <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}
                   className="ml-auto bg-secondary border border-border rounded px-2 py-1 text-xs">
                   <option value="validated">Sort: validated first</option>
@@ -266,7 +284,7 @@ export default function LinkagesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r, i) => {
+                    {visibleRows.map((r, i) => {
                       const halvesAgree =
                         Math.sign(r.firstHalf.coefficient) === Math.sign(r.secondHalf.coefficient) &&
                         Math.sign(r.firstHalf.coefficient) === r.sign;
@@ -276,6 +294,11 @@ export default function LinkagesPage() {
                             <span className="text-foreground">{r.leader}</span>
                             <span className="text-muted-foreground"> → </span>
                             <span className="text-foreground">{r.follower}</span>
+                            {r.exploratory && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">
+                                exploratory
+                              </span>
+                            )}
                             {r.regimeSignFlip && (
                               <span className="ml-2 px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 text-[10px]">
                                 regime
@@ -304,6 +327,14 @@ export default function LinkagesPage() {
                         </tr>
                       );
                     })}
+                    {!showAllRows && rows.length > visibleRows.length && (
+                      <tr><td colSpan={8} className="px-3 py-3 text-center">
+                        <button onClick={() => setShowAllRows(true)}
+                          className="text-xs font-mono text-primary hover:underline">
+                          Show all {rows.length} tested pairs
+                        </button>
+                      </td></tr>
+                    )}
                     {rows.length === 0 && (
                       <tr><td colSpan={8} className="px-3 py-8 text-center text-muted-foreground">
                         No rows.
