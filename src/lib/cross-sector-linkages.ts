@@ -483,8 +483,14 @@ function lagTest(y: number[], x: number[]): LagTestOutcome | null {
     };
     if (!best || outcome.pValue < best.pValue) best = outcome;
   }
-  return best;
+  if (!best) return null;
+  // The reported p-value is the MINIMUM across MAX_LAG candidate lags, so it is
+  // optimistically biased. Bonferroni-correct for that lag search before the
+  // pair-level BH step — otherwise an exhaustive all-pairs scan manufactures
+  // "significant" linkages out of noise.
+  return { ...best, pValue: Math.min(best.pValue * MAX_LAG, 1) };
 }
+
 
 // ---------------------------------------------------------------------------
 // Benjamini-Hochberg
