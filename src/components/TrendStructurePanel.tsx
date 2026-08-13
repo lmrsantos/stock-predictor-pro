@@ -123,7 +123,7 @@ export function TrendStructurePanel({ symbol, dates, closes }: Props) {
 
   // ─── Geometry ──────────────────────────────────────────────────────────────
   const H = 300;
-  const PAD = { top: 14, right: 96, bottom: 22, left: 8 };
+  const PAD = { top: 14, right: 150, bottom: 22, left: 8 };
   const innerW = Math.max(120, width - PAD.left - PAD.right);
   const innerH = H - PAD.top - PAD.bottom;
 
