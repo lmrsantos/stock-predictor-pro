@@ -669,6 +669,7 @@ export function linkagesToAgentContext(results: LinkageResult[]): string {
       strength: Number(r.rSquaredDelta.toFixed(4)),
       channel: r.channel,
       regimeDependent: r.regimeSignFlip,
+      exploratory: r.exploratory,
     })),
     weakCandidates: candidates.map((r) => ({
       leader: r.leader, follower: r.follower, lagDays: r.bestLag,

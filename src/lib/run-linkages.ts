@@ -1,9 +1,11 @@
 // src/lib/run-linkages.ts
 // Orchestrates the full cross-sector linkage test:
-//   1. Fetch 1y closes for every ticker in the 13 curated sectors (via sector-backtest fn)
+//   1. Fetch 1y closes for every ticker in all curated baskets (via sector-backtest fn)
 //   2. Fetch macro proxies USO/GLD/^TNX (via fetch-macro-series fn)
 //   3. Build sector composites + macro return series + risk-appetite spread
-//   4. Run Granger-style lag tests (LINKAGE_MAP), BH-correct, split-half validate
+//   4. Run Granger-style lag tests over the FULL all-pairs map (every ordered
+//      sector pair across all 43 curated baskets / 371 symbols + macro leaders),
+//      BH-correct across every test, split-half validate
 //   5. Cache in localStorage (24h) and push a compact summary to the server cache
 //
 // Browser-side. Total compute is small (<1s after fetch).
@@ -15,7 +17,7 @@ import {
 import {
   PriceBar, ReturnSeries, LinkageResult, LeaderName,
   buildSectorComposites, buildRiskAppetiteRatio, runLinkageTests,
-  toLogReturns, linkagesToAgentContext,
+  toLogReturns, linkagesToAgentContext, FULL_LINKAGE_MAP,
 } from "@/lib/cross-sector-linkages";
 
 const CACHE_KEY = "qf.linkages.v1";
@@ -126,7 +128,11 @@ export async function runLinkages(
   const rp = buildRiskAppetiteRatio(composites);
   if (rp) leaderSeries["XLY_XLP_RATIO"] = rp;
 
-  const results = runLinkageTests(leaderSeries, composites);
+  onProgress?.({
+    stage: "compute",
+    message: `Testing ${FULL_LINKAGE_MAP.length} directed pairs across ${SECTOR_NAMES.length} baskets…`,
+  });
+  const results = runLinkageTests(leaderSeries, composites, FULL_LINKAGE_MAP);
 
   const payload: LinkagePayload = {
     results,
