@@ -234,14 +234,14 @@ export default function Landing() {
             <Reveal delay={160}>
               <ProofCard header="Track record filter">
                 <ProofLine>
-                  <span className="text-white/70">Conservative only</span>
-                  <span className="text-white/25"> ......... </span>
-                  <span className="text-white">0 of 290</span>
+                  <span className="text-white/70">Strong evidence filter</span>
+                  <span className="text-white/25"> ...... </span>
+                  <span className="text-white">rarely more than a handful</span>
                 </ProofLine>
                 <ProofLine>
                   <span className="text-white/70">Hot only</span>
-                  <span className="text-white/25"> .................. </span>
-                  <span className="text-white">5 of 290</span>
+                  <span className="text-white/25"> .................... </span>
+                  <span className="text-white">a short list, most days</span>
                 </ProofLine>
                 <p className="text-white/45 text-sm leading-relaxed mt-5">
                   Most days, almost nothing clears the evidence bar. We show you the empty
@@ -316,7 +316,7 @@ export default function Landing() {
             <FeatureCard
               icon={<Layers className="w-5 h-5" />}
               title="Sector Backtest"
-              body="13 curated sectors, 227 symbols, walk-forward scored. Find the regime before it finds your portfolio."
+              body="43 curated baskets, 371 symbols, walk-forward scored. Find the regime before it finds your portfolio."
               accent="from-cyan-500/20 to-transparent"
             />
             <FeatureCard
@@ -404,6 +404,51 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ─── 6b. THE CURATED UNIVERSE ─────────────────────────── */}
+      <section className="py-32 border-t border-white/5 relative overflow-hidden">
+        <div className="relative max-w-7xl mx-auto px-6">
+          <Reveal>
+            <div className="max-w-3xl">
+              <div className="text-[11px] uppercase tracking-widest text-white/40 mb-4">
+                The closed world
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">
+                371 symbols. 43 baskets. One coherent scoreboard.
+              </h2>
+              <p className="text-white/70 text-lg leading-relaxed">
+                Ranking, linkage detection and base rates only mean something against a known
+                population. The terminal charts any ticker you type — but the automated engines
+                run on a curated universe, so every score is comparable to every other score.
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-14">
+            {[
+              {
+                t: "Subsectors, not just sectors",
+                b: "Most tools stop at \u201cTechnology.\u201d We separate Semis: Memory from Semis: AI & GPU, Data Center REITs from Real Estate, Rare Earth from Materials — so the linkage graph can surface a rotation inside a sector, not just between them.",
+              },
+              {
+                t: "One stock, several homes",
+                b: "A mega-cap can lead more than one theme. AAPL sits in both Mega-cap Tech and Software: Cloud Infra, and the engine picks the right composite for the question being asked.",
+              },
+              {
+                t: "Names get dropped, not padded",
+                b: "Any symbol without at least 60 days of cached history is removed before it can be ranked. A thin or newly listed name never appears with a confident-looking score attached.",
+              },
+            ].map((c, i) => (
+              <Reveal key={c.t} delay={i * 90}>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 h-full">
+                  <h3 className="font-semibold mb-3">{c.t}</h3>
+                  <p className="text-white/60 text-sm leading-relaxed">{c.b}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── 7. EVIDENCE / METHODOLOGY ───────────────────────── */}
       <section id="evidence" className="scroll-mt-20 py-32 border-t border-white/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/30 via-transparent to-transparent pointer-events-none" />
@@ -449,7 +494,7 @@ export default function Landing() {
             {[
               { k: "Blind horizon", to: 30, suffix: " bars", d: "Model sees nothing after the cutoff" },
               { k: "Linkage pairs", to: 22, suffix: "", d: "Multiple-testing corrected & split-half validated" },
-              { k: "Backtest universe", to: 227, suffix: " symbols", d: "Across 13 curated sectors" },
+              { k: "Curated universe", to: 371, suffix: "", d: "Across 43 sector and subsector baskets" },
               { k: "Evidence gate", to: 5, prefix: "+", suffix: "pp", d: "Minimum excess over baseline" },
             ].map((s, i) => (
               <Reveal key={s.k} delay={i * 80}>

@@ -8,10 +8,10 @@ import { useEffect, useRef, useState } from "react";
  * changes materially (symbol count, linkage count), edit it here by hand.
  */
 const LINES: { text: string; value: string; amber?: boolean }[] = [
-  { text: "loading price history", value: "227 symbols · 13 sectors" },
+  { text: "loading price history", value: "371 symbols · 43 baskets" },
   { text: "validating cross-sector linkages", value: "22 pairs" },
   { text: "scoring models out-of-sample", value: "12 rolling windows" },
-  { text: "checking setup base rates", value: "0 of 290 clear the bar today", amber: true },
+  { text: "checking setup base rates", value: "few clear the bar today", amber: true },
   { text: "market regime", value: "late-cycle · caution", amber: true },
   { text: "terminal ready", value: "" },
 ];
