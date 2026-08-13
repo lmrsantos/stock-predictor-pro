@@ -17,6 +17,7 @@ import { MacroIndicatorStrip } from "@/components/MacroIndicatorStrip";
 import { StockHeader } from "@/components/StockHeader";
 import { EarningsAlert } from "@/components/EarningsAlert";
 import { RegressionChart } from "@/components/RegressionChart";
+import { TrendStructurePanel } from "@/components/TrendStructurePanel";
 import { DataTable } from "@/components/DataTable";
 import { PortfolioAdvisor } from "@/components/PortfolioAdvisor";
 import { HotStocks } from "@/components/HotStocks";
@@ -52,6 +53,7 @@ const Index = () => {
   const [forecastModel, setForecastModel] = useState<ForecastModel>("regression");
   
   const [showTable, setShowTable] = useState(false);
+  const [showTrendStructure, setShowTrendStructure] = useState(false);
   const [showBacktest, setShowBacktest] = useState(false);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [activeView, setActiveView] = useState<"chart" | "advisor">("chart");
@@ -605,6 +607,8 @@ const Index = () => {
           onForecastDaysChange={setForecastDays}
           forecastModel={forecastModel}
           onForecastModelChange={setForecastModel}
+          trendStructure={showTrendStructure}
+          onTrendStructureChange={setShowTrendStructure}
         />
 
       </div>
@@ -646,6 +650,14 @@ const Index = () => {
               slopePositive={regression ? regression.slope >= 0 : true}
               intraday={isIntraday}
             />
+
+            {showTrendStructure && !isIntraday && (stockData?.length ?? 0) >= 20 && (
+              <TrendStructurePanel
+                symbol={ticker}
+                dates={(stockData ?? []).map((d) => d.date)}
+                closes={(stockData ?? []).map((d) => d.close)}
+              />
+            )}
 
 
             <div className="flex justify-start -mt-2 relative z-20">
