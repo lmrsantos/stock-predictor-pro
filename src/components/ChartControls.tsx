@@ -21,6 +21,8 @@ interface ChartControlsProps {
   onForecastDaysChange: (v: number) => void;
   forecastModel: ForecastModel;
   onForecastModelChange: (v: ForecastModel) => void;
+  trendStructure?: boolean;
+  onTrendStructureChange?: (v: boolean) => void;
 }
 
 const periods = [
@@ -46,6 +48,8 @@ export function ChartControls({
   onForecastDaysChange,
   forecastModel,
   onForecastModelChange,
+  trendStructure = false,
+  onTrendStructureChange,
 }: ChartControlsProps) {
 
   return (
@@ -108,6 +112,20 @@ export function ChartControls({
           ))}
         </select>
       </div>
+
+      {onTrendStructureChange && (
+        <button
+          onClick={() => onTrendStructureChange(!trendStructure)}
+          title="Fitted trend over 1Y / 6M / 3M / 1M windows — describes what already happened"
+          className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors shrink-0 ${
+            trendStructure
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+          }`}
+        >
+          Trend structure
+        </button>
+      )}
     </div>
   );
 }

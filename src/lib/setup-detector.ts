@@ -23,6 +23,7 @@ import {
   type VolBucket,
   type ListingBucket,
 } from "./conditioned-base-rates";
+import { analyzeTrendTermStructure } from "./trend-term-structure";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -248,13 +249,19 @@ export function detectOccurrencesForSymbol(
         ? null
         : bucketListing(Math.max(0, series.listingYears - yearsRemaining));
 
+      // Trend term-structure state AS OF bar i — strictly backward-looking.
+      const trendState = analyzeTrendTermStructure(closes, i).conditioningKey;
+      const volListingKey = listingBucket ? `${volBucket}|${listingBucket}` : volBucket;
+
       occurrences.push({
         symbol: series.symbol,
         barIdx: i,
         forwardReturn,
-        cellKey: listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
+        cellKey: `${volListingKey}|${trendState}`,
+        volListingKey,
         volBucket,
         listingBucket,
+        trendState,
       });
       lastHit = i;
     }
@@ -351,5 +358,6 @@ export function universeVolatilities(universe: SymbolSeries[]): number[] {
 
 /** Convenience: profile for a symbol as of its last bar. */
 export function profileForSymbol(series: SymbolSeries, volCuts: { calmMax: number; normalMax: number }) {
-  return buildProfile(series.closes, series.listingYears, volCuts);
+  const trendState = analyzeTrendTermStructure(series.closes).conditioningKey;
+  return buildProfile(series.closes, series.listingYears, volCuts, trendState);
 }

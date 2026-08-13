@@ -29,7 +29,12 @@ export interface ConditioningProfile {
   listingYears: number | null;
   /** null when listing age is unknown; the listing dimension is then skipped. */
   listingBucket: ListingBucket | null;
-  /** Combined cell key, e.g. "calm|seasoned", or just "calm" when listing age is unknown. */
+  /** Trend term-structure state as of the profiling bar, or null when unknown.
+   *  Fourth conditioning dimension; dropped FIRST when a cell is thin. */
+  trendState: string | null;
+  /** Cell key without the trend dimension, e.g. "calm|seasoned". */
+  volListingKey: string;
+  /** Combined cell key, e.g. "calm|seasoned|steady_up". */
   cellKey: string;
   /** Plain-language note on how forecastable this name is likely to be. */
   forecastabilityNote: string;
@@ -42,8 +47,10 @@ export interface Occurrence {
   /** Realized forward return over the evaluation horizon, as a fraction (0.024 = +2.4%). */
   forwardReturn: number;
   cellKey: string;
+  volListingKey: string;
   volBucket: VolBucket;
   listingBucket: ListingBucket | null;
+  trendState: string | null;
 }
 
 
@@ -196,6 +203,7 @@ export function buildProfile(
   closes: number[],
   listingYears: number | null,
   cuts = VOL_CUTS,
+  trendState: string | null = null,
 ): ConditioningProfile {
   const vol = annualizedVol(closes);
   const volBucket = bucketVol(vol, cuts);
@@ -223,8 +231,12 @@ export function buildProfile(
     volBucket,
     listingYears: listingYears == null || !Number.isFinite(listingYears) ? null : listingYears,
     listingBucket,
+    trendState,
     // Listing age unknown → the cell key collapses to the volatility bucket alone.
-    cellKey: listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
+    volListingKey: listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
+    cellKey: trendState
+      ? `${listingBucket ? `${volBucket}|${listingBucket}` : volBucket}|${trendState}`
+      : listingBucket ? `${volBucket}|${listingBucket}` : volBucket,
     forecastabilityNote: note,
   };
 }
@@ -314,6 +326,9 @@ export function resolveConditionedBaseRate(
   const symbolOccurrences = allOccurrences.filter(o => o.symbol === symbol).length;
 
   const exact = allOccurrences.filter(o => o.cellKey === profile.cellKey);
+  // Dropping the trend dimension is the FIRST fallback step — it is the newest
+  // and thinnest dimension, so it goes before listing age is given up.
+  const noTrend = allOccurrences.filter(o => o.volListingKey === profile.volListingKey);
   const volOnly = allOccurrences.filter(o => o.volBucket === profile.volBucket);
 
   let stats: BaseRateStats | null = null;
@@ -329,6 +344,13 @@ export function resolveConditionedBaseRate(
       : `Measured on ${exact.length} occurrences among ${profile.volBucket}-volatility names ` +
         `— the same population as this stock. Listing age is unknown here, so it is not ` +
         `used as a conditioning dimension.`;
+  } else if (profile.trendState && noTrend.length >= MIN_N_EXACT) {
+    stats = computeStats(noTrend.map(o => o.forwardReturn));
+    source = 'exact';
+    sourceNote =
+      `Too few occurrences in the exact ${profile.cellKey} cell (${exact.length}), so the ` +
+      `trend-structure dimension is dropped. Measured on ${noTrend.length} occurrences among ` +
+      `${profile.volListingKey} names — volatility and listing age still match this stock.`;
   } else if (volOnly.length >= MIN_N_VOL_ONLY) {
     stats = computeStats(volOnly.map(o => o.forwardReturn));
     source = 'volatility_only';
