@@ -322,7 +322,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
   const refLineColor = isDark ? "hsl(0, 0%, 35%)" : "hsl(0, 0%, 75%)";
 
   return (
-    <div className="flex-1 chart-surface min-h-[240px] p-3 lg:p-4">
+    <div className="h-[64vh] min-h-[380px] shrink-0 chart-surface p-3 lg:p-4 flex flex-col">
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4 text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex-wrap">
         <span className="flex items-center gap-1.5">
@@ -403,7 +403,8 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
       )}
 
 
-      <ResponsiveContainer width="100%" height="90%">
+      <div className={`relative flex-1 min-h-0 ${trendOverlay ? "trend-blur" : ""}`}>
+      <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={stackedData} margin={{ top: 18, right: 34, left: 10, bottom: 10 }}>
           <CartesianGrid
             stroke={gridColor}
@@ -614,7 +615,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
                   { x: trendOverlay.endDate, y: trendOverlay.endValue },
                 ]}
                 stroke={trendOverlay.color}
-                strokeWidth={2.2}
+                strokeWidth={3}
                 strokeDasharray={trendOverlay.dashed ? "6 5" : undefined}
                 ifOverflow="visible"
               />
@@ -643,6 +644,7 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
 
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
