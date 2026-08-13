@@ -21,6 +21,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { BootPreloader } from "@/components/BootPreloader";
 
 /**
  * QuantForecast marketing landing page.
