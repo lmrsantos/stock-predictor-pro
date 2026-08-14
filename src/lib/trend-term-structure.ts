@@ -437,17 +437,19 @@ export function analyzeTrendTermStructure(
       ? (shortFit.meanLogReturn - longFit.meanLogReturn) / seDiff : 0;
   }
 
-  const state = classify(fits, curvatureT);
+  const { state, evidence } = classify(fits, curvature, curvatureT);
   const significantCount = HORIZON_ORDER.filter(h => fits[h]?.significant).length;
 
   // The four windows overlap heavily, so their slopes are strongly correlated.
   // Four measurements are worth roughly one and a half independent observations.
   const caveat =
-    state === 'no_trend'
-      ? 'No horizon clears the significance bar. Treat direction as unknown here — a forecast built on this would be fitting noise.'
-      : significantCount <= 1
-        ? 'Only one horizon is statistically significant. The trend structure is weak evidence on its own.'
-        : 'The four windows overlap heavily, so their slopes are correlated. Treat this as roughly one and a half independent observations, not four.';
+    evidence === 'none'
+      ? 'No horizon shows any drift at all. There is nothing here to describe.'
+      : evidence === 'provisional'
+        ? 'No horizon clears the significance bar, so this shape is a description of realized drift, not a validated trend. Do not size a position on it.'
+        : significantCount <= 1
+          ? 'Only one horizon is statistically significant. The trend structure is weak evidence on its own.'
+          : 'The four windows overlap heavily, so their slopes are correlated. Treat this as roughly one and a half independent observations, not four.';
 
   return {
     fits,
@@ -456,11 +458,13 @@ export function analyzeTrendTermStructure(
     stateDescription: STATE_COPY[state].description,
     curvature,
     curvatureT,
+    evidence,
     significantCount,
     conditioningKey: state,
     caveat,
   };
 }
+
 
 // ─── Drawing helper ──────────────────────────────────────────────────────────
 
