@@ -188,18 +188,19 @@ function Tile({
     : delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-muted-foreground";
 
   return (
-    <div className={`${borderCls} ${width} px-3 py-2 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors`}>
-      <div className="flex items-center justify-between gap-1">
+    <div className={`${borderCls} ${width} px-3 py-1.5 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors`}>
+      <div className="flex items-baseline justify-between gap-2">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{def.label}</div>
-        {stale && <div className="w-1.5 h-1.5 rounded-full bg-amber-500/70" title="Data may be stale" />}
+        <div className="text-sm font-mono font-semibold text-foreground whitespace-nowrap">
+          {v != null && isFinite(v) ? def.fmt(v) : "—"}
+        </div>
       </div>
-      <div className="text-sm font-mono font-semibold text-foreground">
-        {v != null && isFinite(v) ? def.fmt(v) : "—"}
-      </div>
-      <div className={`text-[10px] font-mono ${deltaCls} truncate`}>
-        {deltaStr}
-        {row?.as_of_date && <span className="ml-1 text-muted-foreground/70">· {row.as_of_date.slice(5)}</span>}
+      <div className={`flex items-center gap-1 text-[10px] font-mono ${deltaCls} truncate`}>
+        <span>{deltaStr}</span>
+        {row?.as_of_date && <span className="text-muted-foreground/70">· {row.as_of_date.slice(5)}</span>}
+        {stale && <div className="w-1.5 h-1.5 rounded-full bg-amber-500/70 ml-auto" title="Data may be stale" />}
       </div>
     </div>
   );
 }
+
