@@ -15,15 +15,16 @@ type Row = {
 };
 
 const TILE_ORDER: { key: string; label: string; fmt: (v: number) => string; deltaMode: "30d" | "prev" }[] = [
-  { key: "cpi_yoy", label: "CPI YoY", fmt: (v) => `${v.toFixed(1)}%`, deltaMode: "prev" },
-  { key: "fed_funds", label: "Fed Funds", fmt: (v) => `${v.toFixed(2)}%`, deltaMode: "prev" },
-  { key: "us10y", label: "US 10Y", fmt: (v) => `${v.toFixed(2)}%`, deltaMode: "prev" },
+  { key: "cpi_yoy", label: "CPI", fmt: (v) => `${v.toFixed(1)}%`, deltaMode: "prev" },
+  { key: "fed_funds", label: "FED", fmt: (v) => `${v.toFixed(2)}%`, deltaMode: "prev" },
+  { key: "us10y", label: "10Y", fmt: (v) => `${v.toFixed(2)}%`, deltaMode: "prev" },
   { key: "curve_10y2y", label: "10Y–2Y", fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}`, deltaMode: "prev" },
   { key: "vix", label: "VIX", fmt: (v) => v.toFixed(1), deltaMode: "prev" },
-  { key: "wti", label: "WTI Crude", fmt: (v) => `$${v.toFixed(2)}`, deltaMode: "30d" },
-  { key: "gold", label: "Gold", fmt: (v) => `$${v.toFixed(0)}`, deltaMode: "30d" },
-  { key: "cape_proxy", label: "S&P 500 P/E", fmt: (v) => v.toFixed(1), deltaMode: "prev" },
+  { key: "wti", label: "WTI", fmt: (v) => `$${v.toFixed(2)}`, deltaMode: "30d" },
+  { key: "gold", label: "GOLD", fmt: (v) => `$${v.toFixed(0)}`, deltaMode: "30d" },
+  { key: "cape_proxy", label: "S&P P/E", fmt: (v) => v.toFixed(1), deltaMode: "prev" },
 ];
+
 
 const toneClasses: Record<RegimeTone, { pill: string; border: string; dot: string }> = {
   "risk-on": {
@@ -190,7 +191,7 @@ function Tile({
   return (
     <div className={`${borderCls} ${width} px-3 py-1.5 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors`}>
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-sm uppercase tracking-wider text-muted-foreground truncate">{def.label}</div>
+        <div className="text-sm uppercase tracking-wider text-muted-foreground whitespace-nowrap" title={def.label}>{def.label}</div>
         <div className="text-sm font-mono font-semibold text-foreground whitespace-nowrap">
           {v != null && isFinite(v) ? def.fmt(v) : "—"}
         </div>
