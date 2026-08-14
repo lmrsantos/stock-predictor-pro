@@ -36,31 +36,35 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <LinkageAutoRunner />
-          <DisclaimerBar />
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/terminal" element={<Index />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/sector-backtest" element={<SectorBacktestPage />} />
-            <Route path="/sectors" element={<SectorChartPage />} />
-            <Route path="/linkages" element={<LinkagesPage />} />
-            <Route path="/ipo-intelligence" element={<IpoIntelligence />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/account" element={<Account />} />
-            <Route path="/my-checklists" element={<MyChecklists />} />
+          <div className="flex flex-col min-h-screen">
+            <div className="flex-1 min-h-0">
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/terminal" element={<Index />} />
+                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/sector-backtest" element={<SectorBacktestPage />} />
+                <Route path="/sectors" element={<SectorChartPage />} />
+                <Route path="/linkages" element={<LinkagesPage />} />
+                <Route path="/ipo-intelligence" element={<IpoIntelligence />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/my-checklists" element={<MyChecklists />} />
 
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/disclaimer" element={<Disclaimer />} />
-            <Route path="/methodology" element={<Methodology />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/disclaimer" element={<Disclaimer />} />
+                <Route path="/methodology" element={<Methodology />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <DisclaimerBar />
+          </div>
         </BrowserRouter>
+
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
