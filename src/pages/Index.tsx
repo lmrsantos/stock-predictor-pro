@@ -459,10 +459,10 @@ const Index = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
-      {/* Top nav bar — brand-aligned with Landing */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/70 backdrop-blur-xl">
-        <Link to="/" className="flex items-center gap-2 group">
+    <div className="flex flex-col h-full min-h-0 bg-background text-foreground overflow-hidden">
+      {/* Top nav bar — brand on line 1, actions on line 2 */}
+      <div className="px-4 py-2 border-b border-border bg-background/70 backdrop-blur-xl">
+        <Link to="/" className="inline-flex items-center gap-2 group">
           <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <TrendingUp className="w-4 h-4 text-white" />
           </div>
@@ -473,7 +473,8 @@ const Index = () => {
             Terminal
           </span>
         </Link>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+
           <button
             onClick={() => setShowBacktest(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
