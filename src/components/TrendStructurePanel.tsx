@@ -69,15 +69,27 @@ export function TrendStructurePanel({ symbol, closes, anim }: Props) {
         <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
           {ts.significantCount} of 4 significant
         </span>
+        {ts.evidence === "provisional" && (
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500">
+            descriptive only
+          </span>
+        )}
       </div>
       <p className="mt-1 text-[11px] font-mono text-muted-foreground leading-relaxed">
         {ts.stateDescription}
       </p>
-      {ts.state === "no_trend" && (
+      {ts.evidence === "provisional" && (
+        <p className="mt-1 text-[11px] font-mono text-amber-500">
+          Read from the sign of realized drift. No window clears |t| ≥ 2, so the direction is
+          not statistically distinguishable from noise.
+        </p>
+      )}
+      {ts.evidence === "none" && (
         <p className="mt-1 text-[11px] font-mono text-amber-500">
           Direction is unknown here.
         </p>
       )}
+
 
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-[11px] font-mono">
