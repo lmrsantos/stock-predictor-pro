@@ -462,17 +462,53 @@ const Index = () => {
     <div className="flex flex-col h-full min-h-0 bg-background text-foreground overflow-hidden">
       {/* Top nav bar — brand on line 1, actions on line 2 */}
       <div className="px-4 py-2 border-b border-border bg-background/70 backdrop-blur-xl">
-        <Link to="/" className="inline-flex items-center gap-2 group">
-          <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <TrendingUp className="w-4 h-4 text-white" />
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <Link to="/" className="inline-flex items-center gap-2 group">
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <TrendingUp className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold tracking-tight text-sm text-foreground group-hover:text-primary transition-colors">
+              QuantForecast
+            </span>
+            <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-muted-foreground ml-1">
+              Terminal
+            </span>
+          </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              to="/portfolio"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+            >
+              <Briefcase className="w-4 h-4" />
+              My Portfolio
+            </Link>
+            <Link
+              to="/pricing"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity"
+            >
+              <Sparkles className="w-4 h-4" />
+              Plans
+            </Link>
+            {user ? (
+              <Link
+                to="/account"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+              >
+                <User className="w-4 h-4" />
+                Account
+              </Link>
+            ) : (
+              <Link
+                to="/auth"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
+              >
+                <User className="w-4 h-4" />
+                Sign in
+              </Link>
+            )}
           </div>
-          <span className="font-semibold tracking-tight text-sm text-foreground group-hover:text-primary transition-colors">
-            QuantForecast
-          </span>
-          <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-muted-foreground ml-1">
-            Terminal
-          </span>
-        </Link>
+        </div>
+
         <div className="mt-2 flex items-center gap-2 flex-wrap">
 
           <button
@@ -544,41 +580,8 @@ const Index = () => {
             Portfolio Insights
           </button>
 
-          <div className="w-px h-6 bg-border mx-2" />
-
-          <Link
-            to="/portfolio"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
-          >
-            <Briefcase className="w-4 h-4" />
-            My Portfolio
-          </Link>
-          
-          <Link
-            to="/pricing"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-white hover:opacity-90 transition-opacity"
-          >
-            <Sparkles className="w-4 h-4" />
-            Plans
-          </Link>
-          {user ? (
-            <Link
-              to="/account"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
-            >
-              <User className="w-4 h-4" />
-              Account
-            </Link>
-          ) : (
-            <Link
-              to="/auth"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-accent transition-colors"
-            >
-              <User className="w-4 h-4" />
-              Sign in
-            </Link>
-          )}
         </div>
+
       </div>
 
 
