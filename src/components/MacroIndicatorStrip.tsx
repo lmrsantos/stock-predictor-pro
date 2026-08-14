@@ -190,7 +190,7 @@ function Tile({
   return (
     <div className={`${borderCls} ${width} px-3 py-1.5 rounded-md bg-secondary/30 hover:bg-secondary/50 transition-colors`}>
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{def.label}</div>
+        <div className="text-sm uppercase tracking-wider text-muted-foreground truncate">{def.label}</div>
         <div className="text-sm font-mono font-semibold text-foreground whitespace-nowrap">
           {v != null && isFinite(v) ? def.fmt(v) : "—"}
         </div>
