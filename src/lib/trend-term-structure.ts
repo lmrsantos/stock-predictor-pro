@@ -296,33 +296,28 @@ const STATE_COPY: Record<TrendState, { label: string; description: string }> = {
   },
 };
 
-function classify(
-  fits: Record<Horizon, HorizonFit | null>,
-  curvatureT: number,
+/**
+ * Shape of the term structure, given a direction per horizon.
+ *
+ * Ported from the reference simulator: the branch order is long-window first,
+ * then whether the shorter windows agree, then curvature. The only change is
+ * that the direction inputs are supplied by the caller, so the same tree can be
+ * run twice — once on significant directions, once on raw drift signs.
+ */
+function shapeOf(
+  L: number,
+  M: number,
+  S: number,
+  accelerating: boolean,
+  decelerating: boolean,
 ): TrendState {
-  const long = fits['1y'] ?? fits['6m'];
-  const mid = fits['3m'];
-  const short = fits['1m'];
-
-  const sigCount = HORIZON_ORDER.filter(h => fits[h]?.significant).length;
-  if (sigCount === 0) return 'no_trend';
-
-  const L = long?.direction ?? 0;
-  const M = mid?.direction ?? 0;
-  const S = short?.direction ?? 0;
-
-  // Acceleration is a claim that two drifts DIFFER. Test it, do not threshold
-  // the raw gap — noise clears any fixed threshold routinely.
-  const accelerating = curvatureT <= -T_SIGNIFICANT;
-  const decelerating = curvatureT >= T_SIGNIFICANT;
-
   if (L > 0) {
     if (S < 0 && M < 0) return 'breaking_down';
     if (S < 0) return 'pullback_in_uptrend';
     if (M < 0) return 'breaking_down';
     if (S > 0 || M > 0) {
-      if (decelerating) return 'accelerating_up';
-      if (accelerating) return 'decelerating_up';
+      if (accelerating) return 'accelerating_up';
+      if (decelerating) return 'decelerating_up';
       return 'steady_up';
     }
     return 'uptrend_no_longer_measurable';
@@ -340,12 +335,73 @@ function classify(
     return 'downtrend_no_longer_measurable';
   }
 
-  // No measurable long-run trend, but something shorter is significant.
-  // This is NOT a pullback or a recovery — there is no longer trend to
-  // interpret the short move against.
+  // No long-run direction, but something shorter points somewhere. This is NOT
+  // a pullback or a recovery — there is no longer trend to read it against.
   if (S < 0 || M < 0) return 'short_term_decline_only';
-  return 'short_term_advance_only';
+  if (S > 0 || M > 0) return 'short_term_advance_only';
+  return 'no_trend';
 }
+
+function classify(
+  fits: Record<Horizon, HorizonFit | null>,
+  curvature: number,
+  curvatureT: number,
+): { state: TrendState; evidence: 'significant' | 'provisional' | 'none' } {
+  const long = fits['1y'] ?? fits['6m'];
+  const mid = fits['3m'];
+  const short = fits['1m'];
+
+  // Acceleration means the recent drift is steeper in the trend's own
+  // direction. Either the formal test on the difference clears |t| >= 2, or the
+  // raw gap is economically large (>= 1.5 bp/day, the simulator's threshold).
+  const curvSignificant =
+    Math.abs(curvatureT) >= T_SIGNIFICANT || Math.abs(curvature) >= 0.015;
+  const steeperUp = curvSignificant && curvature > 0; // short drift above long
+  const steeperDown = curvSignificant && curvature < 0;
+
+  const sigCount = HORIZON_ORDER.filter(h => fits[h]?.significant).length;
+
+  if (sigCount > 0) {
+    const L = long?.direction ?? 0;
+    const M = mid?.direction ?? 0;
+    const S = short?.direction ?? 0;
+    const state = shapeOf(
+      L,
+      M,
+      S,
+      L > 0 ? steeperUp : steeperDown,
+      L > 0 ? steeperDown : steeperUp,
+    );
+    return { state, evidence: 'significant' };
+  }
+
+  // ── Descriptive fallback ────────────────────────────────────────────────────
+  // Nothing clears the significance bar. Rather than saying only "direction
+  // unknown", read the SIGN of realized drift in each window. This is a
+  // description of what already happened, flagged as provisional so it is never
+  // mistaken for a validated trend.
+  const sign = (f: HorizonFit | null): number =>
+    !f || !Number.isFinite(f.meanLogReturn) || f.meanLogReturn === 0
+      ? 0
+      : f.meanLogReturn > 0
+        ? 1
+        : -1;
+
+  const dL = sign(long);
+  const dM = sign(mid);
+  const dS = sign(short);
+  if (dL === 0 && dM === 0 && dS === 0) return { state: 'no_trend', evidence: 'none' };
+
+  const state = shapeOf(
+    dL,
+    dM,
+    dS,
+    dL > 0 ? steeperUp : steeperDown,
+    dL > 0 ? steeperDown : steeperUp,
+  );
+  return { state, evidence: 'provisional' };
+}
+
 
 // ─── Main entry point ────────────────────────────────────────────────────────
 
