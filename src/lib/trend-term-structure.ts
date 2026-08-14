@@ -116,8 +116,17 @@ export interface TrendTermStructure {
    * difference gets tripped constantly by noise.
    */
   curvatureT: number;
+  /**
+   * 'significant' — at least one horizon clears |t| >= 2, so the direction is
+   * statistically distinguishable from noise.
+   * 'provisional' — no horizon clears the bar; the state below is a DESCRIPTIVE
+   * read of the raw drift signs (what actually happened), not a validated claim.
+   * 'none' — not even a descriptive direction (flat / no history).
+   */
+  evidence: 'significant' | 'provisional' | 'none';
   /** How many of the four horizons are statistically significant. */
   significantCount: number;
+
   /** Conditioning key for the base-rate engine, e.g. "pullback_in_uptrend". */
   conditioningKey: string;
   /** Plain-language caution about what this structure does and does not imply. */
