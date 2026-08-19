@@ -331,7 +331,7 @@ export default function SectorLinkageGraph({
       });
     }
     const macroUsed = new Set(
-      links.map((l) => l.leader).filter((l) => MACRO_NODES.includes(l)),
+      graphLinks.map((l) => l.leader).filter((l) => MACRO_NODES.includes(l)),
     );
     for (const mname of macroUsed) {
       elements.push({
@@ -340,7 +340,7 @@ export default function SectorLinkageGraph({
     }
 
     // --- Edges (always sector-to-sector; containers carry them in ticker view) ---
-    links.forEach((l, i) => {
+    graphLinks.forEach((l, i) => {
       const sourceId = MACRO_NODES.includes(l.leader)
         ? `macro:${l.leader}`
         : `sec:${l.leader}`;
@@ -357,6 +357,7 @@ export default function SectorLinkageGraph({
         },
       });
     });
+
 
     const cy = cytoscape({
       container: containerRef.current,
