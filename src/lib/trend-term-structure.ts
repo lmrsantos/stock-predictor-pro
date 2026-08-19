@@ -357,9 +357,25 @@ function shapeOf(
   S: number,
   accelerating: boolean,
   decelerating: boolean,
+  aL: number = 0,
+  aM: number = 0,
+  aS: number = 0,
 ): TrendState {
+  // Dominance check. A barely-positive year does not outrank a heavy decline in
+  // both shorter windows: when the recent drift dwarfs the long window's drift,
+  // the shorter windows ARE the trend, not a break in an uptrend.
+  const recentMag = Math.max(Math.abs(aM), Math.abs(aS));
+  const longDominated = Math.abs(aL) < DOMINANCE_RATIO * recentMag;
+
   if (L > 0) {
-    if (S < 0 && M < 0) return 'breaking_down';
+    if (S < 0 && M < 0) {
+      if (longDominated) {
+        if (accelerating) return 'accelerating_down';
+        if (decelerating) return 'decelerating_down';
+        return 'steady_down';
+      }
+      return 'breaking_down';
+    }
     if (S < 0) return 'pullback_in_uptrend';
     if (M < 0) return 'breaking_down';
     if (S > 0 || M > 0) {
@@ -371,7 +387,14 @@ function shapeOf(
   }
 
   if (L < 0) {
-    if (S > 0 && M > 0) return 'recovering';
+    if (S > 0 && M > 0) {
+      if (longDominated) {
+        if (accelerating) return 'accelerating_up';
+        if (decelerating) return 'decelerating_up';
+        return 'steady_up';
+      }
+      return 'recovering';
+    }
     if (S > 0) return 'rally_in_downtrend';
     if (M > 0) return 'recovering';
     if (S < 0 || M < 0) {
@@ -381,6 +404,7 @@ function shapeOf(
     }
     return 'downtrend_no_longer_measurable';
   }
+
 
   // Long window flat. If both shorter windows agree, that IS the trend.
   if (M < 0 && S < 0) {
