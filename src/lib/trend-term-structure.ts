@@ -292,11 +292,16 @@ const STATE_COPY: Record<TrendState, { label: string; description: string }> = {
     label: 'Recent advance, no longer-term trend',
     description: 'A shorter window is measurably up, but the year shows no trend to place it against.',
   },
+  flat_range: {
+    label: 'Flat range',
+    description: 'The year has gone nowhere, and the shorter windows point in opposite directions. This is a range, not a trend.',
+  },
   no_trend: {
     label: 'No measurable trend',
     description: 'No horizon has a slope distinguishable from zero. Direction here is noise.',
   },
 };
+
 
 /**
  * Shape of the term structure, given a direction per horizon.
