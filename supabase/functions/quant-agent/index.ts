@@ -401,7 +401,7 @@ serve(async (req) => {
         { role: "user", content: message },
       ];
 
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const callModel = async (msgs: any[]) => fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -409,34 +409,60 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
-          messages,
+          messages: msgs,
+          tools: TOOL_SPECS,
         }),
       });
 
-      if (!res.ok) {
-        await refundAiCredits(charge.userId, charge.cost, "Refund — quant_agent call failed");
-      }
-      if (res.status === 429) {
-        return new Response(JSON.stringify({ response: "I'm getting rate-limited right now — please try again in a moment." }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (res.status === 402) {
-        return new Response(JSON.stringify({ response: "AI service is temporarily unavailable. Please try again shortly." }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (!res.ok) {
-        const t = await res.text();
-        throw new Error(`AI gateway ${res.status}: ${t.slice(0, 300)}`);
+      const convo: any[] = [...messages];
+      let reply = "";
+      let usedTools = false;
+
+      for (let round = 0; round < 4; round++) {
+        const res = await callModel(convo);
+
+        if (!res.ok) {
+          await refundAiCredits(charge.userId, charge.cost, "Refund — quant_agent call failed");
+          if (res.status === 429) {
+            return new Response(JSON.stringify({ response: "I'm getting rate-limited right now — please try again in a moment." }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          if (res.status === 402 || res.status === 403) {
+            return new Response(JSON.stringify({ response: "AI service is temporarily unavailable. Please try again shortly." }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          const t = await res.text();
+          throw new Error(`AI gateway ${res.status}: ${t.slice(0, 300)}`);
+        }
+
+        const data = await res.json();
+        const msg = data?.choices?.[0]?.message;
+        const toolCalls = msg?.tool_calls;
+
+        if (Array.isArray(toolCalls) && toolCalls.length) {
+          usedTools = true;
+          convo.push({ role: "assistant", content: msg.content ?? "", tool_calls: toolCalls });
+          for (const tc of toolCalls.slice(0, 4)) {
+            let args: any = {};
+            try { args = JSON.parse(tc.function?.arguments || "{}"); } catch (_e) { /* ignore */ }
+            const out = await runTool(tc.function?.name, args);
+            convo.push({ role: "tool", tool_call_id: tc.id, content: out.slice(0, 12000) });
+          }
+          continue;
+        }
+
+        reply = msg?.content?.trim() || "";
+        break;
       }
 
-      const data = await res.json();
-      const reply = data?.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response — try rephrasing.";
+      if (!reply) reply = "I couldn't verify that from live sources — try rephrasing the question.";
 
-      return new Response(JSON.stringify({ response: reply, creditBalance: charge.balance }), {
+      return new Response(JSON.stringify({ response: reply, researched: usedTools, creditBalance: charge.balance }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+
     }
 
 
