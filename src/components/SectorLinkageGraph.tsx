@@ -326,6 +326,7 @@ export default function SectorLinkageGraph({
           id: `sec:${s}`,
           label: s,
           sector: s,
+          focusKey: s,
           kind: "sector",
         },
       });
@@ -335,7 +336,7 @@ export default function SectorLinkageGraph({
     );
     for (const mname of macroUsed) {
       elements.push({
-        data: { id: `macro:${mname}`, label: MACRO_LABELS[mname] ?? mname, kind: "macro" },
+        data: { id: `macro:${mname}`, label: MACRO_LABELS[mname] ?? mname, focusKey: mname, kind: "macro" },
       });
     }
 
@@ -499,7 +500,7 @@ export default function SectorLinkageGraph({
             minNodeSpacing: 70,
             avoidOverlap: true,
             concentric: (n: cytoscape.NodeSingular) =>
-              n.data("label") === focus || n.data("sector") === focus ? 10 : 1,
+              n.data("focusKey") === focus ? 10 : 1,
             levelWidth: () => 1,
           }) as any,
       wheelSensitivity: 0.2,
