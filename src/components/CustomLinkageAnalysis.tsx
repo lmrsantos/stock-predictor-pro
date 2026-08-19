@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Loader2, Check, X, Sparkles } from "lucide-react";
 import { usePlan } from "@/hooks/usePlan";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { getGateProps } from "@/lib/subscription-gating";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +28,9 @@ function handleOneTimePurchase() {
 export function CustomLinkageAnalysis() {
   const { user } = useAuth();
   const { subscription, refetch } = usePlan();
-  const gate = getGateProps("custom_analysis", subscription);
+  const { isAdmin } = useIsAdmin();
+  const rawGate = getGateProps("custom_analysis", subscription);
+  const gate = isAdmin ? { ...rawGate, locked: false } : rawGate;
 
   const [leader, setLeader] = useState("");
   const [follower, setFollower] = useState("");
@@ -89,7 +92,11 @@ export function CustomLinkageAnalysis() {
         <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
           Custom Linkage Analysis
         </h2>
-        {subscription.plan === "premium" && (
+        {isAdmin ? (
+          <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+            admin — unlimited
+          </span>
+        ) : subscription.plan === "premium" && (
           <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
             {subscription.customAnalysesUsedThisMonth}/3 used this month
           </span>
