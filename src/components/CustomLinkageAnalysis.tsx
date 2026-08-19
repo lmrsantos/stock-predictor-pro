@@ -107,7 +107,6 @@ export function CustomLinkageAnalysis() {
             value={leader}
             onChange={(e) => setLeader(e.target.value)}
             className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm font-mono input-focus"
-            disabled={gate.locked}
           >
             <option value="" disabled>Choose leader…</option>
             <optgroup label="Macro">
@@ -124,7 +123,6 @@ export function CustomLinkageAnalysis() {
             value={follower}
             onChange={(e) => setFollower(e.target.value)}
             className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm font-mono input-focus"
-            disabled={gate.locked}
           >
             <option value="" disabled>Choose follower…</option>
             {SECTOR_NAMES.map((s) => <option key={s} value={s}>{s}</option>)}
