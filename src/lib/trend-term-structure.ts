@@ -303,13 +303,53 @@ const STATE_COPY: Record<TrendState, { label: string; description: string }> = {
 };
 
 
+// ─── Curvature calibration ───────────────────────────────────────────────────
+// A raw drift gap threshold of 1.5 bp/day was far too loose: on real daily data
+// the 1m-vs-1y drift gap is routinely 20-70 annualized points of pure noise, so
+// nearly every name came out "accelerating". Two corrections:
+//   1. Acceleration must be MONOTONE — each shorter window steeper than the one
+//      above it (1y -> 3m -> 1m), by a real step each time. One steep 1m window
+//      on its own is noise, not acceleration.
+//   2. Deceleration means the short window has lost most of the long window's
+//      drift, not merely a little of it.
+
+/** Annualized drift (%) inside which a horizon counts as flat, not directional. */
+export const FLAT_ANN_PCT = 10;
+/** Minimum annualized-point step between consecutive horizons to count. */
+const MIN_STEP_ANN = 8;
+/** Minimum total 1y -> 1m annualized-point gap for curvature to count. */
+const MIN_TOTAL_GAP_ANN = 25;
+/** Short drift must fall below this fraction of long drift to be decelerating. */
+const DECEL_RATIO = 0.5;
+
+function curvatureFlags(
+  dL: number,
+  dM: number,
+  dS: number,
+  dir: number,
+): { accelerating: boolean; decelerating: boolean } {
+  if (!dir) return { accelerating: false, decelerating: false };
+  // Rotate into the trend's own direction: larger = steeper in that direction.
+  const l = dir * dL;
+  const m = dir * dM;
+  const s = dir * dS;
+
+  const accelerating =
+    m - l >= MIN_STEP_ANN && s - m >= MIN_STEP_ANN && s - l >= MIN_TOTAL_GAP_ANN;
+
+  const decelerating =
+    l > 0 && s < DECEL_RATIO * l && l - s >= MIN_TOTAL_GAP_ANN;
+
+  return { accelerating, decelerating: decelerating && !accelerating };
+}
+
 /**
  * Shape of the term structure, given a direction per horizon.
  *
- * Ported from the reference simulator: the branch order is long-window first,
- * then whether the shorter windows agree, then curvature. The only change is
- * that the direction inputs are supplied by the caller, so the same tree can be
- * run twice — once on significant directions, once on raw drift signs.
+ * Branch order is long-window first, then whether the shorter windows agree,
+ * then curvature. When the long window is flat but both shorter windows agree,
+ * the agreement itself is the trend — a stock flat over a year and down over
+ * both the quarter and the month is a downtrend, not "a recent decline".
  */
 function shapeOf(
   L: number,
@@ -342,8 +382,19 @@ function shapeOf(
     return 'downtrend_no_longer_measurable';
   }
 
-  // No long-run direction, but something shorter points somewhere. This is NOT
-  // a pullback or a recovery — there is no longer trend to read it against.
+  // Long window flat. If both shorter windows agree, that IS the trend.
+  if (M < 0 && S < 0) {
+    if (accelerating) return 'accelerating_down';
+    if (decelerating) return 'decelerating_down';
+    return 'steady_down';
+  }
+  if (M > 0 && S > 0) {
+    if (accelerating) return 'accelerating_up';
+    if (decelerating) return 'decelerating_up';
+    return 'steady_up';
+  }
+  // Only one shorter window points anywhere, or they contradict each other.
+  if (M !== 0 && S !== 0) return 'flat_range'; // opposite signs, no direction
   if (S < 0 || M < 0) return 'short_term_decline_only';
   if (S > 0 || M > 0) return 'short_term_advance_only';
   return 'no_trend';
@@ -351,20 +402,14 @@ function shapeOf(
 
 function classify(
   fits: Record<Horizon, HorizonFit | null>,
-  curvature: number,
-  curvatureT: number,
 ): { state: TrendState; evidence: 'significant' | 'provisional' | 'none' } {
   const long = fits['1y'] ?? fits['6m'];
   const mid = fits['3m'];
   const short = fits['1m'];
 
-  // Acceleration means the recent drift is steeper in the trend's own
-  // direction. Either the formal test on the difference clears |t| >= 2, or the
-  // raw gap is economically large (>= 1.5 bp/day, the simulator's threshold).
-  const curvSignificant =
-    Math.abs(curvatureT) >= T_SIGNIFICANT || Math.abs(curvature) >= 0.015;
-  const steeperUp = curvSignificant && curvature > 0; // short drift above long
-  const steeperDown = curvSignificant && curvature < 0;
+  const aL = long?.driftAnnualizedPct ?? 0;
+  const aM = mid?.driftAnnualizedPct ?? 0;
+  const aS = short?.driftAnnualizedPct ?? 0;
 
   const sigCount = HORIZON_ORDER.filter(h => fits[h]?.significant).length;
 
@@ -372,42 +417,31 @@ function classify(
     const L = long?.direction ?? 0;
     const M = mid?.direction ?? 0;
     const S = short?.direction ?? 0;
-    const state = shapeOf(
-      L,
-      M,
-      S,
-      L > 0 ? steeperUp : steeperDown,
-      L > 0 ? steeperDown : steeperUp,
-    );
-    return { state, evidence: 'significant' };
+    const dir = L !== 0 ? L : M !== 0 ? M : S;
+    const { accelerating, decelerating } = curvatureFlags(aL, aM, aS, dir);
+    return { state: shapeOf(L, M, S, accelerating, decelerating), evidence: 'significant' };
   }
 
   // ── Descriptive fallback ────────────────────────────────────────────────────
-  // Nothing clears the significance bar. Rather than saying only "direction
-  // unknown", read the SIGN of realized drift in each window. This is a
-  // description of what already happened, flagged as provisional so it is never
-  // mistaken for a validated trend.
-  const sign = (f: HorizonFit | null): number =>
-    !f || !Number.isFinite(f.meanLogReturn) || f.meanLogReturn === 0
-      ? 0
-      : f.meanLogReturn > 0
-        ? 1
-        : -1;
+  // Nothing clears the significance bar. Read the SIGN of realized drift in each
+  // window, with a dead zone so a fraction of a percent a year is not called a
+  // direction. Flagged provisional so it is never mistaken for a validated trend.
+  const sign = (a: number): number =>
+    !Number.isFinite(a) || Math.abs(a) < FLAT_ANN_PCT ? 0 : a > 0 ? 1 : -1;
 
-  const dL = sign(long);
-  const dM = sign(mid);
-  const dS = sign(short);
+  const dL = sign(aL);
+  const dM = sign(aM);
+  const dS = sign(aS);
   if (dL === 0 && dM === 0 && dS === 0) return { state: 'no_trend', evidence: 'none' };
 
-  const state = shapeOf(
-    dL,
-    dM,
-    dS,
-    dL > 0 ? steeperUp : steeperDown,
-    dL > 0 ? steeperDown : steeperUp,
-  );
-  return { state, evidence: 'provisional' };
+  const dir = dL !== 0 ? dL : dM !== 0 ? dM : dS;
+  const { accelerating, decelerating } = curvatureFlags(aL, aM, aS, dir);
+  return {
+    state: shapeOf(dL, dM, dS, accelerating, decelerating),
+    evidence: 'provisional',
+  };
 }
+
 
 
 // ─── Main entry point ────────────────────────────────────────────────────────
