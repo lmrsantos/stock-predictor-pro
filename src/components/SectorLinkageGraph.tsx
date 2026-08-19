@@ -645,6 +645,11 @@ export default function SectorLinkageGraph({
             <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
             <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
             <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+            <div className="mt-1 max-w-[22rem] leading-snug">
+              The full map holds thousands of directed pairs, so only a readable slice is
+              drawn. Tap any node to focus its own lead-lag network, or switch Focus back to
+              "Strongest links overall".
+            </div>
             {unlinkedSectors.length > 0 && (
               <div className="mt-1 max-w-[22rem] text-[10px] leading-snug">
                 Not shown (no tested linkage): {unlinkedSectors.join(", ")}. Use the sector
@@ -715,9 +720,9 @@ export default function SectorLinkageGraph({
       <div className="w-80 overflow-y-auto rounded-lg border bg-card p-4">
         {!selected && (
           <p className="text-sm text-muted-foreground">
-            Tap a sector to see which events move it. Tap an edge to see the
-            lead-lag detail. Arrows point from leader to follower — the sector
-            at the arrow's tail tends to move first.
+            Tap a sector to focus its lead-lag network and see which events move it.
+            Tap an edge for the lead-lag detail. Arrows point from leader to follower —
+            the sector at the arrow's tail tends to move first.
           </p>
         )}
 
