@@ -215,6 +215,8 @@ export default function SectorLinkageGraph({
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [mode, setMode] = useState<ViewMode>(initialMode);
+  const [focus, setFocus] = useState<string>("top");
+  const [topN, setTopN] = useState<number>(30);
   const [expandedSectors, setExpandedSectors] = useState<Set<SectorName>>(new Set());
   const [detail, setDetail] = useState<{ symbol: string; sector?: SectorName } | null>(null);
   const [selected, setSelected] = useState<
@@ -228,6 +230,32 @@ export default function SectorLinkageGraph({
     () => (validatedOnly ? results.filter((r) => r.validated) : results),
     [results, validatedOnly],
   );
+
+  // The full map is a hairball (thousands of directed pairs). The graph only
+  // ever draws a readable slice: either the strongest N links overall, or the
+  // ego-network of one focused sector / macro driver.
+  const graphLinks = useMemo(() => {
+    const byStrength = [...links].sort((a, b) => b.rSquaredDelta - a.rSquaredDelta);
+    if (focus === "top") return byStrength.slice(0, topN);
+    return byStrength
+      .filter((l) => String(l.leader) === focus || String(l.follower) === focus)
+      .slice(0, 24);
+  }, [links, focus, topN]);
+
+  const focusOptions = useMemo(() => {
+    const sectors = new Set<string>();
+    const macros = new Set<string>();
+    for (const l of links) {
+      sectors.add(String(l.follower));
+      if (MACRO_NODES.includes(l.leader)) macros.add(String(l.leader));
+      else sectors.add(String(l.leader));
+    }
+    return {
+      sectors: Array.from(sectors).sort(),
+      macros: Array.from(macros).sort(),
+    };
+  }, [links]);
+
 
   const membership = useMemo(
     () => Object.keys(sectorMembership ?? {}).length > 0
@@ -246,16 +274,16 @@ export default function SectorLinkageGraph({
     return Array.from(sectors);
   }, [links, membership]);
 
-  // Sectors that actually appear in at least one linkage — the graph only draws
-  // these, so unlinked sectors don't float around as orphan nodes.
+  // Sectors drawn in the graph — only those present in the visible slice.
   const connectedSectors = useMemo(() => {
     const sectors = new Set<SectorName>();
-    for (const l of links) {
+    for (const l of graphLinks) {
       sectors.add(l.follower);
       if (!MACRO_NODES.includes(l.leader)) sectors.add(l.leader as SectorName);
     }
     return Array.from(sectors);
-  }, [links]);
+  }, [graphLinks]);
+
 
   const unlinkedSectors = useMemo(
     () => sectorsInPlay.filter((s) => !connectedSectors.includes(s)),
@@ -298,21 +326,22 @@ export default function SectorLinkageGraph({
           id: `sec:${s}`,
           label: s,
           sector: s,
+          focusKey: s,
           kind: "sector",
         },
       });
     }
     const macroUsed = new Set(
-      links.map((l) => l.leader).filter((l) => MACRO_NODES.includes(l)),
+      graphLinks.map((l) => l.leader).filter((l) => MACRO_NODES.includes(l)),
     );
     for (const mname of macroUsed) {
       elements.push({
-        data: { id: `macro:${mname}`, label: MACRO_LABELS[mname] ?? mname, kind: "macro" },
+        data: { id: `macro:${mname}`, label: MACRO_LABELS[mname] ?? mname, focusKey: mname, kind: "macro" },
       });
     }
 
     // --- Edges (always sector-to-sector; containers carry them in ticker view) ---
-    links.forEach((l, i) => {
+    graphLinks.forEach((l, i) => {
       const sourceId = MACRO_NODES.includes(l.leader)
         ? `macro:${l.leader}`
         : `sec:${l.leader}`;
@@ -329,6 +358,7 @@ export default function SectorLinkageGraph({
         },
       });
     });
+
 
     const cy = cytoscape({
       container: containerRef.current,
@@ -448,20 +478,31 @@ export default function SectorLinkageGraph({
           },
         },
       ],
-      layout: {
-        name: "fcose",
-        quality: "proof",
-        randomize: true,
-        animate: false,
-        fit: true,
-        padding: 50,
-        nodeSeparation: 140,
-        idealEdgeLength: 190,
-        nodeRepulsion: 9000,
-        gravity: 0.35,
-        gravityRangeCompound: 1.2,
-        numIter: 3000,
-      } as any,
+      layout: (focus === "top"
+        ? {
+            name: "fcose",
+            quality: "proof",
+            randomize: true,
+            animate: false,
+            fit: true,
+            padding: 60,
+            nodeSeparation: 220,
+            idealEdgeLength: 300,
+            nodeRepulsion: 45000,
+            gravity: 0.15,
+            numIter: 3000,
+          }
+        : {
+            name: "concentric",
+            animate: false,
+            fit: true,
+            padding: 60,
+            minNodeSpacing: 70,
+            avoidOverlap: true,
+            concentric: (n: cytoscape.NodeSingular) =>
+              n.data("focusKey") === focus ? 10 : 1,
+            levelWidth: () => 1,
+          }) as any,
       wheelSensitivity: 0.2,
       minZoom: 0.15,
       maxZoom: 2.5,
@@ -477,6 +518,11 @@ export default function SectorLinkageGraph({
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
       const sector = e.target.data("sector") as SectorName;
       setSelected({ kind: "sector", sector });
+      setFocus(String(sector));
+    });
+    cy.on("tap", "node[kind='macro']", (e: EventObject) => {
+      const id = String(e.target.id()).replace(/^macro:/, "");
+      setFocus(id);
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
       const tkr = e.target.data("label") as string;
@@ -485,7 +531,7 @@ export default function SectorLinkageGraph({
       setDetail({ symbol: tkr, sector: sec });
     });
     cy.on("tap", "edge", (e: EventObject) => {
-      const link = links[e.target.data("linkIndex") as number];
+      const link = graphLinks[e.target.data("linkIndex") as number];
       if (link) setSelected({ kind: "edge", link });
     });
     cy.on("tap", (e: EventObject) => {
@@ -494,7 +540,8 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, membership, connectedSectors]);
+  }, [graphLinks, focus, mode, membership, connectedSectors]);
+
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
@@ -536,6 +583,50 @@ export default function SectorLinkageGraph({
             By ticker
           </button>
         </div>
+        {mode === "sector" && (
+          <div className="absolute right-3 top-3 z-10 flex flex-wrap items-center justify-end gap-2 rounded-md border bg-background/95 p-2 text-xs">
+            <label className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Focus</span>
+              <select
+                value={focus}
+                onChange={(e) => setFocus(e.target.value)}
+                className="max-w-[13rem] rounded border bg-card px-2 py-1 text-xs"
+              >
+                <option value="top">Strongest links overall</option>
+                {focusOptions.macros.length > 0 && (
+                  <optgroup label="Macro drivers">
+                    {focusOptions.macros.map((m) => (
+                      <option key={m} value={m}>{(MACRO_LABELS[m] ?? m).replace("\n", " ")}</option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Sectors">
+                  {focusOptions.sectors.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            {focus === "top" && (
+              <label className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Show top</span>
+                <select
+                  value={topN}
+                  onChange={(e) => setTopN(Number(e.target.value))}
+                  className="rounded border bg-card px-2 py-1 text-xs"
+                >
+                  {[15, 30, 50, 80].map((n) => (
+                    <option key={n} value={n}>{n} links</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <span className="text-muted-foreground">
+              {graphLinks.length} of {links.length} drawn
+            </span>
+          </div>
+        )}
+
         {mode === "ticker" && (
           <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/95 px-3 py-2 text-xs text-muted-foreground">
             <div className="font-medium text-foreground mb-1">Ticker view legend</div>
@@ -554,6 +645,11 @@ export default function SectorLinkageGraph({
             <div><span className="mr-1 inline-block h-0.5 w-4 bg-[hsl(0_65%_52%)] align-middle" /> leads inversely</div>
             <div><span className="mr-1 inline-block w-4 border-t border-dashed border-foreground align-middle" /> sign flips by regime</div>
             <div className="mt-0.5">Edge label = lead time (trading days). Width = strength.</div>
+            <div className="mt-1 max-w-[22rem] leading-snug">
+              The full map holds thousands of directed pairs, so only a readable slice is
+              drawn. Tap any node to focus its own lead-lag network, or switch Focus back to
+              "Strongest links overall".
+            </div>
             {unlinkedSectors.length > 0 && (
               <div className="mt-1 max-w-[22rem] text-[10px] leading-snug">
                 Not shown (no tested linkage): {unlinkedSectors.join(", ")}. Use the sector
@@ -624,9 +720,9 @@ export default function SectorLinkageGraph({
       <div className="w-80 overflow-y-auto rounded-lg border bg-card p-4">
         {!selected && (
           <p className="text-sm text-muted-foreground">
-            Tap a sector to see which events move it. Tap an edge to see the
-            lead-lag detail. Arrows point from leader to follower — the sector
-            at the arrow's tail tends to move first.
+            Tap a sector to focus its lead-lag network and see which events move it.
+            Tap an edge for the lead-lag detail. Arrows point from leader to follower —
+            the sector at the arrow's tail tends to move first.
           </p>
         )}
 
