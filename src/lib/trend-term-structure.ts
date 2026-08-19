@@ -321,6 +321,12 @@ const MIN_STEP_ANN = 8;
 const MIN_TOTAL_GAP_ANN = 25;
 /** Short drift must fall below this fraction of long drift to be decelerating. */
 const DECEL_RATIO = 0.5;
+/**
+ * The long window only outranks the shorter ones while its drift is at least
+ * this fraction of the strongest recent drift. Below it, the recent windows are
+ * the trend and the long window is stale history.
+ */
+const DOMINANCE_RATIO = 0.5;
 
 function curvatureFlags(
   dL: number,
