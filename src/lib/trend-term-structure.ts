@@ -467,7 +467,7 @@ function classify(
   const dir = dL !== 0 ? dL : dM !== 0 ? dM : dS;
   const { accelerating, decelerating } = curvatureFlags(aL, aM, aS, dir);
   return {
-    state: shapeOf(dL, dM, dS, accelerating, decelerating),
+    state: shapeOf(dL, dM, dS, accelerating, decelerating, aL, aM, aS),
     evidence: 'provisional',
   };
 }
