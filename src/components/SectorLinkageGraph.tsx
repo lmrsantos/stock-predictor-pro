@@ -583,6 +583,50 @@ export default function SectorLinkageGraph({
             By ticker
           </button>
         </div>
+        {mode === "sector" && (
+          <div className="absolute right-3 top-3 z-10 flex flex-wrap items-center justify-end gap-2 rounded-md border bg-background/95 p-2 text-xs">
+            <label className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Focus</span>
+              <select
+                value={focus}
+                onChange={(e) => setFocus(e.target.value)}
+                className="max-w-[13rem] rounded border bg-card px-2 py-1 text-xs"
+              >
+                <option value="top">Strongest links overall</option>
+                {focusOptions.macros.length > 0 && (
+                  <optgroup label="Macro drivers">
+                    {focusOptions.macros.map((m) => (
+                      <option key={m} value={m}>{(MACRO_LABELS[m] ?? m).replace("\n", " ")}</option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Sectors">
+                  {focusOptions.sectors.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            {focus === "top" && (
+              <label className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Show top</span>
+                <select
+                  value={topN}
+                  onChange={(e) => setTopN(Number(e.target.value))}
+                  className="rounded border bg-card px-2 py-1 text-xs"
+                >
+                  {[15, 30, 50, 80].map((n) => (
+                    <option key={n} value={n}>{n} links</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <span className="text-muted-foreground">
+              {graphLinks.length} of {links.length} drawn
+            </span>
+          </div>
+        )}
+
         {mode === "ticker" && (
           <div className="absolute bottom-3 left-3 z-10 rounded-md border bg-background/95 px-3 py-2 text-xs text-muted-foreground">
             <div className="font-medium text-foreground mb-1">Ticker view legend</div>
