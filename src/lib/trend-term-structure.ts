@@ -478,7 +478,7 @@ export function analyzeTrendTermStructure(
       ? (shortFit.meanLogReturn - longFit.meanLogReturn) / seDiff : 0;
   }
 
-  const { state, evidence } = classify(fits, curvature, curvatureT);
+  const { state, evidence } = classify(fits);
   const significantCount = HORIZON_ORDER.filter(h => fits[h]?.significant).length;
 
   // The four windows overlap heavily, so their slopes are strongly correlated.
