@@ -101,7 +101,9 @@ export type TrendState =
   | 'downtrend_no_longer_measurable'
   | 'short_term_decline_only'
   | 'short_term_advance_only'
+  | 'flat_range'
   | 'no_trend';
+
 
 export interface TrendTermStructure {
   fits: Record<Horizon, HorizonFit | null>;
