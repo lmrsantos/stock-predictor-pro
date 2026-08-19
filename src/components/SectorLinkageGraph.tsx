@@ -274,16 +274,16 @@ export default function SectorLinkageGraph({
     return Array.from(sectors);
   }, [links, membership]);
 
-  // Sectors that actually appear in at least one linkage — the graph only draws
-  // these, so unlinked sectors don't float around as orphan nodes.
+  // Sectors drawn in the graph — only those present in the visible slice.
   const connectedSectors = useMemo(() => {
     const sectors = new Set<SectorName>();
-    for (const l of links) {
+    for (const l of graphLinks) {
       sectors.add(l.follower);
       if (!MACRO_NODES.includes(l.leader)) sectors.add(l.leader as SectorName);
     }
     return Array.from(sectors);
-  }, [links]);
+  }, [graphLinks]);
+
 
   const unlinkedSectors = useMemo(
     () => sectorsInPlay.filter((s) => !connectedSectors.includes(s)),
