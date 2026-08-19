@@ -215,6 +215,8 @@ export default function SectorLinkageGraph({
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const [mode, setMode] = useState<ViewMode>(initialMode);
+  const [focus, setFocus] = useState<string>("top");
+  const [topN, setTopN] = useState<number>(30);
   const [expandedSectors, setExpandedSectors] = useState<Set<SectorName>>(new Set());
   const [detail, setDetail] = useState<{ symbol: string; sector?: SectorName } | null>(null);
   const [selected, setSelected] = useState<
@@ -228,6 +230,32 @@ export default function SectorLinkageGraph({
     () => (validatedOnly ? results.filter((r) => r.validated) : results),
     [results, validatedOnly],
   );
+
+  // The full map is a hairball (thousands of directed pairs). The graph only
+  // ever draws a readable slice: either the strongest N links overall, or the
+  // ego-network of one focused sector / macro driver.
+  const graphLinks = useMemo(() => {
+    const byStrength = [...links].sort((a, b) => b.rSquaredDelta - a.rSquaredDelta);
+    if (focus === "top") return byStrength.slice(0, topN);
+    return byStrength
+      .filter((l) => String(l.leader) === focus || String(l.follower) === focus)
+      .slice(0, 24);
+  }, [links, focus, topN]);
+
+  const focusOptions = useMemo(() => {
+    const sectors = new Set<string>();
+    const macros = new Set<string>();
+    for (const l of links) {
+      sectors.add(String(l.follower));
+      if (MACRO_NODES.includes(l.leader)) macros.add(String(l.leader));
+      else sectors.add(String(l.leader));
+    }
+    return {
+      sectors: Array.from(sectors).sort(),
+      macros: Array.from(macros).sort(),
+    };
+  }, [links]);
+
 
   const membership = useMemo(
     () => Object.keys(sectorMembership ?? {}).length > 0
