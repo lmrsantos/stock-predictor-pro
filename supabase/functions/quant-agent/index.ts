@@ -104,6 +104,144 @@ ${lines.join("\n")}
 When discussing catalysts, risks, or what could move ${ticker}, reference these lead-lag relationships where relevant. They come from BH-corrected, split-half validated Granger-style regressions on the platform's sector composites.`;
 }
 
+// ── LIVE RESEARCH TOOLS ────────────────────────────────────────────────────
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36";
+
+/** Yahoo Finance news + symbol resolution. No API key needed. */
+async function yahooSearch(query: string): Promise<string> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&newsCount=8&quotesCount=3`;
+    const r = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!r.ok) return "";
+    const j = await r.json();
+    const news = (j?.news || []).slice(0, 8).map((n: any) => ({
+      title: n.title,
+      publisher: n.publisher,
+      published: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toISOString().slice(0, 16) : null,
+      tickers: n.relatedTickers,
+      link: n.link,
+    }));
+    const quotes = (j?.quotes || []).slice(0, 3).map((q: any) => ({
+      symbol: q.symbol, name: q.longname || q.shortname, sector: q.sector, industry: q.industry,
+    }));
+    if (!news.length && !quotes.length) return "";
+    return JSON.stringify({ source: "Yahoo Finance", matchedSymbols: quotes, headlines: news });
+  } catch (_e) { return ""; }
+}
+
+/** Generic web search fallback via DuckDuckGo HTML endpoint. */
+async function duckSearch(query: string): Promise<string> {
+  try {
+    const r = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: { "User-Agent": UA },
+    });
+    if (!r.ok) return "";
+    const html = await r.text();
+    const strip = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'")
+      .replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+    const results: { title: string; snippet: string }[] = [];
+    const re = /class="result__a"[^>]*>([\s\S]*?)<\/a>[\s\S]*?class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) && results.length < 8) {
+      results.push({ title: strip(m[1]).slice(0, 200), snippet: strip(m[2]).slice(0, 400) });
+    }
+    if (!results.length) return "";
+    return JSON.stringify({ source: "DuckDuckGo web results", results });
+  } catch (_e) { return ""; }
+}
+
+async function webSearchTool(query: string): Promise<string> {
+  const [yf, ddg] = await Promise.all([yahooSearch(query), duckSearch(query)]);
+  const parts = [yf, ddg].filter(Boolean);
+  if (!parts.length) return JSON.stringify({ error: "Web search returned nothing usable for this query." });
+  return parts.join("\n\n");
+}
+
+/** Live daily tape for a symbol, with an explicit single-session gap detector. */
+async function liveQuoteTool(symbol: string): Promise<string> {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym) return JSON.stringify({ error: "No symbol given." });
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=3mo&interval=1d`;
+    const r = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!r.ok) return JSON.stringify({ error: `No data for ${sym} (HTTP ${r.status}).` });
+    const j = await r.json();
+    const res = j?.chart?.result?.[0];
+    if (!res) return JSON.stringify({ error: `No data for ${sym}.` });
+    const meta = res.meta || {};
+    const ts: number[] = res.timestamp || [];
+    const closes: (number | null)[] = res.indicators?.quote?.[0]?.close || [];
+    const rows: { date: string; close: number }[] = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = closes[i];
+      if (c == null) continue;
+      rows.push({ date: new Date(ts[i] * 1000).toISOString().slice(0, 10), close: Number(c.toFixed(2)) });
+    }
+    const last = rows[rows.length - 1];
+    const prev = rows[rows.length - 2];
+    const dayPct = last && prev ? ((last.close - prev.close) / prev.close) * 100 : null;
+
+    // Gap detector: any single session in the window moving > 25%.
+    const gaps: { date: string; pct: number; from: number; to: number }[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const pct = ((rows[i].close - rows[i - 1].close) / rows[i - 1].close) * 100;
+      if (Math.abs(pct) > 25) gaps.push({ date: rows[i].date, pct: Number(pct.toFixed(1)), from: rows[i - 1].close, to: rows[i].close });
+    }
+
+    return JSON.stringify({
+      symbol: sym,
+      name: meta.longName || meta.shortName || sym,
+      currency: meta.currency,
+      lastClose: last?.close ?? null,
+      lastDate: last?.date ?? null,
+      dayChangePct: dayPct != null ? Number(dayPct.toFixed(2)) : null,
+      regularMarketPrice: meta.regularMarketPrice ?? null,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? null,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? null,
+      last20Closes: rows.slice(-20),
+      discontinuities: gaps,
+      gapWarning: gaps.length
+        ? "A single-session move larger than 25% exists in this window. Regression slope, R² and annualized-return statistics are INVALID across this discontinuity — state the gap and withhold trend statistics."
+        : null,
+    });
+  } catch (e) {
+    return JSON.stringify({ error: `Quote lookup failed for ${sym}: ${e instanceof Error ? e.message : "unknown"}` });
+  }
+}
+
+const TOOL_SPECS = [
+  {
+    type: "function",
+    function: {
+      name: "web_search",
+      description: "Search the live web (Yahoo Finance news + general web) for current information: news, events, earnings results, deals, approvals, macro headlines, why a stock moved. Use this whenever the answer depends on anything recent or on a company/symbol not loaded in the terminal context.",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string", description: "Search query, e.g. 'Moderna MRNA stock jump August 2026'" } },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_live_quote",
+      description: "Get the live daily tape for any ticker: last close, day change, 52w range, last 20 closes, and a detector for single-session gaps larger than 25%. Use this before quoting any price, trend, slope or return for a symbol that is not the one loaded in the terminal context.",
+      parameters: {
+        type: "object",
+        properties: { symbol: { type: "string", description: "Ticker symbol, e.g. MRNA, AAPL, ^GSPC" } },
+        required: ["symbol"],
+      },
+    },
+  },
+];
+
+async function runTool(name: string, args: any): Promise<string> {
+  if (name === "web_search") return await webSearchTool(String(args?.query ?? ""));
+  if (name === "get_live_quote") return await liveQuoteTool(String(args?.symbol ?? ""));
+  return JSON.stringify({ error: `Unknown tool ${name}` });
+}
+
 function buildSystemPrompt(ctx: Record<string, any>, linkages: string): string {
   const bt = ctx?.backtestResult;
   const f = ctx?.fundamentals || {};
