@@ -321,6 +321,12 @@ const MIN_STEP_ANN = 8;
 const MIN_TOTAL_GAP_ANN = 25;
 /** Short drift must fall below this fraction of long drift to be decelerating. */
 const DECEL_RATIO = 0.5;
+/**
+ * The long window only outranks the shorter ones while its drift is at least
+ * this fraction of the strongest recent drift. Below it, the recent windows are
+ * the trend and the long window is stale history.
+ */
+const DOMINANCE_RATIO = 0.5;
 
 function curvatureFlags(
   dL: number,
@@ -357,9 +363,25 @@ function shapeOf(
   S: number,
   accelerating: boolean,
   decelerating: boolean,
+  aL: number = 0,
+  aM: number = 0,
+  aS: number = 0,
 ): TrendState {
+  // Dominance check. A barely-positive year does not outrank a heavy decline in
+  // both shorter windows: when the recent drift dwarfs the long window's drift,
+  // the shorter windows ARE the trend, not a break in an uptrend.
+  const recentMag = Math.max(Math.abs(aM), Math.abs(aS));
+  const longDominated = Math.abs(aL) < DOMINANCE_RATIO * recentMag;
+
   if (L > 0) {
-    if (S < 0 && M < 0) return 'breaking_down';
+    if (S < 0 && M < 0) {
+      if (longDominated) {
+        if (accelerating) return 'accelerating_down';
+        if (decelerating) return 'decelerating_down';
+        return 'steady_down';
+      }
+      return 'breaking_down';
+    }
     if (S < 0) return 'pullback_in_uptrend';
     if (M < 0) return 'breaking_down';
     if (S > 0 || M > 0) {
@@ -371,7 +393,14 @@ function shapeOf(
   }
 
   if (L < 0) {
-    if (S > 0 && M > 0) return 'recovering';
+    if (S > 0 && M > 0) {
+      if (longDominated) {
+        if (accelerating) return 'accelerating_up';
+        if (decelerating) return 'decelerating_up';
+        return 'steady_up';
+      }
+      return 'recovering';
+    }
     if (S > 0) return 'rally_in_downtrend';
     if (M > 0) return 'recovering';
     if (S < 0 || M < 0) {
@@ -381,6 +410,7 @@ function shapeOf(
     }
     return 'downtrend_no_longer_measurable';
   }
+
 
   // Long window flat. If both shorter windows agree, that IS the trend.
   if (M < 0 && S < 0) {
@@ -419,7 +449,7 @@ function classify(
     const S = short?.direction ?? 0;
     const dir = L !== 0 ? L : M !== 0 ? M : S;
     const { accelerating, decelerating } = curvatureFlags(aL, aM, aS, dir);
-    return { state: shapeOf(L, M, S, accelerating, decelerating), evidence: 'significant' };
+    return { state: shapeOf(L, M, S, accelerating, decelerating, aL, aM, aS), evidence: 'significant' };
   }
 
   // ── Descriptive fallback ────────────────────────────────────────────────────
@@ -437,7 +467,7 @@ function classify(
   const dir = dL !== 0 ? dL : dM !== 0 ? dM : dS;
   const { accelerating, decelerating } = curvatureFlags(aL, aM, aS, dir);
   return {
-    state: shapeOf(dL, dM, dS, accelerating, decelerating),
+    state: shapeOf(dL, dM, dS, accelerating, decelerating, aL, aM, aS),
     evidence: 'provisional',
   };
 }
