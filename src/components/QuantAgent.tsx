@@ -1,6 +1,6 @@
 // components/QuantAgent.tsx
 // ─────────────────────────────────────────────────────────────────────────────
-// QuantAgent — Claude Managed Agents powered financial analyst
+// QuantAgent — quant analyst chat with live web research (Lovable AI + Yahoo/DDG search tools)
 //
 // Architecture:
 //   1. Init: browser → Supabase edge fn → creates Managed Agent session
@@ -8,10 +8,10 @@
 //      (no Supabase timeout risk — streaming goes browser↔Anthropic directly)
 //
 // Features:
-//   - Claude Managed Agents with web search tool
+//   - Lovable AI Gateway with live web-search + quote tools
 //   - Persistent sessions per user+ticker (2hr cache)
 //   - Real-time streaming responses
-//   - Backtest context + live web search combined
+//   - Backtest context + live web research combined
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -519,8 +519,8 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               <p className="text-xs font-mono font-semibold text-foreground tracking-wide">QuantAgent</p>
               <p className="text-[10px] font-mono text-muted-foreground truncate">
                 {sessionReady
-                  ? `${context.ticker} · Claude Managed Agents · Web Search`
-                  : initializing ? "Initializing Managed Agent session..." : "Starting..."}
+                  ? `${context.ticker} · Live web research`
+                  : initializing ? "Starting analyst session..." : "Starting..."}
               </p>
             </div>
             <div className={`w-2 h-2 rounded-full ${sessionReady ? "bg-emerald-400" : "bg-amber-400"} animate-pulse`} />
@@ -542,7 +542,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
                 </span>
               </>
             )}
-            <span className="ml-auto text-[9px] font-mono text-muted-foreground">🔍 web search</span>
+            <span className="ml-auto text-[9px] font-mono text-muted-foreground">🔍 live research</span>
           </div>
 
           {/* Messages */}
@@ -551,7 +551,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               <div className="flex flex-col items-center justify-center h-full gap-3">
                 <div className="w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
                 <p className="text-[10px] font-mono text-muted-foreground animate-pulse text-center">
-                  Starting Claude Managed Agent session...<br />Web search enabled
+                  Starting analyst session...<br />Live web research enabled
                 </p>
               </div>
             ) : (
@@ -590,7 +590,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               </button>
             </div>
             <p className="text-[9px] font-mono text-muted-foreground text-center mt-1.5">
-              Claude Managed Agents · Web search enabled · Sessions persist 2hrs
+              Live web research · Educational analysis, not financial advice
             </p>
           </div>
         </div>
