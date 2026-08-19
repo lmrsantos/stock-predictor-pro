@@ -477,20 +477,31 @@ export default function SectorLinkageGraph({
           },
         },
       ],
-      layout: {
-        name: "fcose",
-        quality: "proof",
-        randomize: true,
-        animate: false,
-        fit: true,
-        padding: 50,
-        nodeSeparation: 140,
-        idealEdgeLength: 190,
-        nodeRepulsion: 9000,
-        gravity: 0.35,
-        gravityRangeCompound: 1.2,
-        numIter: 3000,
-      } as any,
+      layout: (focus === "top"
+        ? {
+            name: "fcose",
+            quality: "proof",
+            randomize: true,
+            animate: false,
+            fit: true,
+            padding: 60,
+            nodeSeparation: 220,
+            idealEdgeLength: 300,
+            nodeRepulsion: 45000,
+            gravity: 0.15,
+            numIter: 3000,
+          }
+        : {
+            name: "concentric",
+            animate: false,
+            fit: true,
+            padding: 60,
+            minNodeSpacing: 70,
+            avoidOverlap: true,
+            concentric: (n: cytoscape.NodeSingular) =>
+              n.data("label") === focus || n.data("sector") === focus ? 10 : 1,
+            levelWidth: () => 1,
+          }) as any,
       wheelSensitivity: 0.2,
       minZoom: 0.15,
       maxZoom: 2.5,
@@ -506,6 +517,11 @@ export default function SectorLinkageGraph({
     cy.on("tap", "node[kind='sector']", (e: EventObject) => {
       const sector = e.target.data("sector") as SectorName;
       setSelected({ kind: "sector", sector });
+      setFocus(String(sector));
+    });
+    cy.on("tap", "node[kind='macro']", (e: EventObject) => {
+      const id = String(e.target.id()).replace(/^macro:/, "");
+      setFocus(id);
     });
     cy.on("tap", "node[kind='ticker']", (e: EventObject) => {
       const tkr = e.target.data("label") as string;
@@ -514,7 +530,7 @@ export default function SectorLinkageGraph({
       setDetail({ symbol: tkr, sector: sec });
     });
     cy.on("tap", "edge", (e: EventObject) => {
-      const link = links[e.target.data("linkIndex") as number];
+      const link = graphLinks[e.target.data("linkIndex") as number];
       if (link) setSelected({ kind: "edge", link });
     });
     cy.on("tap", (e: EventObject) => {
@@ -523,7 +539,8 @@ export default function SectorLinkageGraph({
 
     cyRef.current = cy;
     return () => { cy.destroy(); cyRef.current = null; };
-  }, [links, mode, membership, connectedSectors]);
+  }, [graphLinks, focus, mode, membership, connectedSectors]);
+
 
   const panelSector =
     selected?.kind === "sector" ? selected.sector
