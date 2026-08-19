@@ -449,7 +449,7 @@ function classify(
     const S = short?.direction ?? 0;
     const dir = L !== 0 ? L : M !== 0 ? M : S;
     const { accelerating, decelerating } = curvatureFlags(aL, aM, aS, dir);
-    return { state: shapeOf(L, M, S, accelerating, decelerating), evidence: 'significant' };
+    return { state: shapeOf(L, M, S, accelerating, decelerating, aL, aM, aS), evidence: 'significant' };
   }
 
   // ── Descriptive fallback ────────────────────────────────────────────────────
