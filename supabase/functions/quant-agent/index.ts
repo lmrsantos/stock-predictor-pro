@@ -209,6 +209,47 @@ async function liveQuoteTool(symbol: string): Promise<string> {
   }
 }
 
+/**
+ * Next scheduled earnings date — reuses the platform's own calendar pipeline
+ * (fetch-financials: FMP confirmed calendar + authenticated Yahoo fallback),
+ * so the agent sees exactly what the earnings banner shows.
+ */
+async function earningsCalendarTool(symbol: string): Promise<string> {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym) return JSON.stringify({ error: "No symbol given." });
+  const base = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_ANON_KEY");
+  try {
+    const r = await fetch(`${base}/functions/v1/fetch-financials`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key ?? "" },
+      body: JSON.stringify({ ticker: sym, calendarOnly: true }),
+    });
+    if (!r.ok) return JSON.stringify({ error: `Earnings calendar lookup failed for ${sym} (HTTP ${r.status}).` });
+    const j = await r.json();
+    const info = j?.companyInfo ?? {};
+    const date: string | null = info.nextEarningsDate ?? null;
+    const daysUntil = date
+      ? Math.round((Date.parse(`${date}T12:00:00Z`) - Date.now()) / 86400000)
+      : null;
+    return JSON.stringify({
+      symbol: sym,
+      today: new Date().toISOString().slice(0, 10),
+      nextEarningsDate: date,
+      nextEarningsTime: info.nextEarningsTime ?? null,
+      confirmed: !!info.nextEarningsConfirmed,
+      daysUntil,
+      source: info.nextEarningsSource ?? null,
+      note: date
+        ? "nextEarningsDate is the authoritative next report date for this symbol. Do NOT contradict it from memory or reason about 'typical' reporting windows."
+        : "The calendar publishes no next date for this symbol — say that plainly instead of guessing.",
+    });
+  } catch (e) {
+    return JSON.stringify({ error: `Earnings calendar lookup failed for ${sym}: ${e instanceof Error ? e.message : "unknown"}` });
+  }
+}
+
+
 const TOOL_SPECS = [
   {
     type: "function",
@@ -234,13 +275,27 @@ const TOOL_SPECS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_earnings_calendar",
+      description: "Authoritative next scheduled earnings date for a ticker: the date, whether it is provider-confirmed or estimated, the session (before/after market), and days until the report. MANDATORY before any statement about when a company reports, whether earnings already happened, or what to expect from an upcoming report.",
+      parameters: {
+        type: "object",
+        properties: { symbol: { type: "string", description: "Ticker symbol, e.g. WMT, AAPL" } },
+        required: ["symbol"],
+      },
+    },
+  },
 ];
 
 async function runTool(name: string, args: any): Promise<string> {
   if (name === "web_search") return await webSearchTool(String(args?.query ?? ""));
   if (name === "get_live_quote") return await liveQuoteTool(String(args?.symbol ?? ""));
+  if (name === "get_earnings_calendar") return await earningsCalendarTool(String(args?.symbol ?? ""));
   return JSON.stringify({ error: `Unknown tool ${name}` });
 }
+
 
 function buildSystemPrompt(ctx: Record<string, any>, linkages: string): string {
   const bt = ctx?.backtestResult;
@@ -281,9 +336,11 @@ WHAT YOU CAN DO:
 LIVE RESEARCH TOOLS (USE THEM — do not guess):
 - \`get_live_quote(symbol)\` — real last close, day change, 52w range, last 20 closes, and a gap detector.
 - \`web_search(query)\` — live Yahoo Finance news headlines plus general web results.
+- \`get_earnings_calendar(symbol)\` — authoritative next earnings date (confirmed vs estimated), days until, consensus EPS/revenue, last 4 reported quarters.
 
 Mandatory rules:
 - If the user asks "what happened with X", about news, a move, an event, earnings, a deal, an approval, or about ANY symbol that is not the ticker in CURRENT CONTEXT — call the tools FIRST and answer only from what they return.
+- EARNINGS: any question about when a company reports, whether earnings already happened, or what to expect from an upcoming report REQUIRES \`get_earnings_calendar(symbol)\` first. Never assert from memory that a report "already occurred" or is "typically released in mid-<month>". The calendar's \`nextEarningsDate\` overrides anything you recall; if the user says "tomorrow" and the calendar agrees, treat the report as upcoming and answer the question they asked. Also run \`web_search\` for the latest preview/expectations headlines. If the calendar has no confirmed date, say the calendar shows none and stop — do not reason about reporting cycles from memory.
 - Never quote a price, day change, slope, R², or annualized return for a symbol you have not verified via \`get_live_quote\` or CURRENT CONTEXT.
 - If \`get_live_quote\` returns \`discontinuities\` (a single session moving more than 25%), that gap is the most important fact: lead with it, and REFUSE to report regression slope, R², or annualized return across it — those statistics are artifacts of the jump, not a trend. Say plainly that the trend statistics are not meaningful and explain what the gap implies instead.
 - If a tool returns nothing usable, say you couldn't verify it and stop — never fill the hole from memory.
