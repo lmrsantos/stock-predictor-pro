@@ -209,52 +209,46 @@ async function liveQuoteTool(symbol: string): Promise<string> {
   }
 }
 
-/** Next scheduled earnings date from Yahoo's calendar (no API key needed). */
+/**
+ * Next scheduled earnings date — reuses the platform's own calendar pipeline
+ * (fetch-financials: FMP confirmed calendar + authenticated Yahoo fallback),
+ * so the agent sees exactly what the earnings banner shows.
+ */
 async function earningsCalendarTool(symbol: string): Promise<string> {
   const sym = String(symbol || "").trim().toUpperCase();
   if (!sym) return JSON.stringify({ error: "No symbol given." });
+  const base = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_ANON_KEY");
   try {
-    const modules = ["calendarEvents", "earningsHistory"].join("%2C");
-    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=${modules}`;
-    const r = await fetch(url, { headers: { "User-Agent": UA } });
+    const r = await fetch(`${base}/functions/v1/fetch-financials`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key ?? "" },
+      body: JSON.stringify({ ticker: sym, calendarOnly: true }),
+    });
     if (!r.ok) return JSON.stringify({ error: `Earnings calendar lookup failed for ${sym} (HTTP ${r.status}).` });
     const j = await r.json();
-    const res = j?.quoteSummary?.result?.[0];
-    if (!res) return JSON.stringify({ error: `No earnings calendar data for ${sym}.` });
-    const ce = res.calendarEvents?.earnings ?? {};
-    const stamps: number[] = (ce.earningsDate ?? [])
-      .map((d: any) => (typeof d === "number" ? d : d?.raw))
-      .filter((n: any) => typeof n === "number");
-    const nowSec = Math.floor(Date.now() / 1000);
-    const upcoming = stamps.filter((s) => s >= nowSec - 86400).sort((a, b) => a - b)[0] ?? null;
-    const iso = (s: number | null) => (s ? new Date(s * 1000).toISOString().slice(0, 10) : null);
-    const past = (res.earningsHistory?.history ?? [])
-      .slice(-4)
-      .map((h: any) => ({
-        quarter: h?.quarter?.fmt ?? null,
-        epsActual: h?.epsActual?.raw ?? null,
-        epsEstimate: h?.epsEstimate?.raw ?? null,
-        surprisePct: h?.surprisePercent?.raw ?? null,
-      }));
+    const info = j?.companyInfo ?? {};
+    const date: string | null = info.nextEarningsDate ?? null;
+    const daysUntil = date
+      ? Math.round((Date.parse(`${date}T12:00:00Z`) - Date.now()) / 86400000)
+      : null;
     return JSON.stringify({
       symbol: sym,
       today: new Date().toISOString().slice(0, 10),
-      nextEarningsDate: iso(upcoming),
-      nextEarningsIsEstimate: ce.isEarningsDateEstimate !== false,
-      daysUntil: upcoming ? Math.round((upcoming * 1000 - Date.now()) / 86400000) : null,
-      allScheduledDates: stamps.sort((a, b) => a - b).map(iso),
-      revenueEstimateAvg: ce.revenueAverage?.raw ?? null,
-      epsEstimateAvg: ce.earningsAverage?.raw ?? null,
-      recentReports: past,
-      source: "Yahoo Finance earnings calendar",
-      note: upcoming
-        ? "Use nextEarningsDate as the authoritative next report date. Do NOT contradict it from memory."
-        : "No upcoming date published — say the calendar has no confirmed next date instead of guessing.",
+      nextEarningsDate: date,
+      nextEarningsTime: info.nextEarningsTime ?? null,
+      confirmed: !!info.nextEarningsConfirmed,
+      daysUntil,
+      source: info.nextEarningsSource ?? null,
+      note: date
+        ? "nextEarningsDate is the authoritative next report date for this symbol. Do NOT contradict it from memory or reason about 'typical' reporting windows."
+        : "The calendar publishes no next date for this symbol — say that plainly instead of guessing.",
     });
   } catch (e) {
     return JSON.stringify({ error: `Earnings calendar lookup failed for ${sym}: ${e instanceof Error ? e.message : "unknown"}` });
   }
 }
+
 
 const TOOL_SPECS = [
   {
