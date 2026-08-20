@@ -127,9 +127,15 @@ function PlanRow({
 export function TradePlanPanel({
   holdings,
   onClose,
+  hidePosition,
+  title = "Trade Plan",
+  subtitle = "Recomputed from live prices",
 }: {
   holdings: { id: string; ticker: string; shares: number; avg_cost: number }[];
   onClose?: () => void;
+  hidePosition?: boolean;
+  title?: string;
+  subtitle?: string;
 }) {
 
   const [risk, setRisk] = useState<RiskTolerance>(
