@@ -209,6 +209,53 @@ async function liveQuoteTool(symbol: string): Promise<string> {
   }
 }
 
+/** Next scheduled earnings date from Yahoo's calendar (no API key needed). */
+async function earningsCalendarTool(symbol: string): Promise<string> {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym) return JSON.stringify({ error: "No symbol given." });
+  try {
+    const modules = ["calendarEvents", "earningsHistory"].join("%2C");
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=${modules}`;
+    const r = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!r.ok) return JSON.stringify({ error: `Earnings calendar lookup failed for ${sym} (HTTP ${r.status}).` });
+    const j = await r.json();
+    const res = j?.quoteSummary?.result?.[0];
+    if (!res) return JSON.stringify({ error: `No earnings calendar data for ${sym}.` });
+    const ce = res.calendarEvents?.earnings ?? {};
+    const stamps: number[] = (ce.earningsDate ?? [])
+      .map((d: any) => (typeof d === "number" ? d : d?.raw))
+      .filter((n: any) => typeof n === "number");
+    const nowSec = Math.floor(Date.now() / 1000);
+    const upcoming = stamps.filter((s) => s >= nowSec - 86400).sort((a, b) => a - b)[0] ?? null;
+    const iso = (s: number | null) => (s ? new Date(s * 1000).toISOString().slice(0, 10) : null);
+    const past = (res.earningsHistory?.history ?? [])
+      .slice(-4)
+      .map((h: any) => ({
+        quarter: h?.quarter?.fmt ?? null,
+        epsActual: h?.epsActual?.raw ?? null,
+        epsEstimate: h?.epsEstimate?.raw ?? null,
+        surprisePct: h?.surprisePercent?.raw ?? null,
+      }));
+    return JSON.stringify({
+      symbol: sym,
+      today: new Date().toISOString().slice(0, 10),
+      nextEarningsDate: iso(upcoming),
+      nextEarningsIsEstimate: ce.isEarningsDateEstimate !== false,
+      daysUntil: upcoming ? Math.round((upcoming * 1000 - Date.now()) / 86400000) : null,
+      allScheduledDates: stamps.sort((a, b) => a - b).map(iso),
+      revenueEstimateAvg: ce.revenueAverage?.raw ?? null,
+      epsEstimateAvg: ce.earningsAverage?.raw ?? null,
+      recentReports: past,
+      source: "Yahoo Finance earnings calendar",
+      note: upcoming
+        ? "Use nextEarningsDate as the authoritative next report date. Do NOT contradict it from memory."
+        : "No upcoming date published — say the calendar has no confirmed next date instead of guessing.",
+    });
+  } catch (e) {
+    return JSON.stringify({ error: `Earnings calendar lookup failed for ${sym}: ${e instanceof Error ? e.message : "unknown"}` });
+  }
+}
+
 const TOOL_SPECS = [
   {
     type: "function",
@@ -234,13 +281,27 @@ const TOOL_SPECS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_earnings_calendar",
+      description: "Authoritative next scheduled earnings date for a ticker, whether it is confirmed or estimated, days until the report, consensus EPS/revenue estimates, and the last 4 reported quarters. MANDATORY before any statement about when a company reports, whether earnings already happened, or what to expect from an upcoming report.",
+      parameters: {
+        type: "object",
+        properties: { symbol: { type: "string", description: "Ticker symbol, e.g. WMT, AAPL" } },
+        required: ["symbol"],
+      },
+    },
+  },
 ];
 
 async function runTool(name: string, args: any): Promise<string> {
   if (name === "web_search") return await webSearchTool(String(args?.query ?? ""));
   if (name === "get_live_quote") return await liveQuoteTool(String(args?.symbol ?? ""));
+  if (name === "get_earnings_calendar") return await earningsCalendarTool(String(args?.symbol ?? ""));
   return JSON.stringify({ error: `Unknown tool ${name}` });
 }
+
 
 function buildSystemPrompt(ctx: Record<string, any>, linkages: string): string {
   const bt = ctx?.backtestResult;
