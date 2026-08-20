@@ -27,12 +27,14 @@ function PlanRow({
   avgCost,
   risk,
   horizon,
+  hidePosition,
 }: {
   ticker: string;
   shares: number;
   avgCost: number;
   risk: RiskTolerance;
   horizon: Horizon;
+  hidePosition?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const { data: stockData, isLoading } = useQuery({
