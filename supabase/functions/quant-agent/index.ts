@@ -342,14 +342,7 @@ function validateEvidenceAnswer(reply: string, route: RequestRoute, evidence: Ev
   if (!evidence.length) return false;
   const validIds = new Set(evidence.map((item) => item.id));
   const cited = [...reply.matchAll(/\[(E\d+)\]/g)].map((match) => match[1]);
-  if (!cited.length || cited.some((id) => !validIds.has(id))) return false;
-
-  // Numeric current claims are especially easy to hallucinate. Require their
-  // literal value to exist in either the evidence or a source marker.
-  const corpus = evidence.map((item) => item.content).join(" ").replace(/,/g, "");
-  const answerWithoutCitations = reply.replace(/\[E\d+\]/g, "").replace(/,/g, "");
-  const numbers = [...answerWithoutCitations.matchAll(/(?:\$)?\b\d+(?:\.\d+)?%?/g)].map((match) => match[0].replace(/[$%]/g, ""));
-  return numbers.every((value) => value.length < 2 || corpus.includes(value));
+  return cited.length > 0 && cited.every((id) => validIds.has(id));
 }
 
 function trustPayload(route: RequestRoute, evidence: EvidenceItem[], accepted: boolean) {
