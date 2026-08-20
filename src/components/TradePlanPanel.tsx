@@ -157,8 +157,8 @@ export function TradePlanPanel({
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-primary" />
-          <h2 className="text-xs font-mono font-bold uppercase tracking-widest">Trade Plan</h2>
-          <span className="text-[10px] text-muted-foreground">Recomputed from live prices</span>
+          <h2 className="text-xs font-mono font-bold uppercase tracking-widest">{title}</h2>
+          <span className="text-[10px] text-muted-foreground">{subtitle}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-border overflow-hidden">
