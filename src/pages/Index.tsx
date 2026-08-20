@@ -676,7 +676,17 @@ const Index = () => {
             )}
 
 
-            <div className="flex justify-start -mt-2 relative z-20">
+            {showTradePlan && (
+              <TradePlanPanel
+                holdings={[{ id: ticker, ticker, shares: 0, avg_cost: 0 }]}
+                hidePosition
+                title={`Trade Plan · ${ticker}`}
+                subtitle="Levels for this symbol, from live prices"
+                onClose={() => setShowTradePlan(false)}
+              />
+            )}
+
+            <div className="flex justify-start gap-2 -mt-2 relative z-20">
               <button
                 onClick={() => setShowTable(!showTable)}
                 title={showTable ? "Hide data table" : "Show data table"}
@@ -688,6 +698,18 @@ const Index = () => {
               >
                 <Table2 className="w-3.5 h-3.5" />
                 {showTable ? "Hide data table" : "Data table"}
+              </button>
+              <button
+                onClick={() => setShowTradePlan(!showTradePlan)}
+                title={showTradePlan ? "Hide trade plan" : "Show trade plan for this symbol"}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono transition-colors ${
+                  showTradePlan
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                <Target className="w-3.5 h-3.5" />
+                {showTradePlan ? "Hide trade plan" : "Trade plan"}
               </button>
             </div>
             {showTable && regression && (
