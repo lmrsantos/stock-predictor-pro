@@ -279,7 +279,7 @@ const TOOL_SPECS = [
     type: "function",
     function: {
       name: "get_earnings_calendar",
-      description: "Authoritative next scheduled earnings date for a ticker, whether it is confirmed or estimated, days until the report, consensus EPS/revenue estimates, and the last 4 reported quarters. MANDATORY before any statement about when a company reports, whether earnings already happened, or what to expect from an upcoming report.",
+      description: "Authoritative next scheduled earnings date for a ticker: the date, whether it is provider-confirmed or estimated, the session (before/after market), and days until the report. MANDATORY before any statement about when a company reports, whether earnings already happened, or what to expect from an upcoming report.",
       parameters: {
         type: "object",
         properties: { symbol: { type: "string", description: "Ticker symbol, e.g. WMT, AAPL" } },
