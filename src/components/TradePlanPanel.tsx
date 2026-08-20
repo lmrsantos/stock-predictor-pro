@@ -218,6 +218,7 @@ export function TradePlanPanel({
                 avgCost={h.avg_cost}
                 risk={risk}
                 horizon={horizon}
+                hidePosition={hidePosition}
               />
             ))}
           </tbody>
