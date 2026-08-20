@@ -4,13 +4,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { chargeAiCredits, refundAiCredits } from "../_shared/ai-credits.ts";
 
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 // Mirror of primary sector membership from src/lib/sector-universes.ts.
 // Only the sectors we actually run linkage tests over.
@@ -249,6 +245,136 @@ async function earningsCalendarTool(symbol: string): Promise<string> {
   }
 }
 
+type EvidenceKind = "earnings" | "quote" | "research" | "platform";
+type TrustStatus = "verified" | "platform" | "unavailable" | "educational";
+
+interface EvidenceItem {
+  id: string;
+  kind: EvidenceKind;
+  source: string;
+  asOf: string;
+  content: string;
+}
+
+interface RequestRoute {
+  needsEvidence: boolean;
+  needsEarnings: boolean;
+  needsQuote: boolean;
+  needsResearch: boolean;
+  platformOnly: boolean;
+  symbol: string;
+}
+
+function cleanSymbol(value: unknown): string {
+  const candidate = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z^][A-Z0-9.^-]{0,11}$/.test(candidate) ? candidate : "";
+}
+
+function classifyRequest(message: string, currentTicker: string, context: Record<string, unknown>): RequestRoute {
+  const text = message.toLowerCase();
+  const explicit = message.match(/(?:\$|\b)([A-Z]{1,5}(?:\.[A-Z])?)\b/g)
+    ?.map((v) => cleanSymbol(v.replace("$", "")))
+    .find((v) => v && !["I", "A", "AI", "PE", "EPS", "CEO", "CPI", "GDP", "ETF", "IPO", "FDA", "FAA", "SEC"].includes(v));
+  const symbol = explicit || cleanSymbol(currentTicker) || cleanSymbol(context?.ticker);
+  const earnings = /\b(earnings?|quarter(?:ly)?|eps|revenue|report(?:s|ing|ed)?|fiscal|guidance)\b/.test(text);
+  const price = /\b(price|quote|trading|trade[ds]?|close[ds]?|open(?:ed)?|up|down|rose|fell|gained|lost|jump(?:ed)?|drop(?:ped)?|rall(?:y|ied)|selloff|52.?week|day change)\b|\d+(?:\.\d+)?%/.test(text);
+  const current = /\b(today|tomorrow|yesterday|now|current(?:ly)?|latest|recent(?:ly)?|this (?:week|month|quarter|year)|upcoming|next|when|news|headline|happened|why|catalyst|approval|deal|rating|expect)\b/.test(text);
+  const platform = /\b(backtest|regression|r²|r2|slope|model|forecast|cycle analysis|linkage|hot stocks|chart|term structure|quantforecast)\b/.test(text);
+  const generalEducation = /^(what (?:is|does)|how (?:do|does|is)|explain|define|teach me)\b/.test(text) && !current && !earnings && !price;
+  const needsEvidence = !generalEducation && (earnings || price || current);
+  return {
+    needsEvidence,
+    needsEarnings: earnings && (current || /\bexpect|when|report|tomorrow|upcoming|next\b/.test(text)),
+    needsQuote: !!symbol && (price || earnings || current),
+    needsResearch: current || earnings || /\b(company|stock|symbol|ticker)\b/.test(text),
+    platformOnly: platform && !needsEvidence,
+    symbol,
+  };
+}
+
+function readableSourceName(content: string, fallback: string): string {
+  if (content.includes('"source":"Yahoo Finance"') || content.includes('"source": "Yahoo Finance"')) return "Yahoo Finance";
+  if (content.includes("DuckDuckGo web results")) return fallback === "Live web research" ? "Yahoo Finance + web results" : fallback;
+  return fallback;
+}
+
+async function gatherEvidence(route: RequestRoute, message: string): Promise<EvidenceItem[]> {
+  const now = new Date().toISOString();
+  const tasks: Promise<{ kind: EvidenceKind; source: string; content: string }>[] = [];
+  if (route.needsEarnings && route.symbol) {
+    tasks.push(earningsCalendarTool(route.symbol).then((content) => ({ kind: "earnings", source: "QuantForecast earnings calendar", content })));
+  }
+  if (route.needsQuote && route.symbol) {
+    tasks.push(liveQuoteTool(route.symbol).then((content) => ({ kind: "quote", source: "Yahoo Finance market data", content })));
+  }
+  if (route.needsResearch) {
+    const query = route.symbol ? `${route.symbol} ${message}` : message;
+    tasks.push(webSearchTool(query).then((content) => ({ kind: "research", source: "Live web research", content })));
+  }
+  const results = await Promise.all(tasks);
+  return results
+    .filter((result) => result.content && !result.content.includes('"error"'))
+    .map((result, index) => ({
+      id: `E${index + 1}`,
+      kind: result.kind,
+      source: readableSourceName(result.content, result.source),
+      asOf: now,
+      content: result.content.slice(0, 12000),
+    }));
+}
+
+function evidencePrompt(route: RequestRoute, evidence: EvidenceItem[]): string {
+  if (!route.needsEvidence) return "";
+  if (!evidence.length) {
+    return "\n\nEVIDENCE GATE: No usable current evidence was retrieved. Do not answer the current factual part from memory. State that it could not be verified and stop.";
+  }
+  const envelope = evidence.map((item) =>
+    `[${item.id}] source=${item.source}; asOf=${item.asOf}; kind=${item.kind}\n${item.content}`
+  ).join("\n\n");
+  return `\n\nEVIDENCE GATE (AUTHORITATIVE):
+Use only this envelope for current facts. Every sentence containing a current date, price, percentage, event, company action, expectation, or market claim must end with the supporting source ID such as [E1]. Every material number you write must appear explicitly in the cited evidence: do not calculate moving averages, returns, targets, support/resistance, ranges, or implied values. Do not convert qualitative evidence into a numerical prediction. If the envelope does not support a claim, withhold it. Never cite an ID that is not present.
+
+${envelope}`;
+}
+
+function validateEvidenceAnswer(reply: string, route: RequestRoute, evidence: EvidenceItem[]): boolean {
+  if (!route.needsEvidence) return true;
+  if (!evidence.length) return false;
+  const validIds = new Set(evidence.map((item) => item.id));
+  const cited = [...reply.matchAll(/\[(E\d+)\]/g)].map((match) => match[1]);
+  if (!cited.length || cited.some((id) => !validIds.has(id))) return false;
+
+  const factualSegments = reply
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .filter((segment) => /\b(today|tomorrow|yesterday|current(?:ly)?|latest|recent|scheduled|report|closed|trading|price|stock|market|earnings|revenue|guidance|target|support|resistance|likely|expect(?:ed)?|will|upside|downside|high|low|range|momentum|trend)\b|[$%]|\d{4}-\d{2}-\d{2}/i.test(segment));
+  if (factualSegments.some((segment) => !/\[E\d+\]/.test(segment))) return false;
+
+  const evidenceNumbers = [...evidence.map((item) => item.content).join(" ").matchAll(/\d+(?:\.\d+)?/g)]
+    .map((match) => Number(match[0]))
+    .filter(Number.isFinite);
+  const replyNumbers = [...reply.replace(/\[E\d+\]/g, "").matchAll(/\d+(?:\.\d+)?/g)]
+    .map((match) => Number(match[0]))
+    // Ignore list ordinals and small prose counts; police market/date values.
+    .filter((value) => Number.isFinite(value) && value > 4);
+  return replyNumbers.every((value) => evidenceNumbers.some((sourceValue) => Math.abs(sourceValue - value) < 0.005));
+}
+
+function trustPayload(route: RequestRoute, evidence: EvidenceItem[], accepted: boolean) {
+  const status: TrustStatus = route.needsEvidence
+    ? (accepted ? "verified" : "unavailable")
+    : (route.platformOnly ? "platform" : "educational");
+  return {
+    status,
+    label: status === "verified" ? "Verified evidence"
+      : status === "platform" ? "Platform data"
+      : status === "unavailable" ? "Evidence unavailable"
+      : "Educational explanation",
+    sources: accepted ? evidence.map((item) => ({ id: item.id, name: item.source, asOf: item.asOf })) : [],
+  };
+}
+
 
 const TOOL_SPECS = [
   {
@@ -446,11 +572,15 @@ serve(async (req) => {
       const charge = await chargeAiCredits(req, "quant_agent", corsHeaders);
       if (!charge.ok) return charge.response;
 
-      const linkCache = await loadLinkages();
+      const route = classifyRequest(message, currentTicker, context || {});
+      const [linkCache, ipoStr, evidence] = await Promise.all([
+        loadLinkages(),
+        loadIpoIntel(),
+        gatherEvidence(route, message),
+      ]);
       const linkageStr = linkageBlock(currentTicker, linkCache);
-      const ipoStr = await loadIpoIntel();
       const messages = [
-        { role: "system", content: buildSystemPrompt(context || {}, linkageStr + ipoStr) },
+        { role: "system", content: buildSystemPrompt(context || {}, linkageStr + ipoStr) + evidencePrompt(route, evidence) },
         ...(Array.isArray(history) ? history.slice(-12).map((m: any) => ({
           role: m.role === "agent" ? "assistant" : "user",
           content: String(m.content || ""),
@@ -458,18 +588,33 @@ serve(async (req) => {
         { role: "user", content: message },
       ];
 
-      const callModel = async (msgs: any[]) => fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: msgs,
-          tools: TOOL_SPECS,
-        }),
-      });
+      const callModel = async (msgs: any[]) => {
+        let response: Response | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (attempt > 0) {
+            const retryAfter = Number(response?.headers.get("Retry-After") ?? 0);
+            const delay = retryAfter > 0 ? retryAfter * 1000 : 750 + Math.floor(Math.random() * 500);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Lovable-API-Key": apiKey,
+              "X-Lovable-AIG-SDK": "fetch",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-3-flash-preview",
+              messages: msgs,
+              // Evidence is gathered deterministically before generation. Tools
+              // remain available only for timeless follow-up detail.
+              tools: route.needsEvidence ? undefined : TOOL_SPECS,
+            }),
+          });
+          if (response.ok || (response.status !== 429 && response.status < 500)) break;
+        }
+        return response;
+      };
 
       const convo: any[] = [...messages];
       let reply = "";
@@ -477,21 +622,20 @@ serve(async (req) => {
 
       for (let round = 0; round < 4; round++) {
         const res = await callModel(convo);
+        if (!res) throw new Error("AI gateway did not return a response");
 
         if (!res.ok) {
           await refundAiCredits(charge.userId, charge.cost, "Refund — quant_agent call failed");
-          if (res.status === 429) {
-            return new Response(JSON.stringify({ response: "I'm getting rate-limited right now — please try again in a moment." }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-          if (res.status === 402 || res.status === 403) {
-            return new Response(JSON.stringify({ response: "AI service is temporarily unavailable. Please try again shortly." }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
-          const t = await res.text();
-          throw new Error(`AI gateway ${res.status}: ${t.slice(0, 300)}`);
+          const raw = await res.text();
+          let gatewayMessage = raw || `AI request failed (${res.status}).`;
+          try {
+            const parsed = JSON.parse(raw);
+            gatewayMessage = parsed?.message || parsed?.error?.message || parsed?.error || gatewayMessage;
+          } catch { /* preserve text response */ }
+          return new Response(JSON.stringify({ error: gatewayMessage, code: `AI_GATEWAY_${res.status}` }), {
+            status: res.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
 
         const data = await res.json();
@@ -514,9 +658,14 @@ serve(async (req) => {
         break;
       }
 
-      if (!reply) reply = "I couldn't verify that from live sources — try rephrasing the question.";
+      if (!reply) reply = "I couldn't verify that from current evidence.";
+      const accepted = validateEvidenceAnswer(reply, route, evidence);
+      if (!accepted && route.needsEvidence) {
+        reply = "I couldn't verify enough current evidence to answer that reliably, so I’m withholding the claim rather than guessing.";
+      }
+      const trust = trustPayload(route, evidence, accepted);
 
-      return new Response(JSON.stringify({ response: reply, researched: usedTools, creditBalance: charge.balance }), {
+      return new Response(JSON.stringify({ response: reply, researched: usedTools || evidence.length > 0, trust, creditBalance: charge.balance }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
 

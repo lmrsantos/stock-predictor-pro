@@ -16,7 +16,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ShieldCheck, ShieldAlert, Database, BookOpen } from "lucide-react";
 
 interface BacktestResult {
   signal: string;
@@ -47,6 +47,11 @@ interface Message {
   thinking?: boolean;
   streaming?: boolean;
   suggestedActions?: QuantAgentAction[];
+  trust?: {
+    status: "verified" | "platform" | "unavailable" | "educational";
+    label: string;
+    sources?: { id: string; name: string; asOf: string }[];
+  };
 }
 
 export type QuantAgentAction =
@@ -219,6 +224,11 @@ function InlineMarkdown({ text }: { text: string }) {
 function MessageBubble({ msg, onRunAction }: { msg: Message; onRunAction?: (a: QuantAgentAction) => void }) {
   const isAgent = msg.role === "agent";
   const [copied, setCopied] = useState(false);
+  const trustIcon = msg.trust?.status === "verified" ? ShieldCheck
+    : msg.trust?.status === "unavailable" ? ShieldAlert
+    : msg.trust?.status === "platform" ? Database
+    : BookOpen;
+  const TrustIcon = trustIcon;
 
   const handleCopy = async () => {
     if (!msg.content) return;
@@ -264,11 +274,24 @@ function MessageBubble({ msg, onRunAction }: { msg: Message; onRunAction?: (a: Q
                   style={{ animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
-            <span className="text-[10px]">Searching web + analyzing...</span>
+            <span className="text-[10px]">Checking evidence...</span>
           </div>
         ) : (
           <>
             <AgentMarkdown content={msg.content} />
+            {msg.trust && (
+              <div className={`mt-2 pt-2 border-t border-border/40 flex items-start gap-1.5 text-[9px] font-mono ${
+                msg.trust.status === "verified" ? "text-emerald-400"
+                  : msg.trust.status === "unavailable" ? "text-amber-400"
+                  : "text-muted-foreground"
+              }`}>
+                <TrustIcon className="w-3 h-3 shrink-0 mt-px" />
+                <span>
+                  {msg.trust.label}
+                  {!!msg.trust.sources?.length && ` · ${msg.trust.sources.map((source) => `${source.id} ${source.name}`).join(" · ")}`}
+                </span>
+              </div>
+            )}
             {!!msg.suggestedActions?.length && onRunAction && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {msg.suggestedActions.map((a, i) => (
@@ -456,6 +479,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
           timestamp: new Date(),
           streaming: false,
           suggestedActions: suggested,
+           trust: data.trust,
         },
       ]);
       if (autoActions.length && onAction) {
@@ -519,7 +543,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               <p className="text-xs font-mono font-semibold text-foreground tracking-wide">QuantAgent</p>
               <p className="text-[10px] font-mono text-muted-foreground truncate">
                 {sessionReady
-                  ? `${context.ticker} · Live web research`
+                  ? `${context.ticker} · Evidence-first analysis`
                   : initializing ? "Starting analyst session..." : "Starting..."}
               </p>
             </div>
@@ -542,7 +566,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
                 </span>
               </>
             )}
-            <span className="ml-auto text-[9px] font-mono text-muted-foreground">🔍 live research</span>
+            <span className="ml-auto text-[9px] font-mono text-muted-foreground">evidence checked</span>
           </div>
 
           {/* Messages */}
@@ -551,7 +575,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               <div className="flex flex-col items-center justify-center h-full gap-3">
                 <div className="w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
                 <p className="text-[10px] font-mono text-muted-foreground animate-pulse text-center">
-                  Starting analyst session...<br />Live web research enabled
+                  Starting analyst session...<br />Evidence checks enabled
                 </p>
               </div>
             ) : (
@@ -590,7 +614,7 @@ export function QuantAgent({ context, onAction }: QuantAgentProps) {
               </button>
             </div>
             <p className="text-[9px] font-mono text-muted-foreground text-center mt-1.5">
-              Live web research · Educational analysis, not financial advice
+              Evidence-first · Educational analysis, not financial advice
             </p>
           </div>
         </div>
