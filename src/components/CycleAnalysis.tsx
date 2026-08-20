@@ -13,9 +13,11 @@ interface CycleAnalysisProps {
 }
 
 export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps) {
+  const [sensitivity, setSensitivity] = useState<0.05 | 0.08 | 0.12>(0.12);
+
   const result: CycleAnalysisResult = useMemo(() => {
-    return analyzeCycles(ticker, prices, dates);
-  }, [ticker, prices, dates]);
+    return analyzeCycles(ticker, prices, dates, sensitivity);
+  }, [ticker, prices, dates, sensitivity]);
 
   const { projection, peaks, troughs, currentPrice } = result;
 
@@ -26,6 +28,16 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
     () => [...peaks, ...troughs].sort((a, b) => a.index - b.index),
     [peaks, troughs],
   );
+
+  // The final pivot is always provisional: the zigzag only confirms a swing
+  // once price reverses by the sensitivity threshold. Until then the last
+  // extreme keeps extending, so it stays whatever type is being tracked.
+  const lastPivot = allPivots[allPivots.length - 1];
+  const confirmMovePct = lastPivot
+    ? ((lastPivot.type === "peak"
+        ? lastPivot.price * (1 - sensitivity) - currentPrice
+        : lastPivot.price * (1 + sensitivity) - currentPrice) / currentPrice) * 100
+    : 0;
 
   const pivots = useMemo(
     () => (span === 0 ? allPivots : allPivots.slice(-span)),
@@ -43,6 +55,7 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   );
 
   const showLabels = pivots.length <= 20;
+
 
 
 
