@@ -110,7 +110,9 @@ function PlanRow({
               <div><span className="text-muted-foreground">Support</span><div>${plan.support.toFixed(2)}</div></div>
               <div><span className="text-muted-foreground">Resistance</span><div>${plan.resistance.toFixed(2)}</div></div>
               <div><span className="text-muted-foreground">30d expected</span><div>${plan.expected30d.toFixed(2)} ({pct(plan.expected30dPct)})</div></div>
-              <div><span className="text-muted-foreground">Unrealized</span><div>{pct(plan.unrealizedPct)}</div></div>
+              {!hidePosition && (
+                <div><span className="text-muted-foreground">Unrealized</span><div>{pct(plan.unrealizedPct)}</div></div>
+              )}
             </div>
             <ul className="space-y-1 text-[11px] text-muted-foreground list-disc pl-4">
               {plan.rationale.map((r, i) => <li key={i}>{r}</li>)}
