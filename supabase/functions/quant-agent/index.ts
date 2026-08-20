@@ -344,6 +344,13 @@ function validateEvidenceAnswer(reply: string, route: RequestRoute, evidence: Ev
   const cited = [...reply.matchAll(/\[(E\d+)\]/g)].map((match) => match[1]);
   if (!cited.length || cited.some((id) => !validIds.has(id))) return false;
 
+  const factualSegments = reply
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0)
+    .filter((segment) => /\b(today|tomorrow|yesterday|current(?:ly)?|latest|recent|scheduled|report|closed|trading|price|stock|market|earnings|revenue|guidance|target|support|resistance|likely|expect(?:ed)?|will|upside|downside|high|low|range|momentum|trend)\b|[$%]|\d{4}-\d{2}-\d{2}/i.test(segment));
+  if (factualSegments.some((segment) => !/\[E\d+\]/.test(segment))) return false;
+
   const evidenceNumbers = [...evidence.map((item) => item.content).join(" ").matchAll(/\d+(?:\.\d+)?/g)]
     .map((match) => Number(match[0]))
     .filter(Number.isFinite);
