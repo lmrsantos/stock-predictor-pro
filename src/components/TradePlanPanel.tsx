@@ -27,12 +27,14 @@ function PlanRow({
   avgCost,
   risk,
   horizon,
+  hidePosition,
 }: {
   ticker: string;
   shares: number;
   avgCost: number;
   risk: RiskTolerance;
   horizon: Horizon;
+  hidePosition?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const { data: stockData, isLoading } = useQuery({
@@ -69,7 +71,9 @@ function PlanRow({
             {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             {plan.ticker}
           </button>
-          <div className="text-[10px] text-muted-foreground">{plan.shares} sh @ ${plan.avgCost.toFixed(2)}</div>
+          {!hidePosition && (
+            <div className="text-[10px] text-muted-foreground">{plan.shares} sh @ ${plan.avgCost.toFixed(2)}</div>
+          )}
         </td>
         <td className="px-4 py-3 text-center">
           <span className={`px-2 py-0.5 rounded border text-[10px] font-mono font-bold uppercase tracking-wider ${ACTION_STYLE[plan.action]}`}>
