@@ -110,7 +110,9 @@ function PlanRow({
               <div><span className="text-muted-foreground">Support</span><div>${plan.support.toFixed(2)}</div></div>
               <div><span className="text-muted-foreground">Resistance</span><div>${plan.resistance.toFixed(2)}</div></div>
               <div><span className="text-muted-foreground">30d expected</span><div>${plan.expected30d.toFixed(2)} ({pct(plan.expected30dPct)})</div></div>
-              <div><span className="text-muted-foreground">Unrealized</span><div>{pct(plan.unrealizedPct)}</div></div>
+              {!hidePosition && (
+                <div><span className="text-muted-foreground">Unrealized</span><div>{pct(plan.unrealizedPct)}</div></div>
+              )}
             </div>
             <ul className="space-y-1 text-[11px] text-muted-foreground list-disc pl-4">
               {plan.rationale.map((r, i) => <li key={i}>{r}</li>)}
@@ -125,9 +127,15 @@ function PlanRow({
 export function TradePlanPanel({
   holdings,
   onClose,
+  hidePosition,
+  title = "Trade Plan",
+  subtitle = "Recomputed from live prices",
 }: {
   holdings: { id: string; ticker: string; shares: number; avg_cost: number }[];
   onClose?: () => void;
+  hidePosition?: boolean;
+  title?: string;
+  subtitle?: string;
 }) {
 
   const [risk, setRisk] = useState<RiskTolerance>(
@@ -149,8 +157,8 @@ export function TradePlanPanel({
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-primary" />
-          <h2 className="text-xs font-mono font-bold uppercase tracking-widest">Trade Plan</h2>
-          <span className="text-[10px] text-muted-foreground">Recomputed from live prices</span>
+          <h2 className="text-xs font-mono font-bold uppercase tracking-widest">{title}</h2>
+          <span className="text-[10px] text-muted-foreground">{subtitle}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-border overflow-hidden">
@@ -210,6 +218,7 @@ export function TradePlanPanel({
                 avgCost={h.avg_cost}
                 risk={risk}
                 horizon={horizon}
+                hidePosition={hidePosition}
               />
             ))}
           </tbody>
