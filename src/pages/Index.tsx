@@ -37,6 +37,7 @@ import { FeatureGate } from "@/components/FeatureGate";
 import { BacktestModal } from "@/components/BacktestModal";
 import { PreInvestmentChecklist } from "@/components/PreInvestmentChecklist";
 import { RegressionStatsBar } from "@/components/RegressionStatsBar";
+import { TradePlanPanel } from "@/components/TradePlanPanel";
 import { backtest, type BacktestResult } from "@/lib/backtest";
 import { analyzeCycles } from "@/lib/cycle-analysis";
 import { slopeToAnnualReturn } from "@/lib/regression";
