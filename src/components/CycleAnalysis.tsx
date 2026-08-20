@@ -86,14 +86,58 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
           Cycle Analysis — Peaks & Troughs
         </p>
-        <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${positionColors[projection.currentPosition]}`}>
-          {positionLabels[projection.currentPosition]}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+            swing size
+          </span>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {([0.05, 0.08, 0.12] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSensitivity(s)}
+                className={`px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider transition-colors ${
+                  sensitivity === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                }`}
+              >
+                {Math.round(s * 100)}%
+              </button>
+            ))}
+          </div>
+          <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${positionColors[projection.currentPosition]}`}>
+            {positionLabels[projection.currentPosition]}
+          </span>
+        </div>
       </div>
+
+      {/* Why the last node is usually a peak */}
+      {lastPivot && (
+        <div className="rounded-lg border border-amber-800/40 bg-amber-950/10 p-2.5 space-y-1">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-amber-500">
+            Last pivot is provisional — {lastPivot.type}
+          </p>
+          <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+            A swing is only confirmed once price reverses by the swing size ({Math.round(sensitivity * 100)}%).
+            Until then the newest extreme keeps extending, so the final node stays whichever side is still
+            being tracked — a {lastPivot.type} while price is holding near its recent{" "}
+            {lastPivot.type === "peak" ? "high" : "low"}.
+          </p>
+          <p className="text-[10px] font-mono text-muted-foreground">
+            To flip it into a {lastPivot.type === "peak" ? "trough" : "peak"}, price needs{" "}
+            <span className={lastPivot.type === "peak" ? "text-red-400" : "text-emerald-400"}>
+              {confirmMovePct > 0 ? "+" : ""}{confirmMovePct.toFixed(1)}%
+            </span>{" "}
+            from ${currentPrice.toFixed(2)} (≈ ${(lastPivot.type === "peak"
+              ? lastPivot.price * (1 - sensitivity)
+              : lastPivot.price * (1 + sensitivity)).toFixed(2)}). Lowering the swing size surfaces smaller,
+            more frequent troughs.
+          </p>
+        </div>
+      )}
+
 
       {/* Key projections */}
       <div className="grid grid-cols-2 gap-2">
