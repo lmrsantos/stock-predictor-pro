@@ -332,7 +332,7 @@ function evidencePrompt(route: RequestRoute, evidence: EvidenceItem[]): string {
     `[${item.id}] source=${item.source}; asOf=${item.asOf}; kind=${item.kind}\n${item.content}`
   ).join("\n\n");
   return `\n\nEVIDENCE GATE (AUTHORITATIVE):
-Use only this envelope for current facts. Every sentence containing a current date, price, percentage, event, company action, expectation, or market claim must end with the supporting source ID such as [E1]. If the envelope does not support a claim, withhold it. Never cite an ID that is not present.
+Use only this envelope for current facts. Every sentence containing a current date, price, percentage, event, company action, expectation, or market claim must end with the supporting source ID such as [E1]. Every material number you write must appear explicitly in the cited evidence: do not calculate moving averages, returns, targets, support/resistance, ranges, or implied values. Do not convert qualitative evidence into a numerical prediction. If the envelope does not support a claim, withhold it. Never cite an ID that is not present.
 
 ${envelope}`;
 }
@@ -342,7 +342,16 @@ function validateEvidenceAnswer(reply: string, route: RequestRoute, evidence: Ev
   if (!evidence.length) return false;
   const validIds = new Set(evidence.map((item) => item.id));
   const cited = [...reply.matchAll(/\[(E\d+)\]/g)].map((match) => match[1]);
-  return cited.length > 0 && cited.every((id) => validIds.has(id));
+  if (!cited.length || cited.some((id) => !validIds.has(id))) return false;
+
+  const evidenceNumbers = [...evidence.map((item) => item.content).join(" ").matchAll(/\d+(?:\.\d+)?/g)]
+    .map((match) => Number(match[0]))
+    .filter(Number.isFinite);
+  const replyNumbers = [...reply.replace(/\[E\d+\]/g, "").matchAll(/\d+(?:\.\d+)?/g)]
+    .map((match) => Number(match[0]))
+    // Ignore list ordinals and small prose counts; police market/date values.
+    .filter((value) => Number.isFinite(value) && value > 4);
+  return replyNumbers.every((value) => evidenceNumbers.some((sourceValue) => Math.abs(sourceValue - value) < 0.005));
 }
 
 function trustPayload(route: RequestRoute, evidence: EvidenceItem[], accepted: boolean) {
