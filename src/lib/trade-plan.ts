@@ -110,40 +110,19 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
 
-  // ── Structure: cycle pivots blended with moving averages ──
-  let cycleSupport = 0;
-  let cycleResistance = 0;
-  let cycleConfidence = 0;
-  try {
-    const cycle = analyzeCycles(
-      input.ticker,
-      closes,
-      clean.map((d) => d.date),
-    );
-    cycleSupport = cycle.projection.nextTrough;
-    cycleResistance = cycle.projection.nextPeak;
-    cycleConfidence = (cycle.projection.troughConfidence + cycle.projection.peakConfidence) / 2;
-  } catch {
-    // structural levels fall back to ATR bands below
-  }
+  // ── Structure: shared single source of truth (src/lib/support-resistance.ts) ──
+  const levels = computeStructuralLevels({
+    ticker: input.ticker,
+    closes,
+    dates: clean.map((d) => d.date),
+    highs: clean.map((d) => d.high),
+    lows: clean.map((d) => d.low),
+  });
 
-  const recent = closes.slice(-60);
-  const recentLow = Math.min(...recent);
-  const recentHigh = Math.max(...recent);
+  const support = levels?.support ?? currentPrice - 2 * atr;
+  const resistance = levels?.resistance ?? currentPrice + 2 * atr;
+  const cycleConfidence = levels?.cycleConfidence ?? 0;
 
-  const supportCandidates = [cycleSupport, sma50, recentLow, currentPrice - 2 * atr].filter(
-    (v) => Number.isFinite(v) && v > 0 && v < currentPrice,
-  );
-  const resistanceCandidates = [cycleResistance, recentHigh, currentPrice + 2 * atr].filter(
-    (v) => Number.isFinite(v) && v > currentPrice,
-  );
-
-  const support = supportCandidates.length
-    ? Math.max(...supportCandidates)
-    : currentPrice - 2 * atr;
-  const resistance = resistanceCandidates.length
-    ? Math.min(...resistanceCandidates)
-    : currentPrice + 2 * atr;
 
   // ── 30d expectation from the calibration ensemble ──
   let expected30d = currentPrice;
