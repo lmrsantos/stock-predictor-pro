@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { computeHoldWindow, describeHoldWindow, type HoldWindowStats } from "@/lib/hold-window";
+import { computeTradePlan } from "@/lib/trade-plan";
+
 
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 import { FeatureGate } from "@/components/FeatureGate";
@@ -584,7 +586,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       "Give-back vs Peak (pp)": s.hold ? Number(s.hold.medianGiveBackPp.toFixed(2)) : "",
       "Hold Sample (windows)": s.hold ? s.hold.sampleSize : "",
       Reason: s.reason,
-    }));
+      };
+    });
+
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = Object.keys(rows[0]).map(k =>
