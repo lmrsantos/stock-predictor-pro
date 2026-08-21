@@ -1,5 +1,7 @@
 import type { StockDataPoint } from "./types";
 import { backtest, type BacktestDataPoint } from "./backtest";
+import { computeStructuralLevels } from "./support-resistance";
+
 import { analyzeCycles } from "./cycle-analysis";
 
 /**
