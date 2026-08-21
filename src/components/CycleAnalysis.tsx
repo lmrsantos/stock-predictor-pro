@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { analyzeCycles, formatCycleReport, type CycleAnalysisResult } from "@/lib/cycle-analysis";
+import { computeStructuralLevels } from "@/lib/support-resistance";
+
 import { TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -18,6 +20,15 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   const result: CycleAnalysisResult = useMemo(() => {
     return analyzeCycles(ticker, prices, dates, sensitivity);
   }, [ticker, prices, dates, sensitivity]);
+
+  // Active support/resistance from the shared engine — same numbers the
+  // Trade Plan panel shows (fixed shared swing size, independent of the
+  // sensitivity selector used for the cycle projections below).
+  const levels = useMemo(
+    () => computeStructuralLevels({ ticker, closes: prices, dates }),
+    [ticker, prices, dates],
+  );
+
 
   const { projection, peaks, troughs, currentPrice } = result;
 
@@ -139,11 +150,40 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
       )}
 
 
-      {/* Key projections */}
+      {/* Active levels — identical numbers to the Trade Plan panel */}
+      {levels && (
+        <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
+          <p className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">
+            Active support / resistance (same engine as Trade Plan)
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[9px] font-mono uppercase tracking-widest text-emerald-600">Support</p>
+              <p className="text-lg font-mono font-bold text-emerald-400">${levels.support.toFixed(2)}</p>
+              <p className="text-[9px] font-mono text-muted-foreground">
+                {((levels.support - currentPrice) / currentPrice * 100).toFixed(1)}% away · {levels.supportSource}
+              </p>
+            </div>
+            <div>
+              <p className="text-[9px] font-mono uppercase tracking-widest text-red-600">Resistance</p>
+              <p className="text-lg font-mono font-bold text-red-400">${levels.resistance.toFixed(2)}</p>
+              <p className="text-[9px] font-mono text-muted-foreground">
+                {((levels.resistance - currentPrice) / currentPrice * 100).toFixed(1)}% away · {levels.resistanceSource}
+              </p>
+            </div>
+          </div>
+          <p className="text-[9px] font-mono text-muted-foreground leading-relaxed">
+            Nearest level price must trade through on each side (swing pivots, 50d MA, 60-bar range, 2×ATR band),
+            computed at the shared {Math.round(0.08 * 100)}% swing size so the Trade Plan and this tab always match.
+          </p>
+        </div>
+      )}
+
+      {/* Cycle extrapolation — a forecast, not a level price is sitting on */}
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/20 p-3 space-y-1">
           <p className="text-[9px] font-mono uppercase tracking-widest text-emerald-600">
-            Next Support
+            Projected next trough
           </p>
           <p className="text-lg font-mono font-bold text-emerald-400">
             ${projection.nextTrough.toFixed(2)}
@@ -160,7 +200,7 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
 
         <div className="rounded-lg border border-red-800/40 bg-red-950/20 p-3 space-y-1">
           <p className="text-[9px] font-mono uppercase tracking-widest text-red-600">
-            Next Resistance
+            Projected next peak
           </p>
           <p className="text-lg font-mono font-bold text-red-400">
             ${projection.nextPeak.toFixed(2)}
@@ -175,6 +215,11 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
           </div>
         </div>
       </div>
+      <p className="text-[9px] font-mono text-muted-foreground -mt-1">
+        These two are where the NEXT cycle low/high would land if the cycle keeps growing at its average rate —
+        a forecast at the {Math.round(sensitivity * 100)}% swing size selected above, not the active levels.
+      </p>
+
 
       {/* Fibonacci levels */}
       {nearbyFibs.length > 0 && (
