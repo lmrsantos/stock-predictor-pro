@@ -19,6 +19,15 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
     return analyzeCycles(ticker, prices, dates, sensitivity);
   }, [ticker, prices, dates, sensitivity]);
 
+  // Active support/resistance from the shared engine — same numbers the
+  // Trade Plan panel shows (fixed shared swing size, independent of the
+  // sensitivity selector used for the cycle projections below).
+  const levels = useMemo(
+    () => computeStructuralLevels({ ticker, closes: prices, dates }),
+    [ticker, prices, dates],
+  );
+
+
   const { projection, peaks, troughs, currentPrice } = result;
 
   const [mode, setMode] = useState<"chart" | "list">("chart");
