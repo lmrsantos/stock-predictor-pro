@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { analyzeCycles, formatCycleReport, type CycleAnalysisResult } from "@/lib/cycle-analysis";
+import { computeStructuralLevels } from "@/lib/support-resistance";
+
 import { TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
