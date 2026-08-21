@@ -23,6 +23,9 @@ import { analyzeCycles } from "./cycle-analysis";
 /** Shared swing size so cycle pivots are identical across every surface. */
 export const SR_SWING_THRESHOLD = 0.08;
 
+/** Canonical structural-level window: approximately one trading year. */
+export const SR_LOOKBACK_BARS = 252;
+
 export interface StructuralLevelsInput {
   ticker: string;
   closes: number[];
@@ -83,11 +86,31 @@ function atr14(closes: number[], highs?: number[], lows?: number[]): number {
 }
 
 export function computeStructuralLevels(input: StructuralLevelsInput): StructuralLevels | null {
-  const closes = input.closes.filter((c) => Number.isFinite(c) && c > 0);
+  // Normalize every caller to the same aligned observations and lookback.
+  // This prevents a 1y Trade Plan and 2y Cycle screen from choosing different
+  // zigzag pivots for the same symbol and date.
+  const observations = input.closes
+    .map((close, index) => ({
+      close,
+      date: input.dates[index],
+      high: input.highs?.[index],
+      low: input.lows?.[index],
+    }))
+    .filter((row) => Number.isFinite(row.close) && row.close > 0 && Boolean(row.date))
+    .slice(-SR_LOOKBACK_BARS);
+
+  const closes = observations.map((row) => row.close);
   if (closes.length < 20) return null;
 
+  const dates = observations.map((row) => row.date);
+  const hasCompleteOhlc = observations.every(
+    (row) => Number.isFinite(row.high) && Number.isFinite(row.low),
+  );
+  const highs = hasCompleteOhlc ? observations.map((row) => Number(row.high)) : undefined;
+  const lows = hasCompleteOhlc ? observations.map((row) => Number(row.low)) : undefined;
+
   const currentPrice = closes[closes.length - 1];
-  const atr = atr14(closes, input.highs, input.lows);
+  const atr = atr14(closes, highs, lows);
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
 
@@ -102,7 +125,7 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     const cycle = analyzeCycles(
       input.ticker,
       closes,
-      input.dates.slice(-closes.length),
+      dates,
       input.swingThreshold ?? SR_SWING_THRESHOLD,
     );
     projectedTrough = cycle.projection.nextTrough;

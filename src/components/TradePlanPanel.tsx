@@ -39,7 +39,8 @@ function PlanRow({
   const [open, setOpen] = useState(false);
   const { data: stockData, isLoading } = useQuery({
     queryKey: ["portfolio-db", ticker],
-    queryFn: () => getStockDataFromDB(ticker, "1y"),
+    // Load enough history for the shared engine's canonical 252-session window.
+    queryFn: () => getStockDataFromDB(ticker, "2y"),
     staleTime: 30 * 60 * 1000,
   });
 

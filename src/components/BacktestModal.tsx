@@ -11,6 +11,7 @@ import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { PreInvestmentChecklist } from "@/components/PreInvestmentChecklist";
 import { ClipboardList } from "lucide-react";
+import type { StockDataPoint } from "@/lib/types";
 
 interface StockPoint { date: string; timestamp: number; close: number; }
 
@@ -525,6 +526,7 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
   const [progress, setProgress]     = useState("");
   const [progressPct, setProgressPct] = useState(0);
   const [dataPoints, setDataPoints] = useState<{ date: string; timestamp: number; actual: number }[]>([]);
+  const [stockRows, setStockRows] = useState<StockDataPoint[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataReady, setDataReady]   = useState(false);
   const [activeTab, setActiveTab]   = useState<"forecast" | "calibration" | "regime" | "cycle">("forecast");
@@ -549,10 +551,12 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
           if (!rows1y || rows1y.length < 60) {
             throw new Error(`Only ${rows1y?.length ?? 0} data points. Need at least 60.`);
           }
+          setStockRows(rows1y);
           setDataPoints(rows1y.map((d: StockPoint) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })));
           setDataReady(true);
           return;
         }
+        setStockRows(rows);
         setDataPoints(rows.map((d: StockPoint) => ({ date: d.date, timestamp: d.timestamp, actual: d.close })));
         setDataReady(true);
       } catch (e) {
@@ -804,6 +808,8 @@ export function BacktestModal({ isOpen, onClose, ticker, onResult }: BacktestMod
                       ticker={ticker}
                       prices={dataPoints.map(d => d.actual)}
                       dates={dataPoints.map(d => d.date)}
+                      highs={stockRows.map(d => d.high)}
+                      lows={stockRows.map(d => d.low)}
                     />
                   </FeatureGate>
                 )}

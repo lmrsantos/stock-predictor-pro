@@ -12,9 +12,11 @@ interface CycleAnalysisProps {
   ticker: string;
   prices: number[];
   dates:  string[];
+  highs?: number[];
+  lows?: number[];
 }
 
-export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps) {
+export function CycleAnalysisPanel({ ticker, prices, dates, highs, lows }: CycleAnalysisProps) {
   const [sensitivity, setSensitivity] = useState<0.05 | 0.08 | 0.12>(0.12);
 
   const result: CycleAnalysisResult = useMemo(() => {
@@ -25,8 +27,8 @@ export function CycleAnalysisPanel({ ticker, prices, dates }: CycleAnalysisProps
   // Trade Plan panel shows (fixed shared swing size, independent of the
   // sensitivity selector used for the cycle projections below).
   const levels = useMemo(
-    () => computeStructuralLevels({ ticker, closes: prices, dates }),
-    [ticker, prices, dates],
+    () => computeStructuralLevels({ ticker, closes: prices, dates, highs, lows }),
+    [ticker, prices, dates, highs, lows],
   );
 
 
