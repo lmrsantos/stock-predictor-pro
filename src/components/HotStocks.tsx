@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { readCachedLinkages } from "@/lib/run-linkages";
 import { backtest, type BacktestDataPoint } from "@/lib/backtest";
 import { computeHoldWindow, describeHoldWindow, type HoldWindowStats } from "@/lib/hold-window";
+import { computeTradePlan } from "@/lib/trade-plan";
+
 
 import { SymbolDetailModal } from "@/components/SymbolDetailModal";
 import { FeatureGate } from "@/components/FeatureGate";
@@ -524,11 +526,43 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
 
   const exportToExcel = useCallback(() => {
     if (!visible.length) return;
-    const rows = visible.map((s, i) => ({
+
+    // Entry points replace the old "Signal" column. Levels come from the same
+    // Trade Plan engine used on the terminal (moderate risk, position horizon).
+    const planFor = (symbol: string) => {
+      const raw = seriesRef.current[symbol];
+      if (!raw || raw.closes.length < 40) return null;
+      try {
+        return computeTradePlan({
+          ticker: symbol,
+          shares: 0,
+          avgCost: 0,
+          risk: "moderate",
+          horizon: "position",
+          data: raw.closes.map((close, i) => ({
+            date: raw.dates[i],
+            timestamp: new Date(raw.dates[i]).getTime(),
+            open: close, high: close, low: close, close, volume: 0,
+          })),
+        });
+      } catch { return null; }
+    };
+
+    const rows = visible.map((s, i) => {
+      const plan = planFor(s.symbol);
+      return {
       Rank: i + 1,
       Symbol: s.symbol,
       Sector: s.sector,
-      Signal: s.signal,
+      "Entry Zone ($)": plan ? `${plan.entryLow.toFixed(2)} – ${plan.entryHigh.toFixed(2)}` : "",
+      "Entry Low ($)": plan ? Number(plan.entryLow.toFixed(2)) : "",
+      "Entry High ($)": plan ? Number(plan.entryHigh.toFixed(2)) : "",
+      "Stop ($)": plan ? Number(plan.stop.toFixed(2)) : "",
+      "Target 1 ($)": plan ? Number(plan.target1.toFixed(2)) : "",
+      "Target 2 ($)": plan ? Number(plan.target2.toFixed(2)) : "",
+      "Risk:Reward": plan ? Number(plan.riskReward.toFixed(2)) : "",
+      Action: plan ? plan.action.toUpperCase() : "",
+
       Hot: s.hot ? "YES" : "NO",
       "Price ($)": Number(s.price.toFixed(2)),
       "Forecast (%)": Number(s.forecastPct.toFixed(2)),
@@ -552,7 +586,9 @@ export function HotStocks({ onSelectTicker }: HotStocksProps) {
       "Give-back vs Peak (pp)": s.hold ? Number(s.hold.medianGiveBackPp.toFixed(2)) : "",
       "Hold Sample (windows)": s.hold ? s.hold.sampleSize : "",
       Reason: s.reason,
-    }));
+      };
+    });
+
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws["!cols"] = Object.keys(rows[0]).map(k =>
