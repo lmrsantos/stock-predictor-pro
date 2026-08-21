@@ -214,7 +214,7 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
   const rationale: string[] = [
     `ATR(14) = $${atr.toFixed(2)} (${(atrPct * 100).toFixed(1)}% of price) sets the volatility unit.`,
     `Trend: 20d SMA $${sma20.toFixed(2)} vs 50d SMA $${sma50.toFixed(2)} → ${trend === "up" ? "rising" : trend === "down" ? "falling" : "sideways"}.`,
-    `Structure: support $${support.toFixed(2)}, resistance $${resistance.toFixed(2)} from cycle pivots and the 60-day range.`,
+    `Structure: support $${support.toFixed(2)} (${levels?.supportSource ?? "2×ATR band"}), resistance $${resistance.toFixed(2)} (${levels?.resistanceSource ?? "2×ATR band"}) — nearest level on each side.`,
     `Calibration engine 30d expectation: $${expected30d.toFixed(2)} (${expected30dPct >= 0 ? "+" : ""}${(expected30dPct * 100).toFixed(1)}%), model R² ${calibrationR2.toFixed(2)}.`,
     `Risk/reward to first target: ${riskReward.toFixed(2)}:1 at ${input.risk} sizing, ${input.horizon} horizon.`,
   ];
