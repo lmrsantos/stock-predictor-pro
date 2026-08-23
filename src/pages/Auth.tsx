@@ -18,7 +18,7 @@ const Auth = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const rawNext = searchParams.get("next") ?? "";
+  const rawNext = searchParams.get("next") ?? searchParams.get("redirect") ?? "";
   // Only allow same-origin relative paths.
   const nextPath = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/terminal";
   const postAuthRedirect = window.location.origin + nextPath;
