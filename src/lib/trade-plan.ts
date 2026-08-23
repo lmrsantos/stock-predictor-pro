@@ -148,10 +148,24 @@ export function computeTradePlan(input: TradePlanInput): TradePlan | null {
   const scale = HORIZON_SCALE[input.horizon];
 
   // Entry zone widens with risk appetite and horizon
-  const entryLow = input.risk === "aggressive"
+  const rawEntryLow = input.risk === "aggressive"
     ? currentPrice - mult.stop * atr * 0.5 * scale
     : Math.max(support * (1 - 0.02 * (scale - 1)), currentPrice - mult.stop * atr * 0.6 * scale);
-  const entryHigh = Math.max(entryLow * 1.001, currentPrice - 0.2 * atr * scale);
+  const rawEntryHigh = Math.max(rawEntryLow * 1.001, currentPrice - 0.2 * atr * scale);
+
+  // ── Zone-collapse guard ───────────────────────────────────────────────
+  // When the nearest structural level sits on top of the current bar (e.g. the
+  // last swing low IS today's close), the raw zone degenerates into a sliver
+  // that "matches" the live price and reads as a live entry. Enforce two
+  // minimums, both volatility-scaled so they mean the same thing on a utility
+  // and on a high-beta name:
+  //   1. the top of the zone sits at least 0.25×ATR (and 1%) below price
+  //   2. the zone itself is at least 0.25×ATR wide
+  const minGap = Math.max(0.25 * atr, currentPrice * 0.01);
+  const minWidth = 0.25 * atr;
+  const entryHigh = Math.min(rawEntryHigh, currentPrice - minGap);
+  const entryLow = Math.min(rawEntryLow, entryHigh - minWidth);
+
 
   // Stop: conservative keeps it tight (ATR only), wider profiles sit under support.
   // The structural floor loosens with the horizon so longer holds tolerate more noise.
