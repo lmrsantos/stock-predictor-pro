@@ -22,6 +22,7 @@ import Disclaimer from "./pages/Disclaimer.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import OAuthConsent from "./pages/OAuthConsent.tsx";
 import Methodology from "./pages/Methodology.tsx";
+import ReviewerAccess from "./pages/ReviewerAccess.tsx";
 import { DisclaimerBar } from "@/components/DisclaimerBar";
 import { LinkageAutoRunner } from "@/components/LinkageAutoRunner";
 
@@ -43,6 +44,7 @@ const App = () => (
                 <Route path="/terminal" element={<Index />} />
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reviewer-access" element={<ReviewerAccess />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/sector-backtest" element={<SectorBacktestPage />} />
                 <Route path="/sectors" element={<SectorChartPage />} />
