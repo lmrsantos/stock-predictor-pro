@@ -239,3 +239,18 @@ function num(v: unknown): number | null {
   const n = typeof v === "string" ? Number(v) : (v as number);
   return typeof n === "number" && Number.isFinite(n) ? n : null;
 }
+
+// Stored rows first, live rows on top — one bar per date, oldest to newest.
+function mergeLive(stored: StockDataPoint[], live: StockDataPoint[]): StockDataPoint[] {
+  if (!live.length) return stored;
+  const byDate = new Map<string, StockDataPoint>();
+  for (const row of stored) byDate.set(row.date, row);
+  for (const row of live) {
+    if (!Number.isFinite(row.close) || row.close <= 0) continue;
+    byDate.set(row.date, {
+      ...row,
+      timestamp: row.timestamp ?? new Date(row.date).getTime(),
+    });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
