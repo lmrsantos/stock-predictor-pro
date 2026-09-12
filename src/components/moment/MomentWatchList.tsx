@@ -34,16 +34,13 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
             .order("ticker", { ascending: true })
             .order("date", { ascending: true })
             .range(0, 24999),
-          supabase.from("symbol_metadata").select("ticker, sector").range(0, 999),
+          supabase.from("stock_fundamentals").select("ticker, sector").range(0, 999),
         ]);
 
         if (priceRes.error) throw priceRes.error;
 
         const sectorByTicker = new Map<string, string | null>(
-          (metaRes.data ?? []).map((m: { ticker: string; sector: string | null }) => [
-            m.ticker,
-            m.sector,
-          ]),
+          (metaRes.data ?? []).map((m) => [m.ticker, m.sector]),
         );
 
         const byTicker = new Map<string, number[]>();
