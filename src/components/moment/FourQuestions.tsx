@@ -4,6 +4,42 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { MomentData } from "@/hooks/useMomentSymbol";
+import type { SymbolBaseRates } from "@/lib/base-rate-pipeline";
+
+// Plain-words answer for "Is this a dip or a fall?" — describes whether the
+// matching pattern actually worked in the past, not just what it looks like.
+function dipOrFallAnswer(data: MomentData, baseRates: SymbolBaseRates | null): string {
+  const matches = baseRates?.matches ?? [];
+  if (!matches.length) {
+    return data.setups.length && baseRates === null
+      ? "Checking how this pattern has performed in the past…"
+      : "No pattern we track matches this.";
+  }
+  return matches
+    .map((m) => {
+      const { stats, baselineStats, meetsConservativeCriteria } = m.rate;
+      if (!stats || !baselineStats) {
+        return (
+          `A pattern matches (${m.name}), but there aren't enough past occurrences ` +
+          `to say whether it worked.`
+        );
+      }
+      const hitRate = (stats.hitRate * 100).toFixed(0);
+      const baseline = (baselineStats.hitRate * 100).toFixed(0);
+      if (meetsConservativeCriteria) {
+        return (
+          `When this pattern appeared in similar stocks, prices were higher 20 days later ` +
+          `${hitRate}% of the time — against ${baseline}% normally. ` +
+          `Measured on ${stats.n} occurrences.`
+        );
+      }
+      return (
+        `A pattern matches (${m.name}), but it hasn't done better than normal ` +
+        `historically — ${hitRate}% versus ${baseline}% normally.`
+      );
+    })
+    .join(" ");
+}
 
 const money = (v: number) => `$${v.toFixed(2)}`;
 
