@@ -73,6 +73,12 @@ export function useMomentSymbol(ticker: string | null) {
         const fetched = await fetchAndStoreStockData(ticker, "2y").catch(() => null);
         let rows = await getStockDataFromDB(ticker, "2y");
         if (!rows || rows.length < 60) rows = await getStockDataFromDB(ticker, "5y");
+
+        // The edge function writes its cache in the background, so the stored
+        // rows we just read can lag the live response by a session or more.
+        // Overlay the freshly fetched bars so the newest close always wins.
+        rows = mergeLive(rows ?? [], fetched?.prices ?? []);
+
         if (!rows || rows.length < 60) {
           throw new Error(
             `We only have ${rows?.length ?? 0} days of price history for ${ticker} — too little to check anything honestly.`,
