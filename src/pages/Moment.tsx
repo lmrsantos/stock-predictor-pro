@@ -184,7 +184,7 @@ export default function Moment() {
             )}
 
             <MomentChart data={data} />
-            <FourQuestions data={data} />
+            <FourQuestions data={data} baseRates={baseRates} />
             <ZonesSignal data={data} />
             <FundamentalsCard
               fundamentals={fundamentals}
