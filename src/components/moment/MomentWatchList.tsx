@@ -1,6 +1,7 @@
 // components/moment/MomentWatchList.tsx
-// "Worth a look today" — ranked from the hot-stocks screen. Real numbers only;
-// when the screen comes back short, the list is short.
+// "Worth a look today" — ranked straight from stored daily closes so the first
+// screen paints in under a second. Real numbers only; when the data is thin,
+// the list is short.
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,16 +9,9 @@ import { ChevronRight } from "lucide-react";
 
 interface Row {
   symbol: string;
-  sector: string;
+  sector: string | null;
   dayChangePct: number;
   reason: string;
-}
-
-interface SymbolData {
-  symbol: string;
-  sector: string;
-  series: { date: string; close: number }[];
-  sectorBias: number;
 }
 
 export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => void }) {
@@ -28,29 +22,56 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
     let cancelled = false;
     (async () => {
       try {
-        const { data, error: err } = await supabase.functions.invoke("hot-stocks", {
-          body: { riskProfile: "moderate" },
-        });
-        if (err) throw err;
-        if (data?.error) throw new Error(data.error);
+        const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0];
 
-        const symbolData: SymbolData[] = data?.symbolData ?? [];
-        const scored = symbolData
-          .map((s) => {
-            const closes = s.series.map((p) => p.close).filter((c) => Number.isFinite(c) && c > 0);
-            if (closes.length < 40) return null;
+        const [priceRes, metaRes] = await Promise.all([
+          supabase
+            .from("stock_prices")
+            .select("ticker, date, close")
+            .gte("date", since)
+            .order("ticker", { ascending: true })
+            .order("date", { ascending: true })
+            .range(0, 24999),
+          supabase.from("symbol_metadata").select("ticker, sector").range(0, 999),
+        ]);
+
+        if (priceRes.error) throw priceRes.error;
+
+        const sectorByTicker = new Map<string, string | null>(
+          (metaRes.data ?? []).map((m: { ticker: string; sector: string | null }) => [
+            m.ticker,
+            m.sector,
+          ]),
+        );
+
+        const byTicker = new Map<string, number[]>();
+        for (const r of priceRes.data ?? []) {
+          const close = Number(r.close);
+          if (!Number.isFinite(close) || close <= 0) continue;
+          const list = byTicker.get(r.ticker);
+          if (list) list.push(close);
+          else byTicker.set(r.ticker, [close]);
+        }
+
+        const scored = [...byTicker.entries()]
+          .map(([symbol, closes]) => {
+            if (closes.length < 21) return null;
             const last = closes[closes.length - 1];
             const prev = closes[closes.length - 2];
-            const ret20 = ((last - closes[closes.length - 21]) / closes[closes.length - 21]) * 100;
+            const base = closes[closes.length - 21];
+            const ret20 = ((last - base) / base) * 100;
             const ma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+            const sector = sectorByTicker.get(symbol) ?? null;
             return {
-              symbol: s.symbol,
-              sector: s.sector,
-              dayChangePct: prev > 0 ? ((last - prev) / prev) * 100 : 0,
-              score: ret20 * (s.sectorBias ?? 1),
+              symbol,
+              sector,
+              dayChangePct: ((last - prev) / prev) * 100,
+              score: Math.abs(ret20),
               reason: `${ret20 >= 0 ? "Up" : "Down"} ${Math.abs(ret20).toFixed(1)}% over 20 days, ${
                 last >= ma20 ? "above" : "below"
-              } its 20-day average · ${s.sector}`,
+              } its 20-day average${sector ? ` · ${sector}` : ""}`,
             };
           })
           .filter((r): r is NonNullable<typeof r> => r !== null)
@@ -60,16 +81,24 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
         const picked: Row[] = [];
         for (const r of scored) {
           if (picked.length >= 8) break;
-          if (seenSector.has(r.sector)) continue;
-          seenSector.add(r.sector);
-          picked.push({ symbol: r.symbol, sector: r.sector, dayChangePct: r.dayChangePct, reason: r.reason });
+          const key = r.sector ?? r.symbol;
+          if (seenSector.has(key)) continue;
+          seenSector.add(key);
+          picked.push({
+            symbol: r.symbol,
+            sector: r.sector,
+            dayChangePct: r.dayChangePct,
+            reason: r.reason,
+          });
         }
         if (!cancelled) setRows(picked);
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -77,7 +106,8 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
       <div className="px-3 pt-3">
         <h2 className="text-sm font-semibold text-foreground">Worth a look today</h2>
         <p className="text-[11px] text-muted-foreground">
-          Screened from our tracked universe. Some days this list is short — that's the point.
+          The biggest 20-day moves in our tracked universe, one per sector. Movement is not a reason
+          to act.
         </p>
       </div>
 
@@ -93,13 +123,13 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
 
       {error && (
         <p className="px-3 py-3 text-sm text-muted-foreground">
-          The screen didn't run this time. Search a ticker above instead.
+          This list didn't load. Search a ticker above instead.
         </p>
       )}
 
       {rows && rows.length === 0 && (
         <p className="px-3 py-3 text-sm text-muted-foreground">
-          Nothing cleared the screen today.
+          Not enough recent price history on file to rank anything today.
         </p>
       )}
 
