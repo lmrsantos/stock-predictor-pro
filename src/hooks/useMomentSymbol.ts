@@ -2,12 +2,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // One symbol, one fetch, every engine. Cards read from this and each failure
 // stays local: a fundamentals error must never blank the chart.
+//
+// The price pipeline is the same one the main Quant Forecast chart uses
+// (src/pages/Index.tsx): fetch-stock-data with staleTime 0 → read stock_prices
+// back once that fetch resolved → fall back to the edge response's own prices
+// while the cache write is still landing. Extended-session prints come from
+// fetch-extended-hours, exactly as on the main chart.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { backtest, type ForecastResult, type BacktestDataPoint } from "@/lib/backtest";
-import { fetchAndStoreStockData, getStockDataFromDB } from "@/lib/stock-data";
+import { fetchAndStoreStockData, getStockDataFromDB, SymbolNotFoundError } from "@/lib/stock-data";
 import { computeStructuralLevels, type StructuralLevels } from "@/lib/support-resistance";
 import { analyzeTrendTermStructure, type TrendTermStructure } from "@/lib/trend-term-structure";
 import { computeTradePlan, type TradePlan } from "@/lib/trade-plan";
@@ -24,6 +31,13 @@ export interface MomentFundamentals {
   revenueGrowthYoY: number | null;
   freeCashFlow: number | null;
   sharesChangeYoY: number | null;
+}
+
+export interface MomentExtendedQuote {
+  label: string;
+  price: number;
+  change: number;
+  changePct: number;
 }
 
 export interface MomentData {
@@ -45,10 +59,6 @@ export interface MomentData {
 }
 
 export function useMomentSymbol(ticker: string | null) {
-  const [data, setData] = useState<MomentData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const [fundamentals, setFundamentals] = useState<MomentFundamentals | null>(null);
   const [fundamentalsError, setFundamentalsError] = useState<string | null>(null);
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
@@ -57,81 +67,127 @@ export function useMomentSymbol(ticker: string | null) {
   // only recomputes when prices refresh, so symbol switches are cheap.
   const [baseRates, setBaseRates] = useState<SymbolBaseRates | null>(null);
 
-  useEffect(() => {
-    if (!ticker) {
-      setData(null);
-      setError(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setData(null);
+  // Step 1: Fetch from Yahoo Finance → store in DB (main-chart pipeline).
+  const {
+    data: meta,
+    isLoading: isFetching,
+    error: fetchError,
+  } = useQuery({
+    queryKey: ["fetch-stock", ticker, "2y"],
+    queryFn: () => fetchAndStoreStockData(ticker as string, "2y"),
+    enabled: !!ticker,
+    retry: (count, err) => !(err instanceof SymbolNotFoundError) && count < 1,
+    staleTime: 0, // always fetch fresh data
+  });
 
-    (async () => {
+  // Step 2: Read back from DB, only once the fetch/store completed.
+  const { data: dbStockData, isLoading: isQuerying } = useQuery({
+    queryKey: ["stock-db", ticker, "2y"],
+    queryFn: () => getStockDataFromDB(ticker as string, "2y"),
+    enabled: !!ticker && !!meta,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Step 2b: Extended-session quote. Yahoo's marketState decides whether a
+  // pre-market or after-hours print is the relevant "latest" price.
+  const { data: extended } = useQuery({
+    queryKey: ["extended-hours", ticker],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-extended-hours", {
+        body: { ticker },
+      });
+      if (error) throw error;
+      return data as {
+        regularClose: number | null;
+        marketState: string | null;
+        pre: { price: number; time: number } | null;
+        post: { price: number; time: number } | null;
+      };
+    },
+    enabled: !!ticker,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+    retry: false,
+  });
+
+  const extendedQuote = useMemo<MomentExtendedQuote | null>(() => {
+    const state = (extended?.marketState || "").toUpperCase();
+    if (!state || state === "REGULAR") return null;
+
+    const isPre = state === "PRE" || state === "PREPRE";
+    const print = isPre ? extended?.pre : extended?.post;
+    if (!print?.price) return null;
+
+    const ref = extended?.regularClose;
+    const change = ref ? print.price - ref : 0;
+    const changePct = ref ? change / ref : 0;
+
+    return { label: isPre ? "Pre-market" : "After hours", price: print.price, change, changePct };
+  }, [extended]);
+
+  // DB rows win when present; the edge response's own prices cover the window
+  // before its background cache write lands.
+  const rows: StockDataPoint[] | undefined = dbStockData?.length ? dbStockData : meta?.prices;
+
+  const computed = useMemo<{ data: MomentData | null; error: string | null }>(() => {
+    if (!ticker || !rows?.length) return { data: null, error: null };
+    try {
+      if (rows.length < 60) {
+        return {
+          data: null,
+          error: `We only have ${rows.length} days of price history for ${ticker} — too little to check anything honestly.`,
+        };
+      }
+
+      const points: BacktestDataPoint[] = rows.map((d) => ({
+        date: d.date,
+        timestamp: d.timestamp,
+        actual: d.close,
+      }));
+      const closes = rows.map((d) => d.close);
+      const dates = rows.map((d) => d.date);
+
+      const forecast = backtest(points, 6, 30);
+      const levels = computeStructuralLevels({
+        ticker,
+        closes,
+        dates,
+        highs: rows.map((d) => d.high),
+        lows: rows.map((d) => d.low),
+      });
+      if (!levels) {
+        return { data: null, error: "Not enough clean price history to place support and resistance." };
+      }
+
+      const trend = analyzeTrendTermStructure(closes);
+      const plan = computeTradePlan({
+        ticker,
+        shares: 0,
+        avgCost: closes[closes.length - 1],
+        data: rows,
+        risk: "moderate",
+        horizon: "position",
+      });
+
+      let setups: { name: string; rationale: string }[] = [];
       try {
-        const fetched = await fetchAndStoreStockData(ticker, "2y").catch(() => null);
-        let rows = await getStockDataFromDB(ticker, "2y");
-        if (!rows || rows.length < 60) rows = await getStockDataFromDB(ticker, "5y");
+        setups = detectCurrentSetups(
+          { symbol: ticker, dates, closes, listingYears: null, sector: meta?.fundamentals?.sector ?? "" },
+          { sectorCompositeReturns: null },
+        );
+      } catch {
+        setups = [];
+      }
 
-        // The edge function writes its cache in the background, so the stored
-        // rows we just read can lag the live response by a session or more.
-        // Overlay the freshly fetched bars so the newest close always wins.
-        rows = mergeLive(rows ?? [], fetched?.prices ?? []);
+      const last = closes[closes.length - 1];
+      const prev = closes[closes.length - 2];
+      const yearWindow = closes.slice(-252);
 
-        if (!rows || rows.length < 60) {
-          throw new Error(
-            `We only have ${rows?.length ?? 0} days of price history for ${ticker} — too little to check anything honestly.`,
-          );
-        }
-
-        const points: BacktestDataPoint[] = rows.map((d) => ({
-          date: d.date,
-          timestamp: d.timestamp,
-          actual: d.close,
-        }));
-        const closes = rows.map((d) => d.close);
-        const dates = rows.map((d) => d.date);
-
-        const forecast = backtest(points, 6, 30);
-        const levels = computeStructuralLevels({
+      return {
+        data: {
           ticker,
-          closes,
-          dates,
-          highs: rows.map((d) => d.high),
-          lows: rows.map((d) => d.low),
-        });
-        if (!levels) throw new Error("Not enough clean price history to place support and resistance.");
-
-        const trend = analyzeTrendTermStructure(closes);
-        const plan = computeTradePlan({
-          ticker,
-          shares: 0,
-          avgCost: closes[closes.length - 1],
-          data: rows,
-          risk: "moderate",
-          horizon: "position",
-        });
-
-        let setups: { name: string; rationale: string }[] = [];
-        try {
-          setups = detectCurrentSetups(
-            { symbol: ticker, dates, closes, listingYears: null, sector: fetched?.fundamentals?.sector ?? "" },
-            { sectorCompositeReturns: null },
-          );
-        } catch {
-          setups = [];
-        }
-
-        const last = closes[closes.length - 1];
-        const prev = closes[closes.length - 2];
-        const yearWindow = closes.slice(-252);
-
-        if (cancelled) return;
-        setData({
-          ticker,
-          companyName: fetched?.name ?? null,
-          sector: fetched?.fundamentals?.sector ?? null,
+          companyName: meta?.name ?? null,
+          sector: meta?.fundamentals?.sector ?? null,
           rows,
           points,
           forecast,
@@ -144,18 +200,17 @@ export function useMomentSymbol(ticker: string | null) {
           asOfDate: dates[dates.length - 1],
           week52Low: Math.min(...yearWindow),
           week52High: Math.max(...yearWindow),
-        });
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+        },
+        error: null,
+      };
+    } catch (e) {
+      return { data: null, error: (e as Error).message };
+    }
+  }, [ticker, rows, meta]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [ticker]);
+  const data = computed.data;
+  const loading = !!ticker && (isFetching || (isQuerying && !meta?.prices?.length) || (!data && !computed.error && !fetchError));
+  const error = computed.error ?? (fetchError ? (fetchError as Error).message : null);
 
   // Fundamentals live on their own request so they can fail alone.
   useEffect(() => {
@@ -232,25 +287,19 @@ export function useMomentSymbol(ticker: string | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker, data]);
 
-  return { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates };
+  return {
+    data,
+    loading,
+    error,
+    fundamentals,
+    fundamentalsError,
+    fundamentalsLoading,
+    baseRates,
+    extendedQuote,
+  };
 }
 
 function num(v: unknown): number | null {
   const n = typeof v === "string" ? Number(v) : (v as number);
   return typeof n === "number" && Number.isFinite(n) ? n : null;
-}
-
-// Stored rows first, live rows on top — one bar per date, oldest to newest.
-function mergeLive(stored: StockDataPoint[], live: StockDataPoint[]): StockDataPoint[] {
-  if (!live.length) return stored;
-  const byDate = new Map<string, StockDataPoint>();
-  for (const row of stored) byDate.set(row.date, row);
-  for (const row of live) {
-    if (!Number.isFinite(row.close) || row.close <= 0) continue;
-    byDate.set(row.date, {
-      ...row,
-      timestamp: row.timestamp ?? new Date(row.date).getTime(),
-    });
-  }
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
