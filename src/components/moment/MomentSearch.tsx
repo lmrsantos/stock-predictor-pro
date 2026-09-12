@@ -34,8 +34,10 @@ export function MomentSearch({ onSelect }: { onSelect: (symbol: string) => void 
   }, []);
 
   const pick = (symbol: string) => {
+    if (debounce.current) clearTimeout(debounce.current);
     setValue(symbol);
     setResults([]);
+    setLoading(false);
     onSelect(symbol.toUpperCase());
   };
 
