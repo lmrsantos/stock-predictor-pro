@@ -53,7 +53,13 @@ function typicalDailyMove(closes: number[]): number {
   return moves.reduce((s, v) => s + v, 0) / moves.length;
 }
 
-export function FourQuestions({ data }: { data: MomentData }) {
+export function FourQuestions({
+  data,
+  baseRates = null,
+}: {
+  data: MomentData;
+  baseRates?: SymbolBaseRates | null;
+}) {
   const [open, setOpen] = useState<string | null>(null);
   const closes = data.rows.map((r) => r.close);
   const { week52Low, week52High, currentPrice, levels, trend } = data;
@@ -79,9 +85,7 @@ export function FourQuestions({ data }: { data: MomentData }) {
     },
     {
       q: "Is this a dip or a fall?",
-      a: data.setups.length
-        ? data.setups.map((s) => `${s.name} — ${s.rationale}`).join(" ")
-        : "No pattern we track matches this.",
+      a: dipOrFallAnswer(data, baseRates),
     },
     {
       q: "Is this move unusual?",
