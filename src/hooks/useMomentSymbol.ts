@@ -73,6 +73,12 @@ export function useMomentSymbol(ticker: string | null) {
         const fetched = await fetchAndStoreStockData(ticker, "2y").catch(() => null);
         let rows = await getStockDataFromDB(ticker, "2y");
         if (!rows || rows.length < 60) rows = await getStockDataFromDB(ticker, "5y");
+
+        // The edge function writes its cache in the background, so the stored
+        // rows we just read can lag the live response by a session or more.
+        // Overlay the freshly fetched bars so the newest close always wins.
+        rows = mergeLive(rows ?? [], fetched?.prices ?? []);
+
         if (!rows || rows.length < 60) {
           throw new Error(
             `We only have ${rows?.length ?? 0} days of price history for ${ticker} — too little to check anything honestly.`,
@@ -232,4 +238,19 @@ export function useMomentSymbol(ticker: string | null) {
 function num(v: unknown): number | null {
   const n = typeof v === "string" ? Number(v) : (v as number);
   return typeof n === "number" && Number.isFinite(n) ? n : null;
+}
+
+// Stored rows first, live rows on top — one bar per date, oldest to newest.
+function mergeLive(stored: StockDataPoint[], live: StockDataPoint[]): StockDataPoint[] {
+  if (!live.length) return stored;
+  const byDate = new Map<string, StockDataPoint>();
+  for (const row of stored) byDate.set(row.date, row);
+  for (const row of live) {
+    if (!Number.isFinite(row.close) || row.close <= 0) continue;
+    byDate.set(row.date, {
+      ...row,
+      timestamp: row.timestamp ?? new Date(row.date).getTime(),
+    });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
