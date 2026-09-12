@@ -78,9 +78,9 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
         const picked: Row[] = [];
         for (const r of scored) {
           if (picked.length >= 8) break;
-          const key = r.sector ?? r.symbol;
-          if (seenSector.has(key)) continue;
-          seenSector.add(key);
+          if (!r.sector) continue;
+          if (seenSector.has(r.sector)) continue;
+          seenSector.add(r.sector);
           picked.push({
             symbol: r.symbol,
             sector: r.sector,
