@@ -42,8 +42,10 @@ export default function Moment() {
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
 
-  const { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates } =
-    useMomentSymbol(gated ? null : symbol);
+  const {
+    data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
+    extendedQuote,
+  } = useMomentSymbol(gated ? null : symbol);
 
   useEffect(() => {
     document.title = "Quant Moment — check your read with the math";
