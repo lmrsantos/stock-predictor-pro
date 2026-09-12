@@ -12,6 +12,10 @@ import { computeStructuralLevels, type StructuralLevels } from "@/lib/support-re
 import { analyzeTrendTermStructure, type TrendTermStructure } from "@/lib/trend-term-structure";
 import { computeTradePlan, type TradePlan } from "@/lib/trade-plan";
 import { detectCurrentSetups } from "@/lib/setup-detector";
+import {
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears,
+  type SymbolBaseRates,
+} from "@/lib/base-rate-pipeline";
 import type { StockDataPoint } from "@/lib/types";
 
 export interface MomentFundamentals {
@@ -48,6 +52,10 @@ export function useMomentSymbol(ticker: string | null) {
   const [fundamentals, setFundamentals] = useState<MomentFundamentals | null>(null);
   const [fundamentalsError, setFundamentalsError] = useState<string | null>(null);
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
+
+  // Conditioned pattern evidence — the pipeline is cached for the session and
+  // only recomputes when prices refresh, so symbol switches are cheap.
+  const [baseRates, setBaseRates] = useState<SymbolBaseRates | null>(null);
 
   useEffect(() => {
     if (!ticker) {
