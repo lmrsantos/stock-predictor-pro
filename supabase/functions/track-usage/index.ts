@@ -14,6 +14,8 @@ const LIMITS: Record<string, Record<string, number | null>> = {
   cycle_analysis: { free: 0, pro: null, elite: null },
   quant_agent: { free: 5, pro: 50, elite: 500 },
   portfolio_advisor: { free: 0, pro: null, elite: null },
+  // Quant Moment symbol lookups — free at launch, abuse ceiling only.
+  moment_lookup: { free: 60, pro: 60, elite: 60 },
 };
 
 Deno.serve(async (req) => {

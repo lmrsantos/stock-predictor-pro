@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
 import Landing from "./pages/Landing.tsx";
+import Moment from "./pages/Moment.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import Portfolio from "./pages/Portfolio.tsx";
@@ -42,6 +43,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/terminal" element={<Index />} />
+                <Route path="/moment" element={<Moment />} />
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reviewer-access" element={<ReviewerAccess />} />
