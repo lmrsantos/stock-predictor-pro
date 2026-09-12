@@ -190,7 +190,43 @@ export function useMomentSymbol(ticker: string | null) {
     };
   }, [ticker]);
 
-  return { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading };
+  // Pattern evidence runs on its own effect — it may take a few seconds the
+  // first time while the universe pipeline builds, and must never block or
+  // blank the rest of the screen.
+  useEffect(() => {
+    if (!ticker || !data) {
+      setBaseRates(null);
+      return;
+    }
+    let cancelled = false;
+    setBaseRates(null);
+
+    (async () => {
+      try {
+        const pipeline = await runBaseRatePipeline();
+        const listingYears = await fetchListingYears(ticker);
+        const series = makeSymbolSeries(
+          ticker,
+          data.rows.map((r) => r.date),
+          data.rows.map((r) => r.close),
+          data.sector,
+          null,
+          listingYears,
+        );
+        const resolved = baseRatesForSymbol(pipeline, ticker, series);
+        if (!cancelled) setBaseRates(resolved);
+      } catch {
+        if (!cancelled) setBaseRates(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, data]);
+
+  return { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates };
 }
 
 function num(v: unknown): number | null {
