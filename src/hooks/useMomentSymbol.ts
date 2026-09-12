@@ -12,6 +12,10 @@ import { computeStructuralLevels, type StructuralLevels } from "@/lib/support-re
 import { analyzeTrendTermStructure, type TrendTermStructure } from "@/lib/trend-term-structure";
 import { computeTradePlan, type TradePlan } from "@/lib/trade-plan";
 import { detectCurrentSetups } from "@/lib/setup-detector";
+import {
+  runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears,
+  type SymbolBaseRates,
+} from "@/lib/base-rate-pipeline";
 import type { StockDataPoint } from "@/lib/types";
 
 export interface MomentFundamentals {
@@ -48,6 +52,10 @@ export function useMomentSymbol(ticker: string | null) {
   const [fundamentals, setFundamentals] = useState<MomentFundamentals | null>(null);
   const [fundamentalsError, setFundamentalsError] = useState<string | null>(null);
   const [fundamentalsLoading, setFundamentalsLoading] = useState(false);
+
+  // Conditioned pattern evidence — the pipeline is cached for the session and
+  // only recomputes when prices refresh, so symbol switches are cheap.
+  const [baseRates, setBaseRates] = useState<SymbolBaseRates | null>(null);
 
   useEffect(() => {
     if (!ticker) {
@@ -182,7 +190,43 @@ export function useMomentSymbol(ticker: string | null) {
     };
   }, [ticker]);
 
-  return { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading };
+  // Pattern evidence runs on its own effect — it may take a few seconds the
+  // first time while the universe pipeline builds, and must never block or
+  // blank the rest of the screen.
+  useEffect(() => {
+    if (!ticker || !data) {
+      setBaseRates(null);
+      return;
+    }
+    let cancelled = false;
+    setBaseRates(null);
+
+    (async () => {
+      try {
+        const pipeline = await runBaseRatePipeline();
+        const listingYears = await fetchListingYears(ticker);
+        const series = makeSymbolSeries(
+          ticker,
+          data.rows.map((r) => r.date),
+          data.rows.map((r) => r.close),
+          data.sector,
+          null,
+          listingYears,
+        );
+        const resolved = baseRatesForSymbol(pipeline, ticker, series);
+        if (!cancelled) setBaseRates(resolved);
+      } catch {
+        if (!cancelled) setBaseRates(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, data]);
+
+  return { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates };
 }
 
 function num(v: unknown): number | null {

@@ -42,7 +42,7 @@ export default function Moment() {
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
 
-  const { data, loading, error, fundamentals, fundamentalsLoading, fundamentalsError } =
+  const { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates } =
     useMomentSymbol(gated ? null : symbol);
 
   useEffect(() => {
@@ -184,7 +184,7 @@ export default function Moment() {
             )}
 
             <MomentChart data={data} />
-            <FourQuestions data={data} />
+            <FourQuestions data={data} baseRates={baseRates} />
             <ZonesSignal data={data} />
             <FundamentalsCard
               fundamentals={fundamentals}
