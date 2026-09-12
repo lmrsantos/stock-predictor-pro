@@ -43,6 +43,7 @@ export default function Moment() {
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
 
   const { data, loading, error, fundamentals, fundamentalsLoading, fundamentalsError } =
+  const { data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates } =
     useMomentSymbol(gated ? null : symbol);
 
   useEffect(() => {
