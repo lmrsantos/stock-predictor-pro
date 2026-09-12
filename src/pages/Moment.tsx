@@ -172,6 +172,15 @@ export default function Moment() {
                   )}
                 </div>
               </div>
+              {extendedQuote && (
+                <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                  {extendedQuote.label} ${extendedQuote.price.toFixed(2)}{" "}
+                  <span className={extendedQuote.change >= 0 ? "text-primary" : "text-destructive"}>
+                    {extendedQuote.change >= 0 ? "+" : ""}
+                    {(extendedQuote.changePct * 100).toFixed(2)}%
+                  </span>
+                </p>
+              )}
               <p className="mt-2 text-[11px] text-muted-foreground">
                 {data.sector ? `${data.sector} · ` : ""}as of {data.asOfDate}
               </p>
