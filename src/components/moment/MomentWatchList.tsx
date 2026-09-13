@@ -7,92 +7,107 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight } from "lucide-react";
 
-interface Row {
+export interface WatchListRow {
   symbol: string;
   sector: string | null;
   dayChangePct: number;
   reason: string;
 }
 
+// Module-level cache: the list is the same for every mount in a session, so
+// rendering this component twice must never trigger a second fetch.
+let cache: { rows: WatchListRow[]; error: string | null } | null = null;
+let pending: Promise<{ rows: WatchListRow[]; error: string | null }> | null = null;
+
 export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => void }) {
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<WatchListRow[] | null>(cache?.rows ?? null);
+  const [error, setError] = useState<string | null>(cache?.error ?? null);
 
   useEffect(() => {
+    if (cache) return;
+    if (!pending) {
+      pending = (async () => {
+        try {
+          const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+
+          const [priceRes, metaRes] = await Promise.all([
+            supabase
+              .from("stock_prices")
+              .select("ticker, date, close")
+              .gte("date", since)
+              .order("ticker", { ascending: true })
+              .order("date", { ascending: true })
+              .range(0, 24999),
+            supabase.from("stock_fundamentals").select("ticker, sector").range(0, 999),
+          ]);
+
+          if (priceRes.error) throw priceRes.error;
+
+          const sectorByTicker = new Map<string, string | null>(
+            (metaRes.data ?? []).map((m) => [m.ticker, m.sector]),
+          );
+
+          const byTicker = new Map<string, number[]>();
+          for (const r of priceRes.data ?? []) {
+            const close = Number(r.close);
+            if (!Number.isFinite(close) || close <= 0) continue;
+            const list = byTicker.get(r.ticker);
+            if (list) list.push(close);
+            else byTicker.set(r.ticker, [close]);
+          }
+
+          const scored = [...byTicker.entries()]
+            .map(([symbol, closes]) => {
+              if (closes.length < 21) return null;
+              const last = closes[closes.length - 1];
+              const prev = closes[closes.length - 2];
+              const base = closes[closes.length - 21];
+              const ret20 = ((last - base) / base) * 100;
+              const ma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+              const sector = sectorByTicker.get(symbol) ?? null;
+              return {
+                symbol,
+                sector,
+                dayChangePct: ((last - prev) / prev) * 100,
+                score: Math.abs(ret20),
+                reason: `${ret20 >= 0 ? "Up" : "Down"} ${Math.abs(ret20).toFixed(1)}% over 20 days, ${
+                  last >= ma20 ? "above" : "below"
+                } its 20-day average${sector ? ` · ${sector}` : ""}`,
+              };
+            })
+            .filter((r): r is NonNullable<typeof r> => r !== null)
+            .sort((a, b) => b.score - a.score);
+
+          const seenSector = new Set<string>();
+          const picked: WatchListRow[] = [];
+          for (const r of scored) {
+            if (picked.length >= 8) break;
+            if (!r.sector) continue;
+            if (seenSector.has(r.sector)) continue;
+            seenSector.add(r.sector);
+            picked.push({
+              symbol: r.symbol,
+              sector: r.sector,
+              dayChangePct: r.dayChangePct,
+              reason: r.reason,
+            });
+          }
+          return { rows: picked, error: null as string | null };
+        } catch (e) {
+          return { rows: [] as WatchListRow[], error: (e as Error).message };
+        }
+      })();
+    }
     let cancelled = false;
-    (async () => {
-      try {
-        const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0];
-
-        const [priceRes, metaRes] = await Promise.all([
-          supabase
-            .from("stock_prices")
-            .select("ticker, date, close")
-            .gte("date", since)
-            .order("ticker", { ascending: true })
-            .order("date", { ascending: true })
-            .range(0, 24999),
-          supabase.from("stock_fundamentals").select("ticker, sector").range(0, 999),
-        ]);
-
-        if (priceRes.error) throw priceRes.error;
-
-        const sectorByTicker = new Map<string, string | null>(
-          (metaRes.data ?? []).map((m) => [m.ticker, m.sector]),
-        );
-
-        const byTicker = new Map<string, number[]>();
-        for (const r of priceRes.data ?? []) {
-          const close = Number(r.close);
-          if (!Number.isFinite(close) || close <= 0) continue;
-          const list = byTicker.get(r.ticker);
-          if (list) list.push(close);
-          else byTicker.set(r.ticker, [close]);
-        }
-
-        const scored = [...byTicker.entries()]
-          .map(([symbol, closes]) => {
-            if (closes.length < 21) return null;
-            const last = closes[closes.length - 1];
-            const prev = closes[closes.length - 2];
-            const base = closes[closes.length - 21];
-            const ret20 = ((last - base) / base) * 100;
-            const ma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / 20;
-            const sector = sectorByTicker.get(symbol) ?? null;
-            return {
-              symbol,
-              sector,
-              dayChangePct: ((last - prev) / prev) * 100,
-              score: Math.abs(ret20),
-              reason: `${ret20 >= 0 ? "Up" : "Down"} ${Math.abs(ret20).toFixed(1)}% over 20 days, ${
-                last >= ma20 ? "above" : "below"
-              } its 20-day average${sector ? ` · ${sector}` : ""}`,
-            };
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null)
-          .sort((a, b) => b.score - a.score);
-
-        const seenSector = new Set<string>();
-        const picked: Row[] = [];
-        for (const r of scored) {
-          if (picked.length >= 8) break;
-          if (!r.sector) continue;
-          if (seenSector.has(r.sector)) continue;
-          seenSector.add(r.sector);
-          picked.push({
-            symbol: r.symbol,
-            sector: r.sector,
-            dayChangePct: r.dayChangePct,
-            reason: r.reason,
-          });
-        }
-        if (!cancelled) setRows(picked);
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
+    pending.then((result) => {
+      cache = result;
+      if (!cancelled) {
+        setRows(result.rows);
+        setError(result.error);
       }
-    })();
+    });
     return () => {
       cancelled = true;
     };
