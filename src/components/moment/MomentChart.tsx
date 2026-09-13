@@ -151,7 +151,10 @@ export function MomentChart({ data }: { data: MomentData }) {
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(v: number) => `$${Number(v).toFixed(2)}`}
+              formatter={(v: number, name: string) => [
+                `$${Number(v).toFixed(2)}`,
+                name === "price" ? "Actual close" : name === "mean" ? "Model path" : "Expected range",
+              ]}
             />
 
             {/* 52-week range */}

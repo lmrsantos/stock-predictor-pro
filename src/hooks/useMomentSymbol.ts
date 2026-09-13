@@ -125,9 +125,20 @@ export function useMomentSymbol(ticker: string | null) {
     return { label: isPre ? "Pre-market" : "After hours", price: print.price, change, changePct };
   }, [extended]);
 
-  // DB rows win when present; the edge response's own prices cover the window
-  // before its background cache write lands.
-  const rows: StockDataPoint[] | undefined = dbStockData?.length ? dbStockData : meta?.prices;
+  // Merge the saved history with the just-fetched Yahoo response. The saved
+  // query can remain cached for ten minutes, so letting it replace the fresh
+  // response made today's actual close disappear until that cache expired.
+  // Fresh rows win on matching dates; older saved rows retain the full history.
+  const rows = useMemo<StockDataPoint[] | undefined>(() => {
+    const saved = dbStockData ?? [];
+    const fresh = meta?.prices ?? [];
+    if (!saved.length && !fresh.length) return undefined;
+
+    const byDate = new Map<string, StockDataPoint>();
+    saved.forEach((row) => byDate.set(row.date, row));
+    fresh.forEach((row) => byDate.set(row.date, row));
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [dbStockData, meta?.prices]);
 
   const computed = useMemo<{ data: MomentData | null; error: string | null }>(() => {
     if (!ticker || !rows?.length) return { data: null, error: null };
