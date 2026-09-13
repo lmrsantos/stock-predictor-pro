@@ -47,9 +47,19 @@ export interface StructuralLevels {
   resistance: number;
   supportSource: string;
   resistanceSource: string;
-  /** How many independent measures landed in the winning cluster. */
+  /** How many individual measures landed in the winning cluster. */
   supportCount: number;
   resistanceCount: number;
+  /** src values of every candidate in the winning cluster, in order. */
+  supportMethodNames: string[];
+  resistanceMethodNames: string[];
+  /**
+   * Distinct method TYPES in the winning cluster (structure / trend /
+   * volatility). Three structure-type levels agreeing is one kind of
+   * evidence, not three — this is the headline count.
+   */
+  supportGroupCount: number;
+  resistanceGroupCount: number;
 
   /** Cycle extrapolation (forecast, may sit far from price). */
   projectedTrough: number;
@@ -150,31 +160,42 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
   // extrapolation is a forecast, and when it happened to land near price it
   // won the nearest-level contest and a forecast was rendered under a
   // structural label. They stay in the returned object for display only.
-  const below: { v: number; src: string }[] = [
-    { v: lastPivotLow ?? NaN, src: "last swing low" },
-    { v: sma50, src: "50d MA" },
-    { v: recentLow, src: "60-bar low" },
-    { v: currentPrice - 2 * atr, src: "2×ATR band" },
-  ].filter((c) => Number.isFinite(c.v) && c.v > 0 && c.v < currentPrice);
+  // Method types: structure = swing pivots and range extremes, trend = moving
+  // average, volatility = ATR band. Three structure-type levels agreeing is
+  // one kind of evidence, not three.
+  interface Candidate {
+    v: number;
+    src: string;
+    type: "structure" | "trend" | "volatility";
+  }
+  const belowAll: Candidate[] = [
+    { v: lastPivotLow ?? NaN, src: "last swing low", type: "structure" },
+    { v: sma50, src: "50-day average", type: "trend" },
+    { v: recentLow, src: "60-bar low", type: "structure" },
+    { v: currentPrice - 2 * atr, src: "2×ATR band", type: "volatility" },
+  ];
+  const below = belowAll.filter((c) => Number.isFinite(c.v) && c.v > 0 && c.v < currentPrice);
 
-  const above: { v: number; src: string }[] = [
-    { v: lastPivotHigh ?? NaN, src: "last swing high" },
-    { v: recentHigh, src: "60-bar high" },
-    { v: currentPrice + 2 * atr, src: "2×ATR band" },
-  ].filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
+  const aboveAll: Candidate[] = [
+    { v: lastPivotHigh ?? NaN, src: "last swing high", type: "structure" },
+    { v: recentHigh, src: "60-bar high", type: "structure" },
+    { v: currentPrice + 2 * atr, src: "2×ATR band", type: "volatility" },
+  ];
+  const above = aboveAll.filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
 
   // Confluence clustering: group candidates within 0.75×ATR of each other,
-  // prefer the cluster with the most independent measures, break ties by
-  // proximity to price. The level is the cluster average.
+  // prefer the cluster with the most distinct method TYPES (three structure
+  // levels agreeing is one kind of evidence, not three), then the most raw
+  // members, then proximity to price. The level is the cluster average.
   const pickByConfluence = (
-    candidates: { v: number; src: string }[],
-    fallback: { v: number; src: string },
-  ): { v: number; src: string; count: number } => {
+    candidates: Candidate[],
+    fallback: Candidate,
+  ): { v: number; src: string; count: number; groupCount: number; names: string[] } => {
     const list = candidates.length ? candidates : [fallback];
     const sorted = [...list].sort((a, b) => a.v - b.v);
     const tolerance = Math.max(atr * 0.75, currentPrice * 0.005);
 
-    const clusters: { members: { v: number; src: string }[] }[] = [];
+    const clusters: { members: Candidate[] }[] = [];
     for (const c of sorted) {
       const last = clusters[clusters.length - 1];
       if (last && c.v - last.members[last.members.length - 1].v <= tolerance) {
@@ -187,17 +208,35 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     const best = clusters
       .map((cl) => {
         const mean = cl.members.reduce((s, m) => s + m.v, 0) / cl.members.length;
-        return { mean, count: cl.members.length, sources: cl.members.map((m) => m.src) };
+        return {
+          mean,
+          count: cl.members.length,
+          groupCount: new Set(cl.members.map((m) => m.type)).size,
+          sources: cl.members.map((m) => m.src),
+        };
       })
       .sort(
-        (a, b) => b.count - a.count || Math.abs(a.mean - currentPrice) - Math.abs(b.mean - currentPrice),
+        (a, b) =>
+          b.groupCount - a.groupCount ||
+          b.count - a.count ||
+          Math.abs(a.mean - currentPrice) - Math.abs(b.mean - currentPrice),
       )[0];
 
-    return { v: best.mean, src: best.sources.join(" + "), count: best.count };
+    return {
+      v: best.mean,
+      src: best.sources.join(" + "),
+      count: best.count,
+      groupCount: best.groupCount,
+      names: best.sources,
+    };
   };
 
-  const supportPick = pickByConfluence(below, { v: currentPrice - 2 * atr, src: "2×ATR band" });
-  const resistancePick = pickByConfluence(above, { v: currentPrice + 2 * atr, src: "2×ATR band" });
+  const supportPick = pickByConfluence(below, {
+    v: currentPrice - 2 * atr, src: "2×ATR band", type: "volatility",
+  });
+  const resistancePick = pickByConfluence(above, {
+    v: currentPrice + 2 * atr, src: "2×ATR band", type: "volatility",
+  });
 
   return {
     currentPrice,
@@ -210,6 +249,10 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     resistanceSource: resistancePick.src,
     supportCount: supportPick.count,
     resistanceCount: resistancePick.count,
+    supportMethodNames: supportPick.names,
+    resistanceMethodNames: resistancePick.names,
+    supportGroupCount: supportPick.groupCount,
+    resistanceGroupCount: resistancePick.groupCount,
     projectedTrough,
     projectedPeak,
     troughConfidence,
