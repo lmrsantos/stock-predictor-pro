@@ -168,18 +168,20 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     src: string;
     type: "structure" | "trend" | "volatility";
   }
-  const below: Candidate[] = [
+  const belowAll: Candidate[] = [
     { v: lastPivotLow ?? NaN, src: "last swing low", type: "structure" },
     { v: sma50, src: "50-day average", type: "trend" },
     { v: recentLow, src: "60-bar low", type: "structure" },
     { v: currentPrice - 2 * atr, src: "2×ATR band", type: "volatility" },
-  ].filter((c) => Number.isFinite(c.v) && c.v > 0 && c.v < currentPrice);
+  ];
+  const below = belowAll.filter((c) => Number.isFinite(c.v) && c.v > 0 && c.v < currentPrice);
 
-  const above: Candidate[] = [
+  const aboveAll: Candidate[] = [
     { v: lastPivotHigh ?? NaN, src: "last swing high", type: "structure" },
     { v: recentHigh, src: "60-bar high", type: "structure" },
     { v: currentPrice + 2 * atr, src: "2×ATR band", type: "volatility" },
-  ].filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
+  ];
+  const above = aboveAll.filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
 
   // Confluence clustering: group candidates within 0.75×ATR of each other,
   // prefer the cluster with the most distinct method TYPES (three structure
