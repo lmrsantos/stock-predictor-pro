@@ -42,11 +42,14 @@ export interface StructuralLevels {
   sma20: number;
   sma50: number;
 
-  /** Nearest level below / above price — what "Support"/"Resistance" means. */
+  /** Confluence level below / above price — what "Support"/"Resistance" means. */
   support: number;
   resistance: number;
   supportSource: string;
   resistanceSource: string;
+  /** How many independent measures landed in the winning cluster. */
+  supportCount: number;
+  resistanceCount: number;
 
   /** Cycle extrapolation (forecast, may sit far from price). */
   projectedTrough: number;
@@ -142,9 +145,13 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
   const recentLow = Math.min(...recent);
   const recentHigh = Math.max(...recent);
 
+  // Projected trough/peak are deliberately NOT candidates here. Support and
+  // resistance mean "the nearest level price must trade through"; a cycle
+  // extrapolation is a forecast, and when it happened to land near price it
+  // won the nearest-level contest and a forecast was rendered under a
+  // structural label. They stay in the returned object for display only.
   const below: { v: number; src: string }[] = [
     { v: lastPivotLow ?? NaN, src: "last swing low" },
-    { v: projectedTrough, src: "projected cycle trough" },
     { v: sma50, src: "50d MA" },
     { v: recentLow, src: "60-bar low" },
     { v: currentPrice - 2 * atr, src: "2×ATR band" },
@@ -152,18 +159,45 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
 
   const above: { v: number; src: string }[] = [
     { v: lastPivotHigh ?? NaN, src: "last swing high" },
-    { v: projectedPeak, src: "projected cycle peak" },
     { v: recentHigh, src: "60-bar high" },
     { v: currentPrice + 2 * atr, src: "2×ATR band" },
   ].filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
 
-  // Nearest level on each side is what price must actually trade through.
-  const supportPick = below.length
-    ? below.reduce((best, c) => (c.v > best.v ? c : best))
-    : { v: currentPrice - 2 * atr, src: "2×ATR band" };
-  const resistancePick = above.length
-    ? above.reduce((best, c) => (c.v < best.v ? c : best))
-    : { v: currentPrice + 2 * atr, src: "2×ATR band" };
+  // Confluence clustering: group candidates within 0.75×ATR of each other,
+  // prefer the cluster with the most independent measures, break ties by
+  // proximity to price. The level is the cluster average.
+  const pickByConfluence = (
+    candidates: { v: number; src: string }[],
+    fallback: { v: number; src: string },
+  ): { v: number; src: string; count: number } => {
+    const list = candidates.length ? candidates : [fallback];
+    const sorted = [...list].sort((a, b) => a.v - b.v);
+    const tolerance = Math.max(atr * 0.75, currentPrice * 0.005);
+
+    const clusters: { members: { v: number; src: string }[] }[] = [];
+    for (const c of sorted) {
+      const last = clusters[clusters.length - 1];
+      if (last && c.v - last.members[last.members.length - 1].v <= tolerance) {
+        last.members.push(c);
+      } else {
+        clusters.push({ members: [c] });
+      }
+    }
+
+    const best = clusters
+      .map((cl) => {
+        const mean = cl.members.reduce((s, m) => s + m.v, 0) / cl.members.length;
+        return { mean, count: cl.members.length, sources: cl.members.map((m) => m.src) };
+      })
+      .sort(
+        (a, b) => b.count - a.count || Math.abs(a.mean - currentPrice) - Math.abs(b.mean - currentPrice),
+      )[0];
+
+    return { v: best.mean, src: best.sources.join(" + "), count: best.count };
+  };
+
+  const supportPick = pickByConfluence(below, { v: currentPrice - 2 * atr, src: "2×ATR band" });
+  const resistancePick = pickByConfluence(above, { v: currentPrice + 2 * atr, src: "2×ATR band" });
 
   return {
     currentPrice,
@@ -174,6 +208,8 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     resistance: resistancePick.v,
     supportSource: supportPick.src,
     resistanceSource: resistancePick.src,
+    supportCount: supportPick.count,
+    resistanceCount: resistancePick.count,
     projectedTrough,
     projectedPeak,
     troughConfidence,
