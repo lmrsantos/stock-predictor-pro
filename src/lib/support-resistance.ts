@@ -47,9 +47,19 @@ export interface StructuralLevels {
   resistance: number;
   supportSource: string;
   resistanceSource: string;
-  /** How many independent measures landed in the winning cluster. */
+  /** How many individual measures landed in the winning cluster. */
   supportCount: number;
   resistanceCount: number;
+  /** src values of every candidate in the winning cluster, in order. */
+  supportMethodNames: string[];
+  resistanceMethodNames: string[];
+  /**
+   * Distinct method TYPES in the winning cluster (structure / trend /
+   * volatility). Three structure-type levels agreeing is one kind of
+   * evidence, not three — this is the headline count.
+   */
+  supportGroupCount: number;
+  resistanceGroupCount: number;
 
   /** Cycle extrapolation (forecast, may sit far from price). */
   projectedTrough: number;
@@ -150,17 +160,21 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
   // extrapolation is a forecast, and when it happened to land near price it
   // won the nearest-level contest and a forecast was rendered under a
   // structural label. They stay in the returned object for display only.
-  const below: { v: number; src: string }[] = [
-    { v: lastPivotLow ?? NaN, src: "last swing low" },
-    { v: sma50, src: "50d MA" },
-    { v: recentLow, src: "60-bar low" },
-    { v: currentPrice - 2 * atr, src: "2×ATR band" },
+  // Method types: structure = swing pivots and range extremes, trend = moving
+  // average, volatility = ATR band. Three structure-type levels agreeing is
+  // one kind of evidence, not three.
+  type MethodType = "structure" | "trend" | "volatility";
+  const below: { v: number; src: string; type: MethodType }[] = [
+    { v: lastPivotLow ?? NaN, src: "last swing low", type: "structure" },
+    { v: sma50, src: "50-day average", type: "trend" },
+    { v: recentLow, src: "60-bar low", type: "structure" },
+    { v: currentPrice - 2 * atr, src: "2×ATR band", type: "volatility" },
   ].filter((c) => Number.isFinite(c.v) && c.v > 0 && c.v < currentPrice);
 
-  const above: { v: number; src: string }[] = [
-    { v: lastPivotHigh ?? NaN, src: "last swing high" },
-    { v: recentHigh, src: "60-bar high" },
-    { v: currentPrice + 2 * atr, src: "2×ATR band" },
+  const above: { v: number; src: string; type: MethodType }[] = [
+    { v: lastPivotHigh ?? NaN, src: "last swing high", type: "structure" },
+    { v: recentHigh, src: "60-bar high", type: "structure" },
+    { v: currentPrice + 2 * atr, src: "2×ATR band", type: "volatility" },
   ].filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
 
   // Confluence clustering: group candidates within 0.75×ATR of each other,
