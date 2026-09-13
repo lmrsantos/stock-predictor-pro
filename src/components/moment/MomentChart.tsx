@@ -50,7 +50,7 @@ export function MomentChart({ data }: { data: MomentData }) {
     };
 
     const hist = slice.map((p, i) => ({
-      label: new Date(p.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      label: p.date,
       price: p.actual as number | undefined,
       trend: trendAt(start + i),
       mean: undefined as number | undefined,
@@ -58,7 +58,7 @@ export function MomentChart({ data }: { data: MomentData }) {
     }));
 
     const fwd = data.forecast.forecastPoints.map((p) => ({
-      label: new Date(p.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      label: p.date,
       price: undefined,
       trend: undefined,
       mean: p.mean,
@@ -136,7 +136,13 @@ export function MomentChart({ data }: { data: MomentData }) {
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} minTickGap={28} stroke="hsl(var(--muted-foreground))" />
+            <XAxis
+              dataKey="label"
+              tickFormatter={(date: string) => new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              tick={{ fontSize: 10 }}
+              minTickGap={28}
+              stroke="hsl(var(--muted-foreground))"
+            />
             <YAxis
               domain={[yMin, yMax]}
               tick={{ fontSize: 10 }}
