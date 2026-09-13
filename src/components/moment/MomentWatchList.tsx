@@ -7,16 +7,21 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight } from "lucide-react";
 
-interface Row {
+export interface WatchListRow {
   symbol: string;
   sector: string | null;
   dayChangePct: number;
   reason: string;
 }
 
+// Module-level cache: the list is the same for every mount in a session, so
+// rendering this component twice must never trigger a second fetch.
+let cache: { rows: WatchListRow[]; error: string | null } | null = null;
+let pending: Promise<{ rows: WatchListRow[]; error: string | null }> | null = null;
+
 export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => void }) {
-  const [rows, setRows] = useState<Row[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [rows, setRows] = useState<WatchListRow[] | null>(cache?.rows ?? null);
+  const [error, setError] = useState<string | null>(cache?.error ?? null);
 
   useEffect(() => {
     let cancelled = false;

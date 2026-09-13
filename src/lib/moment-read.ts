@@ -20,6 +20,12 @@ const money = (v: number) =>
 
 export function buildRead(input: MomentReadInput): string[] {
   const { ticker, directionHitRate, windowCount, direction, noTrend } = input;
+  if (!windowCount || windowCount < 6) {
+    return [
+      `There isn't enough price history for ${ticker} to test the models properly.`,
+      `Price has support around ${money(input.support)} and meets resistance near ${money(input.resistance)}.`,
+    ];
+  }
   const n = Math.round(directionHitRate * windowCount);
 
   let first: string;
