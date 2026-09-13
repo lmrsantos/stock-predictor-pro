@@ -163,32 +163,37 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
   // Method types: structure = swing pivots and range extremes, trend = moving
   // average, volatility = ATR band. Three structure-type levels agreeing is
   // one kind of evidence, not three.
-  type MethodType = "structure" | "trend" | "volatility";
-  const below: { v: number; src: string; type: MethodType }[] = [
+  interface Candidate {
+    v: number;
+    src: string;
+    type: "structure" | "trend" | "volatility";
+  }
+  const below: Candidate[] = [
     { v: lastPivotLow ?? NaN, src: "last swing low", type: "structure" },
     { v: sma50, src: "50-day average", type: "trend" },
     { v: recentLow, src: "60-bar low", type: "structure" },
     { v: currentPrice - 2 * atr, src: "2×ATR band", type: "volatility" },
   ].filter((c) => Number.isFinite(c.v) && c.v > 0 && c.v < currentPrice);
 
-  const above: { v: number; src: string; type: MethodType }[] = [
+  const above: Candidate[] = [
     { v: lastPivotHigh ?? NaN, src: "last swing high", type: "structure" },
     { v: recentHigh, src: "60-bar high", type: "structure" },
     { v: currentPrice + 2 * atr, src: "2×ATR band", type: "volatility" },
   ].filter((c) => Number.isFinite(c.v) && c.v > currentPrice);
 
   // Confluence clustering: group candidates within 0.75×ATR of each other,
-  // prefer the cluster with the most independent measures, break ties by
-  // proximity to price. The level is the cluster average.
+  // prefer the cluster with the most distinct method TYPES (three structure
+  // levels agreeing is one kind of evidence, not three), then the most raw
+  // members, then proximity to price. The level is the cluster average.
   const pickByConfluence = (
-    candidates: { v: number; src: string }[],
-    fallback: { v: number; src: string },
-  ): { v: number; src: string; count: number } => {
+    candidates: Candidate[],
+    fallback: Candidate,
+  ): { v: number; src: string; count: number; groupCount: number; names: string[] } => {
     const list = candidates.length ? candidates : [fallback];
     const sorted = [...list].sort((a, b) => a.v - b.v);
     const tolerance = Math.max(atr * 0.75, currentPrice * 0.005);
 
-    const clusters: { members: { v: number; src: string }[] }[] = [];
+    const clusters: { members: Candidate[] }[] = [];
     for (const c of sorted) {
       const last = clusters[clusters.length - 1];
       if (last && c.v - last.members[last.members.length - 1].v <= tolerance) {
@@ -201,17 +206,35 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     const best = clusters
       .map((cl) => {
         const mean = cl.members.reduce((s, m) => s + m.v, 0) / cl.members.length;
-        return { mean, count: cl.members.length, sources: cl.members.map((m) => m.src) };
+        return {
+          mean,
+          count: cl.members.length,
+          groupCount: new Set(cl.members.map((m) => m.type)).size,
+          sources: cl.members.map((m) => m.src),
+        };
       })
       .sort(
-        (a, b) => b.count - a.count || Math.abs(a.mean - currentPrice) - Math.abs(b.mean - currentPrice),
+        (a, b) =>
+          b.groupCount - a.groupCount ||
+          b.count - a.count ||
+          Math.abs(a.mean - currentPrice) - Math.abs(b.mean - currentPrice),
       )[0];
 
-    return { v: best.mean, src: best.sources.join(" + "), count: best.count };
+    return {
+      v: best.mean,
+      src: best.sources.join(" + "),
+      count: best.count,
+      groupCount: best.groupCount,
+      names: best.sources,
+    };
   };
 
-  const supportPick = pickByConfluence(below, { v: currentPrice - 2 * atr, src: "2×ATR band" });
-  const resistancePick = pickByConfluence(above, { v: currentPrice + 2 * atr, src: "2×ATR band" });
+  const supportPick = pickByConfluence(below, {
+    v: currentPrice - 2 * atr, src: "2×ATR band", type: "volatility",
+  });
+  const resistancePick = pickByConfluence(above, {
+    v: currentPrice + 2 * atr, src: "2×ATR band", type: "volatility",
+  });
 
   return {
     currentPrice,
@@ -224,6 +247,10 @@ export function computeStructuralLevels(input: StructuralLevelsInput): Structura
     resistanceSource: resistancePick.src,
     supportCount: supportPick.count,
     resistanceCount: resistancePick.count,
+    supportMethodNames: supportPick.names,
+    resistanceMethodNames: resistancePick.names,
+    supportGroupCount: supportPick.groupCount,
+    resistanceGroupCount: resistancePick.groupCount,
     projectedTrough,
     projectedPeak,
     troughConfidence,
