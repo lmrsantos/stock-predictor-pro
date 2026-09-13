@@ -2,9 +2,69 @@
 // Entry / exit zones from the ACTIVE support-resistance values, plus the
 // trade-plan action word. No decision language — never BUY, never SELL.
 
+import { useState } from "react";
 import type { MomentData } from "@/hooks/useMomentSymbol";
 
 const money = (v: number) => `$${v.toFixed(2)}`;
+
+// Natural-language join: "a", "a and b", "a, b and c".
+const joinNames = (names: string[]) =>
+  names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
+// Headline strength uses the distinct method-TYPE count (structure / trend /
+// volatility) — three structure levels agreeing is one kind of evidence.
+function LevelRow({
+  label,
+  value,
+  groupCount,
+  methodNames,
+}: {
+  label: string;
+  value: number;
+  groupCount: number;
+  methodNames: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const strength =
+    groupCount > 1 ? `${groupCount} methods agree` : "1 method only";
+  const weak = groupCount === 1;
+
+  return (
+    <div className="mt-1.5">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-baseline justify-between gap-2 text-left"
+      >
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className="text-sm font-semibold tabular-nums text-foreground">
+          {money(value)}
+          <span
+            className={`ml-1.5 text-[11px] font-normal ${
+              groupCount >= 3
+                ? "text-primary"
+                : "text-muted-foreground"
+            }`}
+          >
+            {strength}
+          </span>
+        </span>
+      </button>
+      {weak && (
+        <p className="mt-0.5 text-right text-[11px] text-muted-foreground">
+          only one method points here
+        </p>
+      )}
+      {open && methodNames.length > 0 && (
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          {joinNames(methodNames)} {methodNames.length > 1 ? "all cluster" : "clusters"} here.
+        </p>
+      )}
+    </div>
+  );
+}
 
 const ACTION_COPY: Record<string, string> = {
   accumulate: "Price is near the lower zone, so adding is the step this plan favours here.",
@@ -54,24 +114,18 @@ export function ZonesSignal({ data }: { data: MomentData }) {
       {/* Structural levels — where price is now */}
       <div className="mt-2 rounded-lg border border-border p-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Where price is now</p>
-        <div className="mt-1.5 flex items-baseline justify-between gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Support</span>
-          <span className="text-sm font-semibold tabular-nums text-foreground">
-            {money(levels.support)}
-            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-              backed by {levels.supportCount} measure{levels.supportCount === 1 ? "" : "s"}
-            </span>
-          </span>
-        </div>
-        <div className="mt-1 flex items-baseline justify-between gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Resistance</span>
-          <span className="text-sm font-semibold tabular-nums text-foreground">
-            {money(levels.resistance)}
-            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-              backed by {levels.resistanceCount} measure{levels.resistanceCount === 1 ? "" : "s"}
-            </span>
-          </span>
-        </div>
+        <LevelRow
+          label="Support"
+          value={levels.support}
+          groupCount={levels.supportGroupCount}
+          methodNames={levels.supportMethodNames}
+        />
+        <LevelRow
+          label="Resistance"
+          value={levels.resistance}
+          groupCount={levels.resistanceGroupCount}
+          methodNames={levels.resistanceMethodNames}
+        />
       </div>
 
       {/* Cycle projection — a forecast, not a level price is sitting on */}
