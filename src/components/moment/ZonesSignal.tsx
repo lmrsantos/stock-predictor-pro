@@ -102,9 +102,11 @@ export function ZonesSignal({ data }: { data: MomentData }) {
     { label: "Exit zone 2", lo: plan.target2, hi: plan.target2, ref: plan.target2 },
   ];
 
+  // Confidence arrives on a 0–100 scale from the cycle model.
   const confLabel = (c: number) => {
-    const pctText = `${Math.round(c * 100)}%`;
-    return c < 0.3 ? `${pctText} · low confidence` : pctText;
+    const pct = c <= 1 ? c * 100 : c; // tolerate either scale
+    const pctText = `${Math.round(pct)}%`;
+    return pct < 30 ? `${pctText} · low confidence` : pctText;
   };
 
   return (
