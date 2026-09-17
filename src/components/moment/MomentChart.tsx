@@ -53,23 +53,26 @@ export function MomentChart({ data }: { data: MomentData }) {
       label: p.date,
       price: p.actual as number | undefined,
       trend: trendAt(start + i),
-      mean: undefined as number | undefined,
-      cone: undefined as [number, number] | undefined,
+      // Give the projection line the same continuity anchor as the terminal.
+      mean: i === slice.length - 1 ? p.actual : undefined,
+      cone: i === slice.length - 1
+        ? [p.actual, p.actual] as [number, number]
+        : undefined as [number, number] | undefined,
     }));
 
-    const fwd = data.forecast.forecastPoints.map((p) => ({
+    const fwd = data.projection.predictions.map((p) => ({
       label: p.date,
       price: undefined,
       trend: undefined,
-      mean: p.mean,
-      cone: [p.lower1, p.upper1] as [number, number],
+      mean: p.predicted,
+      cone: [p.lower1Sigma, p.upper1Sigma] as [number, number],
     }));
 
     return [...hist, ...fwd];
   }, [data, effSpan, offset, fit]);
 
-  const hasBand = data.forecast.forecastPoints.every(
-    (p) => Number.isFinite(p.lower1) && Number.isFinite(p.upper1),
+  const hasBand = data.projection.predictions.length > 0 && data.projection.predictions.every(
+    (p) => Number.isFinite(p.lower1Sigma) && Number.isFinite(p.upper1Sigma),
   );
 
   const { support, resistance, atr } = data.levels;
