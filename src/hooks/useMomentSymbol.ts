@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { backtest, type ForecastResult, type BacktestDataPoint } from "@/lib/backtest";
+import { computeLinearRegression } from "@/lib/regression";
 import { fetchAndStoreStockData, getStockDataFromDB, SymbolNotFoundError } from "@/lib/stock-data";
 import { computeStructuralLevels, type StructuralLevels } from "@/lib/support-resistance";
 import { analyzeTrendTermStructure, type TrendTermStructure } from "@/lib/trend-term-structure";
@@ -23,7 +24,7 @@ import {
   runBaseRatePipeline, baseRatesForSymbol, makeSymbolSeries, fetchListingYears,
   type SymbolBaseRates,
 } from "@/lib/base-rate-pipeline";
-import type { StockDataPoint } from "@/lib/types";
+import type { RegressionResult, StockDataPoint } from "@/lib/types";
 
 export interface MomentFundamentals {
   peRatio: number | null;
@@ -47,6 +48,7 @@ export interface MomentData {
   rows: StockDataPoint[];
   points: BacktestDataPoint[];
   forecast: ForecastResult;
+  projection: RegressionResult;
   levels: StructuralLevels;
   trend: TrendTermStructure;
   plan: TradePlan | null;
@@ -159,6 +161,10 @@ export function useMomentSymbol(ticker: string | null) {
       const dates = rows.map((d) => d.date);
 
       const forecast = backtest(points, 6, 30);
+      // The visible path matches the terminal's default chart: Enhanced
+      // Regression V2 over the default one-year window. The calibration
+      // ensemble above remains the evidence source for the written read.
+      const projection = computeLinearRegression(rows.slice(-252), 30);
       const levels = computeStructuralLevels({
         ticker,
         closes,
@@ -202,6 +208,7 @@ export function useMomentSymbol(ticker: string | null) {
           rows,
           points,
           forecast,
+          projection,
           levels,
           trend,
           plan,
