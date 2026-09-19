@@ -22,6 +22,7 @@ let pending: Promise<{ rows: WatchListRow[]; error: string | null }> | null = nu
 export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => void }) {
   const [rows, setRows] = useState<WatchListRow[] | null>(cache?.rows ?? null);
   const [error, setError] = useState<string | null>(cache?.error ?? null);
+  const { quotes } = useMomentQuotes((rows ?? []).map((r) => r.symbol));
 
   useEffect(() => {
     if (cache) return;
