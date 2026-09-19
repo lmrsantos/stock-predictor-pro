@@ -30,6 +30,26 @@ import { Star } from "lucide-react";
 const ANON_KEY = "qm_anon_lookups";
 const ANON_LIMIT = 5;
 
+function getMarketStatus(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const weekday = parts.find((part) => part.type === "weekday")?.value;
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+  const minutes = hour * 60 + minute;
+
+  if (weekday === "Sat" || weekday === "Sun") return "Market closed";
+  if (minutes >= 240 && minutes < 570) return "Pre-market";
+  if (minutes >= 570 && minutes < 960) return "Market open";
+  if (minutes >= 960 && minutes < 1200) return "After hours";
+  return "Market closed";
+}
+
 function CardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
     <div className="rounded-xl border border-border bg-card p-3">
@@ -47,6 +67,7 @@ export default function Moment() {
   const [symbol, setSymbol] = useState<string | null>(null);
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const searchRef = useRef<MomentSearchHandle>(null);
   const { toggle, has } = useMyTickers();
   useMomentSkin();
@@ -58,6 +79,11 @@ export default function Moment() {
 
   useEffect(() => {
     document.title = "Quant Moment — check your read with the math";
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const handleSelect = async (next: string) => {
@@ -116,14 +142,16 @@ export default function Moment() {
       <header className="mb-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {new Date().toLocaleDateString("en-US", {
+            <h1 className="text-3xl font-bold text-foreground">Quant Moment</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+              <span>{now.toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
                 year: "numeric",
-              })}
+              })}</span>
+              <span aria-hidden="true">·</span>
+              <span>{getMarketStatus(now)}</span>
             </p>
           </div>
           <a

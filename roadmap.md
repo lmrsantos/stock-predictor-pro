@@ -7,3 +7,5 @@
 - [x] Remove the dated “as of” text from the Quant Moment ticker summary.
 - [x] Keep Quant Moment standalone when opening Quant Forecast and provide a clear return path.
 - [x] Keep Quant Forecast headers below the iPhone status area.
+- [x] Increase Quant Moment typography and show the current market session beside the date.
+- [x] Replace ticker examples with voice-enabled symbol search.
