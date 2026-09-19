@@ -99,6 +99,7 @@ function SwipeTickerRow({
       onClose();
       return;
     }
+    triggerFlash();
     onSelect();
   };
 
