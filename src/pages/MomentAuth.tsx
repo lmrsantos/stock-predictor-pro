@@ -25,6 +25,7 @@ export default function MomentAuth() {
   const [loading, setLoading] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
+  useMomentSkin();
 
   const momentUrl = window.location.origin + MOMENT_PATH;
 
