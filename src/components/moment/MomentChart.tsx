@@ -38,12 +38,13 @@ interface CompactTooltipProps {
   active?: boolean;
   payload?: Array<{ payload?: MomentChartPoint }>;
   label?: string;
+  points: MomentChartPoint[];
 }
 
-function CompactTooltip({ active, payload, label }: CompactTooltipProps) {
+function CompactTooltip({ active, payload, label, points }: CompactTooltipProps) {
   const point = payload?.find(
     (entry) => entry.payload?.price != null || entry.payload?.close != null || entry.payload?.mean != null,
-  )?.payload;
+  )?.payload ?? points.find((entry) => entry.label === label);
   if (!active || !point || !label) return null;
 
   const actual = point.price ?? point.close;
@@ -251,7 +252,7 @@ export function MomentChart({ data }: { data: MomentData }) {
               tickFormatter={(v: number) => `$${v.toFixed(0)}`}
             />
             <Tooltip
-              content={<CompactTooltip />}
+              content={<CompactTooltip points={chartData} />}
               position={{ y: 4 }}
               cursor={{ stroke: "hsl(var(--foreground))", strokeOpacity: 0.55, strokeWidth: 1 }}
               allowEscapeViewBox={{ x: false, y: false }}
