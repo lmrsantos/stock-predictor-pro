@@ -202,7 +202,7 @@ export default function Moment() {
                   {data.dayChangePct !== null && (
                     <p
                       className={`text-sm font-semibold tabular-nums ${
-                        data.dayChangePct >= 0 ? "text-primary" : "text-destructive"
+                        data.dayChangePct >= 0 ? "text-accent-success" : "text-accent-danger"
                       }`}
                     >
                       {data.dayChangePct >= 0 ? "+" : ""}
