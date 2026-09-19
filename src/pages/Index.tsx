@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon, ClipboardList, Target } from "lucide-react";
+import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon, ClipboardList, Target, Smartphone } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -575,6 +575,13 @@ const Index = () => {
           >
             <Sparkles className="w-4 h-4" />
             IPO Intelligence
+          </Link>
+          <Link
+            to="/moment"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-gradient-to-r from-violet-500 to-indigo-500 text-white hover:opacity-90 transition-opacity"
+          >
+            <Smartphone className="w-4 h-4" />
+            Quant Moment
           </Link>
           <button
             onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
