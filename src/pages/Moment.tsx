@@ -237,6 +237,7 @@ export default function Moment() {
               loading={fundamentalsLoading}
               error={fundamentalsError}
             />
+            <MyTickers onSelect={handleSelect} />
             <MomentWatchList onSelect={handleSelect} />
           </>
         )}
