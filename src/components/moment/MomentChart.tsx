@@ -41,7 +41,9 @@ interface CompactTooltipProps {
 }
 
 function CompactTooltip({ active, payload, label }: CompactTooltipProps) {
-  const point = payload?.[0]?.payload;
+  const point = payload?.find(
+    (entry) => entry.payload?.price != null || entry.payload?.close != null || entry.payload?.mean != null,
+  )?.payload;
   if (!active || !point || !label) return null;
 
   const actual = point.price ?? point.close;
