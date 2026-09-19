@@ -49,6 +49,7 @@ export default function Moment() {
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const searchRef = useRef<MomentSearchHandle>(null);
   const { toggle, has } = useMyTickers();
+  useMomentSkin();
 
   const {
     data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
