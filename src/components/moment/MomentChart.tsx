@@ -10,9 +10,10 @@
 import { useMemo, useRef, useState } from "react";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  CartesianGrid, ReferenceArea, ReferenceLine,
+  CartesianGrid, ReferenceArea, ReferenceLine, Customized,
 } from "recharts";
 import type { MomentData } from "@/hooks/useMomentSymbol";
+import { Button } from "@/components/ui/button";
 
 const RANGES = [
   { key: "1M", bars: 21 },
@@ -21,8 +22,59 @@ const RANGES = [
   { key: "5Y", bars: 1300 },
 ] as const;
 
+interface MomentChartPoint {
+  label: string;
+  price?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  trend?: number;
+  mean?: number;
+  cone?: [number, number];
+}
+
+interface CandleLayerProps {
+  xAxisMap?: Record<string, { scale?: ((value: string) => number) & { bandwidth?: () => number } }>;
+  yAxisMap?: Record<string, { scale?: (value: number) => number }>;
+}
+
+function CandleLayer({ xAxisMap, yAxisMap, data }: CandleLayerProps & { data: MomentChartPoint[] }) {
+  const xAxis = Object.values(xAxisMap ?? {})[0];
+  const yAxis = Object.values(yAxisMap ?? {})[0];
+  const xScale = xAxis?.scale;
+  const yScale = yAxis?.scale;
+  if (!xScale || !yScale) return null;
+
+  const bandwidth = typeof xScale.bandwidth === "function" ? xScale.bandwidth() : 8;
+  const bodyWidth = Math.max(1, Math.min(8, bandwidth * 0.62));
+  return (
+    <g aria-label="Historical candlesticks">
+      {data.map((point) => {
+        if (point.open == null || point.high == null || point.low == null || point.close == null) return null;
+        const x = xScale(point.label) + bandwidth / 2;
+        const highY = yScale(point.high);
+        const lowY = yScale(point.low);
+        const openY = yScale(point.open);
+        const closeY = yScale(point.close);
+        const rising = point.close >= point.open;
+        const color = rising ? "hsl(var(--accent-success))" : "hsl(var(--accent-danger))";
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+        return (
+          <g key={point.label}>
+            <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth={1} />
+            <rect x={x - bodyWidth / 2} y={bodyTop} width={bodyWidth} height={bodyHeight} fill={rising ? "hsl(var(--card))" : color} stroke={color} strokeWidth={1} />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 export function MomentChart({ data }: { data: MomentData }) {
   const [rangeKey, setRangeKey] = useState<string>("1Y");
+  const [chartStyle, setChartStyle] = useState<"line" | "candles">("line");
   const [span, setSpan] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const touch = useRef<{ x: number; dist: number; span: number; offset: number } | null>(null);
@@ -49,18 +101,26 @@ export function MomentChart({ data }: { data: MomentData }) {
       return fit.startValue + (fit.endValue - fit.startValue) * t;
     };
 
-    const hist = slice.map((p, i) => ({
-      label: p.date,
-      price: p.actual as number | undefined,
-      trend: trendAt(start + i),
-      // Give the projection line the same continuity anchor as the terminal.
-      mean: i === slice.length - 1 ? p.actual : undefined,
-      cone: i === slice.length - 1
-        ? [p.actual, p.actual] as [number, number]
-        : undefined as [number, number] | undefined,
-    }));
+    const rowsByDate = new Map(data.rows.map((row) => [row.date, row]));
+    const hist: MomentChartPoint[] = slice.map((p, i) => {
+      const row = rowsByDate.get(p.date);
+      return {
+        label: p.date,
+        price: p.actual as number | undefined,
+        open: row?.open,
+        high: row?.high,
+        low: row?.low,
+        close: row?.close,
+        trend: trendAt(start + i),
+        // Give the projection line the same continuity anchor as the terminal.
+        mean: i === slice.length - 1 ? p.actual : undefined,
+        cone: i === slice.length - 1
+          ? [p.actual, p.actual] as [number, number]
+          : undefined,
+      };
+    });
 
-    const fwd = data.projection.predictions.map((p) => ({
+    const fwd: MomentChartPoint[] = data.projection.predictions.map((p) => ({
       label: p.date,
       price: undefined,
       trend: undefined,
@@ -93,21 +153,24 @@ export function MomentChart({ data }: { data: MomentData }) {
 
   return (
     <section className="rounded-xl border border-border bg-card p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Price</h2>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
+          <span className="mr-1 flex items-center rounded-md border border-border p-0.5" aria-label="Chart style">
+            <Button type="button" size="sm" variant={chartStyle === "line" ? "default" : "ghost"} className="h-9 px-2 text-xs" onClick={() => setChartStyle("line")}>Line</Button>
+            <Button type="button" size="sm" variant={chartStyle === "candles" ? "default" : "ghost"} className="h-9 px-2 text-xs" onClick={() => setChartStyle("candles")}>Candles</Button>
+          </span>
           {RANGES.map((r) => (
-            <button
+            <Button
               key={r.key}
               onClick={() => { setRangeKey(r.key); setSpan(null); setOffset(0); }}
-              className={`min-h-[44px] min-w-[44px] rounded-md px-2 text-xs font-medium ${
-                rangeKey === r.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
+              type="button"
+              size="sm"
+              variant={rangeKey === r.key ? "default" : "secondary"}
+              className="min-h-[44px] min-w-[44px] px-2 text-xs"
             >
               {r.key}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -160,10 +223,14 @@ export function MomentChart({ data }: { data: MomentData }) {
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(v: number, name: string) => [
-                `$${Number(v).toFixed(2)}`,
-                name === "price" ? "Actual close" : name === "mean" ? "Model path" : "Expected range",
-              ]}
+              formatter={(v: number | [number, number], name: string, item: { payload?: MomentChartPoint }) => {
+                if (chartStyle === "candles" && name === "price" && item.payload?.close != null) {
+                  const p = item.payload;
+                  return [`O $${p.open?.toFixed(2)} · H $${p.high?.toFixed(2)} · L $${p.low?.toFixed(2)} · C $${p.close.toFixed(2)}`, "Daily candle"];
+                }
+                const shown = Array.isArray(v) ? v.map((n) => `$${Number(n).toFixed(2)}`).join(" – ") : `$${Number(v).toFixed(2)}`;
+                return [shown, name === "price" ? "Actual close" : name === "mean" ? "Model path" : "Expected range"];
+              }}
             />
 
             {/* 52-week range */}
@@ -184,7 +251,11 @@ export function MomentChart({ data }: { data: MomentData }) {
             {hasBand && (
               <Line dataKey="mean" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} isAnimationActive={false} />
             )}
-            <Line dataKey="price" stroke="hsl(var(--foreground))" strokeWidth={2} dot={false} isAnimationActive={false} />
+            {chartStyle === "line" ? (
+              <Line dataKey="price" stroke="hsl(var(--foreground))" strokeWidth={2} dot={false} isAnimationActive={false} />
+            ) : (
+              <Customized component={(props: CandleLayerProps) => <CandleLayer {...props} data={chartData} />} />
+            )}
             <Line
               dataKey="trend"
               stroke={trendMeasurable ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
@@ -198,6 +269,7 @@ export function MomentChart({ data }: { data: MomentData }) {
       </div>
 
       <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+        <li>{chartStyle === "candles" ? "Green candles closed above their open · red candles closed below" : "Line = actual closing price"}</li>
         <li>Shaded grey = 52-week range · price sits at {pos52.toFixed(0)}% of it</li>
         <li>Blue band = support zone · red band = resistance zone</li>
         <li>{trendMeasurable ? "Solid line = fitted trend" : "Dashed grey line = no measurable trend"}</li>
