@@ -11,6 +11,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMomentSkin } from "@/hooks/useMomentSkin";
 
 type Mode = "signup" | "signin" | "forgot";
 
