@@ -113,6 +113,39 @@ const yv = (o: unknown): number | null => {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 };
 
+/**
+ * Reported annual share counts (diluted, basic fallback) from Yahoo's public
+ * fundamentals timeseries. quoteSummary's priorSharesOutstanding is almost
+ * never populated, which is why the share-count change read as unreported.
+ * Returns the two most recent fiscal years, newest first.
+ */
+async function yahooAnnualShares(symbol: string): Promise<number[] | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const url =
+    `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}` +
+    `?symbol=${encodeURIComponent(symbol)}&type=annualDilutedAverageShares,annualBasicAverageShares` +
+    `&period1=${now - 8 * 365 * 24 * 3600}&period2=${now}`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!res.ok) return null;
+    const j: any = await res.json();
+    const series: any[] = j?.timeseries?.result ?? [];
+    for (const type of ["annualDilutedAverageShares", "annualBasicAverageShares"]) {
+      const entry = series.find((s) => s?.meta?.type?.[0] === type);
+      const rows: any[] = (entry?.[type] ?? []).filter(Boolean);
+      const values = rows
+        .map((r) => ({ date: r?.asOfDate as string, v: yv(r?.reportedValue) }))
+        .filter((r) => r.v != null && r.v! > 0)
+        .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+        .map((r) => r.v as number);
+      if (values.length >= 2) return values;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Fallback: Yahoo quoteSummary reported statements + key ratios. */
 async function yahooFinancials(symbol: string): Promise<Record<string, unknown> | null> {
   const auth = await yahooCrumb();
