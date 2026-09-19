@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { runLinkages, readCachedLinkages } from "@/lib/run-linkages";
+
+// Routes that never consume the linkage cache — don't spend work there.
+const SKIP_PATHS = ["/moment"];
 
 /**
  * Silently refreshes the cross-sector linkage cache on app startup
