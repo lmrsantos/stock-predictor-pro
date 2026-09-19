@@ -622,8 +622,14 @@ serve(async (req) => {
     const currentRatio = n(r0.currentRatio) ??
       ratio(n(b0.totalCurrentAssets), n(b0.totalCurrentLiabilities));
 
-    const sh0 = n(i0.weightedAverageShsOutDil) ?? n(b0.commonStock);
-    const sh1 = n(i1.weightedAverageShsOutDil) ?? n(b1.commonStock);
+    let sh0 = n(i0.weightedAverageShsOutDil) ?? n(i0.weightedAverageShsOut) ?? n(b0.commonStock);
+    let sh1 = n(i1.weightedAverageShsOutDil) ?? n(i1.weightedAverageShsOut) ?? n(b1.commonStock);
+    // Some statement feeds omit the share counts entirely; the reported annual
+    // share history is public, so use it rather than showing "Not reported".
+    if (sh0 == null || sh1 == null || sh1 <= 0) {
+      const hist = await yahooAnnualShares(symbol);
+      if (hist && hist.length >= 2) { sh0 = hist[0]; sh1 = hist[1]; }
+    }
     const sharesChangeYoY = sh0 != null && sh1 != null && sh1 > 0 ? (sh0 / sh1 - 1) * 100 : null;
 
     const marketCap = n(q0.marketCap) ?? n(m0.marketCap);
@@ -631,6 +637,13 @@ serve(async (req) => {
       (marketCap != null && netDebt != null ? ratio(marketCap + netDebt, ebitda) : null);
     const priceToSales = n(r0.priceToSalesRatio) ?? ratio(marketCap, rev0);
     const priceToBook = n(r0.priceToBookRatio) ?? ratio(marketCap, equity);
+    const eps = n(i0.epsDiluted) ?? n(i0.eps) ?? n(q0.eps);
+    const price = n(q0.price);
+    const peRatio =
+      n(r0.priceEarningsRatio) ?? n(m0.peRatio) ?? n(q0.pe) ??
+      (price != null && eps != null && eps > 0 ? price / eps : null) ??
+      (marketCap != null && n(i0.netIncome) != null && n(i0.netIncome)! > 0
+        ? marketCap / n(i0.netIncome)! : null);
 
     return new Response(JSON.stringify({
       symbol,
