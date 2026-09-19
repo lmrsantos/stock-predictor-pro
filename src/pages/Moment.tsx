@@ -115,7 +115,17 @@ export default function Moment() {
       <UpdateBanner />
       <header className="mb-4">
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {new Date().toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </p>
+          </div>
           <a
             href="/?from=moment"
             target="_blank"
