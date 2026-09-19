@@ -183,8 +183,6 @@ export function MomentChart({ data }: { data: MomentData }) {
       ? ((data.currentPrice - data.week52Low) / (data.week52High - data.week52Low)) * 100
       : 50;
 
-  const dist = (t: TouchList) =>
-    t.length > 1 ? Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) : 0;
 
   return (
     <section className="rounded-xl border border-border bg-card p-3">
