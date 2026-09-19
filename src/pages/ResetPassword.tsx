@@ -47,7 +47,7 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setMessage("Password updated successfully. Signing you in...");
-      setTimeout(() => navigate("/auth", { replace: true }), 1500);
+      setTimeout(() => navigate(nextPath, { replace: true }), 1500);
     } catch (err: any) {
       setError(err.message || "Failed to reset password.");
     } finally {
@@ -114,7 +114,7 @@ const ResetPassword = () => {
 
         <p className="text-center text-sm text-muted-foreground">
           <button
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate(nextPath)}
             className="text-primary hover:underline"
           >
             Back to sign in
