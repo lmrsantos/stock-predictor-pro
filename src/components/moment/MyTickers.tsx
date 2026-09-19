@@ -132,9 +132,10 @@ function SwipeTickerRow({
             onSelect();
           }
         }}
-        className="relative z-10 flex min-h-[56px] w-full touch-pan-y select-none items-center gap-3 px-3 py-3 text-left transition-[background-color,transform] duration-200 ease-out"
+        className={`relative z-10 flex min-h-[56px] w-full touch-pan-y select-none items-center gap-3 px-3 py-3 text-left transition-[background-color,transform] duration-200 ease-out ${flash ? "bg-primary/10" : "bg-card"}`}
         style={{ transform: `translateX(${dragging.current ? dragOffset : restingOffset}px)` }}
       >
+
 
         <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{symbol}</span>
         {quote ? (
