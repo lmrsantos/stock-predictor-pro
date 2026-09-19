@@ -19,7 +19,6 @@ import {
   Rocket,
   Clock,
   BookOpen,
-  Github,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { BootPreloader } from "@/components/BootPreloader";
@@ -160,15 +159,6 @@ export default function Landing() {
               >
                 See live demo →
               </Link>
-              <a
-                href="https://github.com/lmrsantos/stock-predictor-pro"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-6 py-3 rounded-full border border-white/15 hover:bg-white/5 font-medium flex items-center gap-2"
-              >
-                <Github className="w-4 h-4" />
-                View source
-              </a>
             </div>
           </Reveal>
 
