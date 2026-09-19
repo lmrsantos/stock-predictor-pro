@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight } from "lucide-react";
+import { useMomentQuotes } from "@/hooks/useMomentQuotes";
 
 export interface WatchListRow {
   symbol: string;
