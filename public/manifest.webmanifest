@@ -1,0 +1,16 @@
+{
+  "name": "Quant Moment — check your read with the math",
+  "short_name": "Quant Moment",
+  "description": "Your eyes can mislead you. We check your read with the math.",
+  "start_url": "/moment",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a1f",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
