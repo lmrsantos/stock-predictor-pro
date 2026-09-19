@@ -4,6 +4,10 @@ export default function Terms() {
   const location = useLocation();
   const navigate = useNavigate();
   const from = (location.state as { from?: string } | null)?.from;
+  // Quant Moment is meant to read as an independent app, so on its routes
+  // we show Quant Moment branding and drop terminal-only features/plans.
+  const isMoment = (from ?? location.pathname).startsWith("/moment");
+  const product = isMoment ? "Quant Moment" : "QuantForecast";
 
   const handleBack = () => {
     // Return to wherever the user came from (Quant Moment or the terminal).
@@ -13,7 +17,7 @@ export default function Terms() {
     } else if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate("/terminal", { replace: true });
+      navigate(isMoment ? "/moment" : "/terminal", { replace: true });
     }
   };
 
@@ -33,20 +37,19 @@ export default function Terms() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">1. Not Investment Advice</h2>
           <p>
-            QuantForecast (the "Service") is an educational and informational
-            quantitative-research platform. <strong>QuantForecast is NOT a
+            {product} (the "Service") is an educational and informational
+            quantitative-research tool. <strong>{product} is NOT a
             registered investment adviser, broker-dealer, financial planner,
             tax adviser, or fiduciary</strong> under the U.S. Investment Advisers
             Act of 1940, FINRA, the SEC, or any equivalent regulator in any
             other jurisdiction.
           </p>
           <p>
-            Nothing on this Service — including quantitative signals, regression
-            forecasts, backtests, AI-generated commentary, allocation models,
-            "hot stocks" lists, or chatbot responses — constitutes a
-            recommendation, solicitation, offer, or endorsement to buy, sell,
-            hold, or transact in any security, derivative, fund, cryptocurrency,
-            or other financial instrument.
+            Nothing on this Service — including price charts, regression
+            forecasts, backtests, AI-generated commentary, or any analytical
+            output — constitutes a recommendation, solicitation, offer, or
+            endorsement to buy, sell, hold, or transact in any security,
+            derivative, fund, cryptocurrency, or other financial instrument.
           </p>
           <p>
             <strong>AI-generated content may contain errors, hallucinations, or
@@ -82,7 +85,7 @@ export default function Terms() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">4. Limitation of Liability</h2>
           <p>
-            To the maximum extent permitted by law, QuantForecast, its
+            To the maximum extent permitted by law, {product}, its
             operators, contributors, and affiliates shall not be liable for any
             direct, indirect, incidental, consequential, or punitive damages
             arising from your use of the Service or reliance on any content,
@@ -94,12 +97,10 @@ export default function Terms() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">5. User Acknowledgment</h2>
           <p>
-            By using the Service — and in particular by using the Portfolio
-            Insights, Quant Agent chatbot, Hot Stocks scanner, or any backtest —
-            you acknowledge and agree that (a) you have read and understood
-            these terms, (b) you understand the Service is informational only,
-            and (c) you accept full responsibility for any investment decisions
-            you make.
+            By using the Service you acknowledge and agree that (a) you have
+            read and understood these terms, (b) you understand the Service is
+            informational only, and (c) you accept full responsibility for any
+            investment decisions you make.
           </p>
         </section>
 
@@ -113,46 +114,56 @@ export default function Terms() {
           </p>
         </section>
 
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">7. Subscriptions, Billing, and Refunds</h2>
-          <p>
-            Paid plans (Pro, Elite) are billed in advance on a recurring monthly
-            or yearly basis through our payment processor (Stripe).{" "}
-            <strong>Subscriptions auto-renew</strong> at the end of each billing
-            cycle at the then-current rate until canceled.
-          </p>
-          <p>
-            <strong>Cancellation:</strong> You may cancel at any time from the
-            Account page. Cancellation takes effect at the end of the current
-            billing period; you retain access to paid features until that date.
-          </p>
-          <p>
-            <strong>Refunds:</strong> All payments are{" "}
-            <strong>non-refundable</strong>, except where required by applicable
-            law. We do not provide refunds or credits for partial billing
-            periods, unused time, or downgrades.
-          </p>
-          <p>
-            <strong>After cancellation or non-payment:</strong> Access to paid
-            features is revoked at the end of the paid period. Account data
-            (saved tickers, portfolio entries) is retained for 30 days, after
-            which it may be permanently deleted.
-          </p>
-          <p>
-            We reserve the right to change pricing on 30 days' notice. Price
-            changes do not affect the current paid billing period.
-          </p>
-        </section>
+        {isMoment ? (
+          <section className="space-y-2">
+            <h2 className="text-lg font-semibold">7. Free Service & Usage Limits</h2>
+            <p>
+              {product} is free to use. Anonymous visitors may perform a limited
+              number of lookups before being asked to create a free account.
+              Signed-in users are subject to a hourly usage cap. We may change
+              these limits, suspend access, or terminate an account that abuses
+              the Service or exceeds fair-use thresholds.
+            </p>
+          </section>
+        ) : (
+          <section className="space-y-2">
+            <h2 className="text-lg font-semibold">7. Subscriptions, Billing, and Refunds</h2>
+            <p>
+              Paid plans (Pro, Elite) are billed in advance on a recurring monthly
+              or yearly basis through our payment processor (Stripe).{" "}
+              <strong>Subscriptions auto-renew</strong> at the end of each billing
+              cycle at the then-current rate until canceled.
+            </p>
+            <p>
+              <strong>Cancellation:</strong> You may cancel at any time from the
+              Account page. Cancellation takes effect at the end of the current
+              billing period; you retain access to paid features until that date.
+            </p>
+            <p>
+              <strong>Refunds:</strong> All payments are{" "}
+              <strong>non-refundable</strong>, except where required by applicable
+              law. We do not provide refunds or credits for partial billing
+              periods, unused time, or downgrades.
+            </p>
+            <p>
+              <strong>After cancellation or non-payment:</strong> Access to paid
+              features is revoked at the end of the paid period. Account data
+              (saved tickers, portfolio entries) is retained for 30 days, after
+              which it may be permanently deleted.
+            </p>
+            <p>
+              We reserve the right to change pricing on 30 days' notice. Price
+              changes do not affect the current paid billing period.
+            </p>
+          </section>
+        )}
 
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">8. Intellectual Property</h2>
           <p>
             All content, software, algorithms, models, datasets, designs, and
-            documentation comprising the Service — including but not limited to
-            the QuantPulse™ scoring model, the autoencoder anomaly engine,
-            regression and cycle-analysis algorithms, thematic intelligence
-            content, UI, and copy — are the{" "}
-            <strong>exclusive property of QuantForecast</strong> and its
+            documentation comprising the Service are the{" "}
+            <strong>exclusive property of {product}</strong> and its
             licensors, protected by copyright, trademark, and trade-secret law.
           </p>
           <p>
@@ -208,15 +219,15 @@ export default function Terms() {
             Your use of the Service is also governed by our{" "}
             <Link to="/privacy" className="underline">Privacy Policy</Link>,
             which describes what personal information we collect, how we use it,
-            and the third-party processors (including Stripe for payments and
-            our authentication and database provider) that handle your data. By
-            using the Service you consent to the practices described in the
-            Privacy Policy.
+            and the third-party processors (including our authentication and
+            database provider{isMoment ? "" : " and Stripe for payments"}) that
+            handle your data. By using the Service you consent to the practices
+            described in the Privacy Policy.
           </p>
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-semibold">11. Governing Law &amp; Arbitration</h2>
+          <h2 className="text-lg font-semibold">11. Governing Law & Arbitration</h2>
           <p>
             These Terms are governed by the laws of the State of Delaware,
             United States, without regard to its conflict-of-laws principles.
@@ -231,7 +242,7 @@ export default function Terms() {
             court of competent jurisdiction.
           </p>
           <p>
-            <strong>Class-action waiver.</strong> You and QuantForecast each
+            <strong>Class-action waiver.</strong> You and {product} each
             agree to bring claims only in an individual capacity, and{" "}
             <strong>
               waive any right to participate in a class, collective, or
