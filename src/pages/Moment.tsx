@@ -119,7 +119,7 @@ export default function Moment() {
             You've used your two free lookups. An account keeps them unlimited — free while we're building.
           </p>
           <Link
-            to="/auth"
+            to="/auth?next=/moment"
             className="mt-3 flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
           >
             Create free account
