@@ -470,7 +470,10 @@ const Index = () => {
   return (
     <div className="flex flex-col h-full min-h-0 bg-background text-foreground overflow-hidden">
       {/* Top nav bar — brand on line 1, actions on line 2 */}
-      <div className="px-4 py-2 border-b border-border bg-background/70 backdrop-blur-xl">
+      <div
+        className="px-4 py-2 border-b border-border bg-background/70 backdrop-blur-xl"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+      >
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <Link to="/" className="inline-flex items-center gap-2 group">
             <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
