@@ -214,7 +214,7 @@ export default function Moment() {
               {extendedQuote && (
                 <p className="mt-1 text-xs tabular-nums text-muted-foreground">
                   {extendedQuote.label} ${extendedQuote.price.toFixed(2)}{" "}
-                  <span className={extendedQuote.change >= 0 ? "text-primary" : "text-destructive"}>
+                  <span className={extendedQuote.change >= 0 ? "text-accent-success" : "text-accent-danger"}>
                     {extendedQuote.change >= 0 ? "+" : ""}
                     {(extendedQuote.changePct * 100).toFixed(2)}%
                   </span>
