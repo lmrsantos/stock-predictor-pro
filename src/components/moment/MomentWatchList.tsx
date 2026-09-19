@@ -147,28 +147,40 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
 
       {rows && rows.length > 0 && (
         <ul className="mt-2 divide-y divide-border">
-          {rows.map((r) => (
-            <li key={r.symbol}>
-              <button
-                onClick={() => onSelect(r.symbol)}
-                className="flex min-h-[44px] w-full items-center gap-3 px-3 py-3 text-left"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-foreground">{r.symbol}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{r.reason}</p>
-                </div>
-                <span
-                  className={`shrink-0 text-sm font-semibold tabular-nums ${
-                    r.dayChangePct >= 0 ? "text-primary" : "text-destructive"
-                  }`}
+          {rows.map((r) => {
+            // Live quote wins over the stored close whenever it is available.
+            const live = quotes[r.symbol];
+            const changePct = live?.changePct ?? r.dayChangePct;
+            return (
+              <li key={r.symbol}>
+                <button
+                  onClick={() => onSelect(r.symbol)}
+                  className="flex min-h-[44px] w-full items-center gap-3 px-3 py-3 text-left"
                 >
-                  {r.dayChangePct >= 0 ? "+" : ""}
-                  {r.dayChangePct.toFixed(2)}%
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            </li>
-          ))}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">{r.symbol}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{r.reason}</p>
+                  </div>
+                  <span className="shrink-0 text-right">
+                    {live && (
+                      <span className="block text-sm font-semibold tabular-nums text-foreground">
+                        ${live.price.toFixed(2)}
+                      </span>
+                    )}
+                    <span
+                      className={`block text-sm font-semibold tabular-nums ${
+                        changePct >= 0 ? "text-accent-success" : "text-accent-danger"
+                      }`}
+                    >
+                      {changePct >= 0 ? "+" : ""}
+                      {changePct.toFixed(2)}%
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
