@@ -7,7 +7,7 @@
 // A forecast never renders without its band.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceArea, ReferenceLine, Customized,
@@ -112,7 +112,6 @@ export function MomentChart({ data }: { data: MomentData }) {
   const [chartStyle, setChartStyle] = useState<"line" | "candles">("line");
   const [span, setSpan] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
-  const touch = useRef<{ x: number; dist: number; span: number; offset: number } | null>(null);
 
   const baseBars = RANGES.find((r) => r.key === rangeKey)!.bars;
   const effSpan = Math.max(30, Math.min(span ?? baseBars, data.points.length));
@@ -183,8 +182,6 @@ export function MomentChart({ data }: { data: MomentData }) {
       ? ((data.currentPrice - data.week52Low) / (data.week52High - data.week52Low)) * 100
       : 50;
 
-  const dist = (t: TouchList) =>
-    t.length > 1 ? Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) : 0;
 
   return (
     <section className="rounded-xl border border-border bg-card p-3">
@@ -211,29 +208,9 @@ export function MomentChart({ data }: { data: MomentData }) {
       </div>
 
       <div
-        className="h-[280px] w-full touch-none"
-        onTouchStart={(e) => {
-          touch.current = {
-            x: e.touches[0].clientX,
-            dist: dist(e.touches as unknown as TouchList),
-            span: effSpan,
-            offset,
-          };
-        }}
-        onTouchMove={(e) => {
-          const t = touch.current;
-          if (!t) return;
-          if (e.touches.length > 1 && t.dist > 0) {
-            const scale = dist(e.touches as unknown as TouchList) / t.dist;
-            setSpan(Math.round(Math.max(30, Math.min(data.points.length, t.span / scale))));
-          } else {
-            const dx = e.touches[0].clientX - t.x;
-            const barsPerPx = t.span / 320;
-            setOffset(Math.max(0, Math.min(data.points.length - 30, Math.round(t.offset + dx * barsPerPx))));
-          }
-        }}
-        onTouchEnd={() => { touch.current = null; }}
+        className="h-[280px] w-full select-none [touch-action:pan-y] [-webkit-touch-callout:none] [-webkit-user-select:none]"
       >
+
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 54, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -299,7 +276,7 @@ export function MomentChart({ data }: { data: MomentData }) {
         <li>Blue band = support zone · red band = resistance zone</li>
         <li>{trendMeasurable ? "Solid line = fitted trend" : "Dashed grey line = no measurable trend"}</li>
         <li>Shaded cone = where price usually travels over the next 30 days</li>
-        <li>Pinch to zoom, drag to pan. As of {data.asOfDate}</li>
+        <li>Use the range buttons above to zoom. As of {data.asOfDate}</li>
       </ul>
     </section>
   );

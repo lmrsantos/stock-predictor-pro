@@ -143,15 +143,13 @@ export default function Moment() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Quant Moment</h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
-              <span>{now.toLocaleDateString("en-US", {
-                weekday: "long",
-                month: "long",
+            <p className="mt-1 truncate whitespace-nowrap text-sm text-muted-foreground">
+              {now.toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
                 day: "numeric",
                 year: "numeric",
-              })}</span>
-              <span aria-hidden="true">·</span>
-              <span>{getMarketStatus(now)}</span>
+              })} · {getMarketStatus(now)}
             </p>
           </div>
           <a
