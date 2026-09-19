@@ -4,6 +4,7 @@
 // it still lists, plainly marked, instead of showing a made-up number.
 
 import { useEffect, useRef, useState } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight, Star, Trash2 } from "lucide-react";
 import { useMyTickers } from "@/hooks/useMyTickers";
