@@ -1,7 +1,7 @@
 // components/moment/MomentSearch.tsx
 // One large search field. 44px+ targets, no hover-only behaviour.
 
-import { useCallback, useRef, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
 import { Search, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,11 +11,25 @@ interface Result {
   exchange?: string;
 }
 
-export function MomentSearch({ onSelect }: { onSelect: (symbol: string) => void }) {
+export interface MomentSearchHandle {
+  clear: () => void;
+}
+
+export const MomentSearch = forwardRef<MomentSearchHandle, { onSelect: (symbol: string) => void }>(
+  function MomentSearch({ onSelect }, ref) {
   const [value, setValue] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout>>();
+
+  useImperativeHandle(ref, () => ({
+    clear: () => {
+      if (debounce.current) clearTimeout(debounce.current);
+      setValue("");
+      setResults([]);
+      setLoading(false);
+    },
+  }));
 
   const search = useCallback(async (q: string) => {
     if (q.trim().length < 1) {
