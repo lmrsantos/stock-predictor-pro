@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { BootPreloader } from "@/components/BootPreloader";
+import { InstallQuantMoment } from "@/components/InstallQuantMoment";
 
 /**
  * QuantForecast marketing landing page.
@@ -159,6 +160,13 @@ export default function Landing() {
               >
                 See live demo →
               </Link>
+            </div>
+          </Reveal>
+
+          {/* Install Quant Moment on mobile */}
+          <Reveal delay={300}>
+            <div className="flex items-center justify-center -mt-8 mb-16">
+              <InstallQuantMoment variant="cta" />
             </div>
           </Reveal>
 
