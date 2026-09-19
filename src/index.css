@@ -234,6 +234,16 @@ html.qm-theme body {
   font-size: 18px;
 }
 
+html.qm-theme .text-sm {
+  font-size: 1rem;
+  line-height: 1.4rem;
+}
+
+html.qm-theme .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.2rem;
+}
+
 /* Older compact labels use fixed pixel utilities, so lift them too. */
 html.qm-theme .text-\[10px\] {
   font-size: 0.72rem;

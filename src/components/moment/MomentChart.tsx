@@ -48,7 +48,7 @@ function CompactTooltip({ active, payload, label, points }: CompactTooltipProps)
   if (!active || !point || !label) return null;
 
   const actual = point.price ?? point.close;
-  const expected = point.mean;
+  const expected = point.mean ?? (point.cone ? (point.cone[0] + point.cone[1]) / 2 : undefined);
   const date = new Date(`${label}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
