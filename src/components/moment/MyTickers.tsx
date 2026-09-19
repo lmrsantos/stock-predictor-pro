@@ -133,16 +133,21 @@ function SwipeTickerRow({
             {quote.changePct !== null && (
               <span
                 className={`block text-[11px] font-semibold tabular-nums ${
-                  quote.changePct >= 0 ? "text-primary" : "text-destructive"
+                  quote.changePct >= 0 ? "text-accent-success" : "text-accent-danger"
                 }`}
               >
                 {quote.changePct >= 0 ? "+" : ""}
                 {quote.changePct.toFixed(2)}%
               </span>
             )}
+            {quote.extendedPrice !== null && (
+              <span className="block text-[10px] tabular-nums text-muted-foreground">
+                {quote.extendedLabel} ${quote.extendedPrice.toFixed(2)}
+              </span>
+            )}
           </span>
         ) : (
-          <span className="shrink-0 text-[11px] text-muted-foreground">No price on file</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">Price unavailable</span>
         )}
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </div>
