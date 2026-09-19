@@ -216,9 +216,9 @@ export default function Moment() {
                   </span>
                 </p>
               )}
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                {data.sector ? `${data.sector} · ` : ""}as of {data.asOfDate}
-              </p>
+              {data.sector && (
+                <p className="mt-2 text-[11px] text-muted-foreground">{data.sector}</p>
+              )}
             </section>
 
             {/* The read */}
