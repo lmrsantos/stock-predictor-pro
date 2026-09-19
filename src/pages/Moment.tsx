@@ -8,13 +8,14 @@
 // appears, and a forecast never renders without its expected-move band.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useMomentSymbol } from "@/hooks/useMomentSymbol";
 import { buildRead } from "@/lib/moment-read";
 import { MomentSearch } from "@/components/moment/MomentSearch";
+import type { MomentSearchHandle } from "@/components/moment/MomentSearch";
 import { MomentChart } from "@/components/moment/MomentChart";
 import { FourQuestions } from "@/components/moment/FourQuestions";
 import { ZonesSignal } from "@/components/moment/ZonesSignal";
