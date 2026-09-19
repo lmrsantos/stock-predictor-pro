@@ -191,12 +191,11 @@ function QrSheet({ onClose }: { onClose: () => void }) {
 }
 
 function IosSheet({ onClose }: { onClose: () => void }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/60"
+      className="fixed inset-0 z-50 flex min-h-full items-end justify-center overflow-y-auto bg-black/60 p-4"
       onClick={onClose}
     >
-      <div className="flex min-h-full items-end justify-center p-4">
         <div
           className="w-full max-w-sm rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
           onClick={(e) => e.stopPropagation()}
