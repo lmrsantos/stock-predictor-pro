@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Sparkles, User, TrendingUp, Briefcase, Table2, FlaskConical, BarChart3, Globe, Network, LineChart as LineChartIcon, ClipboardList, Target, Smartphone } from "lucide-react";
+import { InstallQuantMoment } from "@/components/InstallQuantMoment";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
@@ -583,6 +584,7 @@ const Index = () => {
             <Smartphone className="w-4 h-4" />
             Quant Moment
           </Link>
+          <InstallQuantMoment variant="pill" />
           <button
             onClick={() => setActiveView(activeView === "advisor" ? "chart" : "advisor")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
