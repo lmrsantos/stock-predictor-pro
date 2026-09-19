@@ -209,29 +209,9 @@ export function MomentChart({ data }: { data: MomentData }) {
       </div>
 
       <div
-        className="h-[280px] w-full touch-none"
-        onTouchStart={(e) => {
-          touch.current = {
-            x: e.touches[0].clientX,
-            dist: dist(e.touches as unknown as TouchList),
-            span: effSpan,
-            offset,
-          };
-        }}
-        onTouchMove={(e) => {
-          const t = touch.current;
-          if (!t) return;
-          if (e.touches.length > 1 && t.dist > 0) {
-            const scale = dist(e.touches as unknown as TouchList) / t.dist;
-            setSpan(Math.round(Math.max(30, Math.min(data.points.length, t.span / scale))));
-          } else {
-            const dx = e.touches[0].clientX - t.x;
-            const barsPerPx = t.span / 320;
-            setOffset(Math.max(0, Math.min(data.points.length - 30, Math.round(t.offset + dx * barsPerPx))));
-          }
-        }}
-        onTouchEnd={() => { touch.current = null; }}
+        className="h-[280px] w-full select-none [touch-action:pan-y] [-webkit-touch-callout:none] [-webkit-user-select:none]"
       >
+
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 54, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
