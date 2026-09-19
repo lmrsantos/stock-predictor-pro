@@ -129,6 +129,7 @@ function SwipeTickerRow({
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
+            triggerFlash();
             onSelect();
           }
         }}
