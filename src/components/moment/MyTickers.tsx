@@ -38,26 +38,12 @@ function SwipeTickerRow({
   onRemove,
 }: SwipeTickerRowProps) {
   const [dragOffset, setDragOffset] = useState(0);
-  const [flash, setFlash] = useState(false);
   const startX = useRef(0);
   const startY = useRef(0);
   const dragging = useRef(false);
   const moved = useRef(false);
-  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const restingOffset = isOpen ? -ACTION_WIDTH : 0;
-
-  useEffect(() => {
-    return () => {
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-    };
-  }, []);
-
-  const triggerFlash = () => {
-    setFlash(true);
-    if (flashTimer.current) clearTimeout(flashTimer.current);
-    flashTimer.current = setTimeout(() => setFlash(false), 350);
-  };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
