@@ -114,11 +114,10 @@ function SwipeTickerRow({
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            triggerFlash();
             onSelect();
           }
         }}
-        className={`relative z-10 flex min-h-[56px] w-full touch-pan-y select-none items-center gap-3 px-3 py-3 text-left transition-[background-color,transform] duration-200 ease-out ${flash ? "bg-primary/10" : "bg-card"}`}
+        className={`relative z-10 flex min-h-[56px] w-full touch-pan-y select-none items-center gap-3 px-3 py-3 text-left transition-[background-color,transform] duration-200 ease-out bg-card active:bg-primary/10`}
         style={{ transform: `translateX(${dragging.current ? dragOffset : restingOffset}px)` }}
       >
 
