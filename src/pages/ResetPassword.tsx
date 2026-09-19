@@ -13,6 +13,10 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [validLink, setValidLink] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next") ?? "";
+  const nextPath =
+    rawNext === "/moment" || rawNext.startsWith("/moment/") ? "/moment/auth" : "/auth";
 
   useEffect(() => {
     // Supabase sends recovery as a hash fragment: #type=recovery&access_token=...
