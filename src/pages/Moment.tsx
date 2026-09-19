@@ -24,6 +24,7 @@ import { MomentWatchList } from "@/components/moment/MomentWatchList";
 import { MyTickers } from "@/components/moment/MyTickers";
 import { UpdateBanner } from "@/components/moment/UpdateBanner";
 import { useMyTickers } from "@/hooks/useMyTickers";
+import { useMomentSkin } from "@/hooks/useMomentSkin";
 import { Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
