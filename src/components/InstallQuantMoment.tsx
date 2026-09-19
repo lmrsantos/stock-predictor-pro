@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Smartphone, Download, Share, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -153,25 +154,25 @@ export function InstallQuantMoment({
 }
 
 function QrSheet({ onClose }: { onClose: () => void }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex min-h-full items-center justify-center overflow-y-auto bg-black/60 p-4"
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-xs rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+        <div
+          className="w-full max-w-xs rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
         <div className="mb-3 flex items-center gap-2">
-          <QrCode className="h-5 w-5 text-primary" />
+          <QrCode className="h-5 w-5 shrink-0 text-primary" />
           <h3 className="text-base font-semibold">Get Quant Moment on your phone</h3>
         </div>
         <p className="mb-4 text-sm text-muted-foreground">
-          Scan this with your phone camera to open Quant Moment, then add it to
-          your Home Screen.
+          Scan this with your phone camera, then add Quant Moment to your Home
+          Screen.
         </p>
-        <div className="mx-auto mb-4 flex justify-center rounded-xl bg-white p-3">
-          <QRCodeSVG value={MOMENT_URL} size={180} level="M" />
+        <div className="mx-auto mb-4 flex shrink-0 justify-center rounded-xl bg-white p-3">
+          <QRCodeSVG value={MOMENT_URL} size={160} level="M" />
         </div>
         <p className="mb-4 text-center text-xs text-muted-foreground">
           On Android, tap “Install app.” On iPhone, tap Share → Add to Home
@@ -179,25 +180,26 @@ function QrSheet({ onClose }: { onClose: () => void }) {
         </p>
         <button
           onClick={onClose}
-          className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground"
+          className="w-full shrink-0 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground"
         >
           Close
         </button>
-      </div>
-    </div>
+        </div>
+    </div>,
+    document.body,
   );
 }
 
 function IosSheet({ onClose }: { onClose: () => void }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex min-h-full items-end justify-center overflow-y-auto bg-black/60 p-4"
       onClick={onClose}
     >
-      <div
-        className="w-full max-w-sm rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+        <div
+          className="w-full max-w-sm rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
         <div className="mb-3 flex items-center gap-2">
           <Smartphone className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold">Add Quant Moment to Home Screen</h3>
@@ -234,7 +236,8 @@ function IosSheet({ onClose }: { onClose: () => void }) {
         >
           Got it
         </button>
-      </div>
-    </div>
+        </div>
+    </div>,
+    document.body,
   );
 }
