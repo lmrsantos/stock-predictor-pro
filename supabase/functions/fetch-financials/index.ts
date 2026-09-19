@@ -230,8 +230,12 @@ async function yahooFinancials(symbol: string): Promise<Record<string, unknown> 
       return debt != null && ebitda ? (debt - (cashAmt ?? 0)) / ebitda : null;
     })(),
     currentRatio: yv(fd.currentRatio),
-    sharesOutstanding: yv(ks.sharesOutstanding) ?? yv(r.price?.sharesOutstanding),
+    peRatio,
+    sharesOutstanding: yv(ks.sharesOutstanding) ?? yv(r.price?.sharesOutstanding) ?? shareHistory?.[0] ?? null,
     sharesChangeYoY: (() => {
+      if (shareHistory && shareHistory.length >= 2 && shareHistory[1] > 0) {
+        return (shareHistory[0] / shareHistory[1] - 1) * 100;
+      }
       const now = yv(ks.sharesOutstanding);
       const prior = yv(ks.priorSharesOutstanding);
       return now != null && prior ? (now / prior - 1) * 100 : null;
