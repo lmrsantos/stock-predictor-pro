@@ -19,7 +19,6 @@ import {
   Rocket,
   Clock,
   BookOpen,
-  Github,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { BootPreloader } from "@/components/BootPreloader";
