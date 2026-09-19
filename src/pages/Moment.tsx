@@ -21,6 +21,10 @@ import { FourQuestions } from "@/components/moment/FourQuestions";
 import { ZonesSignal } from "@/components/moment/ZonesSignal";
 import { FundamentalsCard } from "@/components/moment/FundamentalsCard";
 import { MomentWatchList } from "@/components/moment/MomentWatchList";
+import { MyTickers } from "@/components/moment/MyTickers";
+import { UpdateBanner } from "@/components/moment/UpdateBanner";
+import { useMyTickers } from "@/hooks/useMyTickers";
+import { Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
 const ANON_LIMIT = 5;
@@ -43,6 +47,7 @@ export default function Moment() {
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const searchRef = useRef<MomentSearchHandle>(null);
+  const { toggle, has } = useMyTickers();
 
   const {
     data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
@@ -102,6 +107,7 @@ export default function Moment() {
 
   return (
     <main className="mx-auto w-full max-w-md overflow-x-hidden px-3 pb-16 pt-5">
+      <UpdateBanner />
       <header className="mb-4">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
@@ -141,7 +147,12 @@ export default function Moment() {
       )}
 
       <div className="mt-4 space-y-4">
-        {!symbol && !gated && <MomentWatchList onSelect={handleSelect} />}
+        {!symbol && !gated && (
+          <>
+            <MyTickers onSelect={handleSelect} />
+            <MomentWatchList onSelect={handleSelect} />
+          </>
+        )}
 
         {loading && (
           <>
@@ -164,7 +175,18 @@ export default function Moment() {
             <section className="rounded-xl border border-border bg-card p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-foreground">{data.ticker}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-foreground">{data.ticker}</h2>
+                    <button
+                      onClick={() => toggle(data.ticker)}
+                      aria-label={has(data.ticker) ? "Stop following this ticker" : "Follow this ticker"}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
+                    >
+                      <Star
+                        className={`h-5 w-5 ${has(data.ticker) ? "fill-primary text-primary" : ""}`}
+                      />
+                    </button>
+                  </div>
                   <p className="truncate text-xs text-muted-foreground">
                     {data.companyName ?? "Company name not on file"}
                   </p>
@@ -215,6 +237,7 @@ export default function Moment() {
               loading={fundamentalsLoading}
               error={fundamentalsError}
             />
+            <MyTickers onSelect={handleSelect} />
             <MomentWatchList onSelect={handleSelect} />
           </>
         )}
