@@ -44,6 +44,10 @@ export interface ChartDataPoint {
   date: string;
   timestamp: number;
   actual?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
   fitted?: number;
   predicted?: number;
   upper1Sigma: number;

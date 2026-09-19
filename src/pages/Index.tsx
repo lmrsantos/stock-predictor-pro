@@ -299,6 +299,7 @@ const Index = () => {
   // Build unified chart data
   const chartData: ChartDataPoint[] = [];
   const volumeByDate = new Map<string, { volume: number; up: boolean }>();
+  const ohlcByDate = new Map((stockData ?? []).map((d) => [d.date, d]));
   (stockData ?? []).forEach((d, i) => {
     const prev = i > 0 ? stockData![i - 1].close : d.open;
     volumeByDate.set(d.date, { volume: d.volume, up: d.close >= prev });
@@ -306,12 +307,17 @@ const Index = () => {
   if (regression) {
     regression.historicalFit.forEach((f) => {
       const vol = volumeByDate.get(f.date);
+      const ohlc = ohlcByDate.get(f.date);
       chartData.push({
         date: f.date,
         timestamp: f.timestamp,
         volume: vol?.volume,
         volumeUp: vol?.up,
         actual: f.actual,
+        open: ohlc?.open,
+        high: ohlc?.high,
+        low: ohlc?.low,
+        close: ohlc?.close,
         fitted: f.fitted,
         upper1Sigma: f.upper1Sigma,
         lower1Sigma: f.lower1Sigma,

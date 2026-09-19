@@ -12,12 +12,14 @@ import {
   ReferenceLine,
   ReferenceDot,
   ReferenceArea,
+  Customized,
 } from "recharts";
 import { ChartDataPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/regression";
 import { analyzeCycles } from "@/lib/cycle-analysis";
 import { InfoTooltip, metricInfo } from "./InfoTooltip";
 import type { TrendOverlay } from "@/hooks/useTrendAnimation";
+import { Button } from "@/components/ui/button";
 
 interface RegressionChartProps {
   data: ChartDataPoint[];
@@ -33,6 +35,10 @@ interface RegressionChartProps {
 interface StackedPoint {
   date: string;
   actual?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
   predicted?: number;
   fitted?: number;
   isForecast: boolean;
@@ -50,6 +56,53 @@ interface StackedPoint {
   lower1Sigma: number;
   upper2Sigma: number;
   lower2Sigma: number;
+}
+
+interface CandleLayerProps {
+  xAxisMap?: Record<string, { scale?: ((value: string) => number) & { bandwidth?: () => number } }>;
+  yAxisMap?: Record<string, { scale?: (value: number) => number }>;
+}
+
+function CandleLayer({ xAxisMap, yAxisMap, data }: CandleLayerProps & { data: StackedPoint[] }) {
+  const xAxis = Object.values(xAxisMap ?? {})[0];
+  const yAxis = Object.values(yAxisMap ?? {})[0];
+  const xScale = xAxis?.scale;
+  const yScale = yAxis?.scale;
+  if (!xScale || !yScale) return null;
+
+  const bandwidth = typeof xScale.bandwidth === "function" ? xScale.bandwidth() : 8;
+  const bodyWidth = Math.max(1, Math.min(9, bandwidth * 0.62));
+
+  return (
+    <g aria-label="Historical candlesticks">
+      {data.map((point) => {
+        if (point.isForecast || point.open == null || point.high == null || point.low == null || point.close == null) return null;
+        const x = xScale(point.date) + bandwidth / 2;
+        const highY = yScale(point.high);
+        const lowY = yScale(point.low);
+        const openY = yScale(point.open);
+        const closeY = yScale(point.close);
+        const rising = point.close >= point.open;
+        const color = rising ? "hsl(var(--accent-success))" : "hsl(var(--accent-danger))";
+        const bodyTop = Math.min(openY, closeY);
+        const bodyHeight = Math.max(1.5, Math.abs(closeY - openY));
+        return (
+          <g key={point.date}>
+            <line x1={x} x2={x} y1={highY} y2={lowY} stroke={color} strokeWidth={1} />
+            <rect
+              x={x - bodyWidth / 2}
+              y={bodyTop}
+              width={bodyWidth}
+              height={bodyHeight}
+              fill={rising ? "hsl(var(--card))" : color}
+              stroke={color}
+              strokeWidth={1}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
 }
 
 interface StructureMarker {
@@ -88,6 +141,14 @@ function CustomTooltip({ active, payload }: any) {
         <div className="flex justify-between gap-6">
           <span className="text-muted-foreground">Actual</span>
           <span className="font-mono font-bold">${formatPrice(point.actual)}</span>
+        </div>
+      )}
+      {point.open != null && point.high != null && point.low != null && point.close != null && (
+        <div className="grid grid-cols-2 gap-x-5 gap-y-1 border-t border-border pt-1.5">
+          <span className="text-muted-foreground">Open <b className="font-mono text-foreground">${formatPrice(point.open)}</b></span>
+          <span className="text-muted-foreground">High <b className="font-mono text-foreground">${formatPrice(point.high)}</b></span>
+          <span className="text-muted-foreground">Low <b className="font-mono text-foreground">${formatPrice(point.low)}</b></span>
+          <span className="text-muted-foreground">Close <b className="font-mono text-foreground">${formatPrice(point.close)}</b></span>
         </div>
       )}
       {point.predicted != null && (
@@ -131,6 +192,7 @@ function CustomTooltip({ active, payload }: any) {
 export function RegressionChart({ data, isLoading, slopePositive, intraday = false, trendOverlay = null }: RegressionChartProps) {
   const [showVolume, setShowVolume] = useState(true);
   const [showStructure, setShowStructure] = useState(true);
+  const [chartStyle, setChartStyle] = useState<"line" | "candles">("line");
   // Zigzag sensitivity: minimum % reversal required to register a swing pivot
   const [sensitivity, setSensitivity] = useState(0.08);
 
@@ -153,6 +215,10 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
       return {
         date: d.date,
         actual: d.actual,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
         predicted: d.predicted,
         fitted: d.fitted,
         isForecast: d.isForecast,
@@ -352,6 +418,28 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
         </span>
 
         <span className="flex items-center gap-2 ml-auto normal-case tracking-normal">
+          <span className="flex items-center rounded-md border border-border p-0.5" aria-label="Chart style">
+            <Button
+              type="button"
+              size="sm"
+              variant={chartStyle === "line" ? "default" : "ghost"}
+              className="h-7 px-2 text-[10px]"
+              onClick={() => setChartStyle("line")}
+            >
+              Line
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={chartStyle === "candles" ? "default" : "ghost"}
+              className="h-7 px-2 text-[10px]"
+              onClick={() => setChartStyle("candles")}
+              disabled={intraday}
+              title={intraday ? "Candles need open, high, low, and close data" : "Show open, high, low, and close"}
+            >
+              Candles
+            </Button>
+          </span>
           {hasVolume && (
             <button
               onClick={() => setShowVolume((v) => !v)}
@@ -516,15 +604,19 @@ export function RegressionChart({ data, isLoading, slopePositive, intraday = fal
           />
 
           {/* Actual price */}
-          <Line
-            dataKey="actual"
-            stroke={priceLineColor}
-            strokeWidth={1.5}
-            dot={false}
-            type="linear"
-            isAnimationActive={false}
-            connectNulls={false}
-          />
+          {chartStyle === "line" ? (
+            <Line
+              dataKey="actual"
+              stroke={priceLineColor}
+              strokeWidth={1.5}
+              dot={false}
+              type="linear"
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+          ) : (
+            <Customized component={(props: CandleLayerProps) => <CandleLayer {...props} data={stackedData} />} />
+          )}
 
           {/* Predicted price (forecast zone) */}
           <Line
