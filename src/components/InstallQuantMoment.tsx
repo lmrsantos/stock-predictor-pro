@@ -238,6 +238,7 @@ function IosSheet({ onClose }: { onClose: () => void }) {
           Got it
         </button>
       </div>
+      </div>
     </div>
   );
 }
