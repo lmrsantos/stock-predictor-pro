@@ -8,13 +8,14 @@
 // appears, and a forecast never renders without its expected-move band.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useMomentSymbol } from "@/hooks/useMomentSymbol";
 import { buildRead } from "@/lib/moment-read";
 import { MomentSearch } from "@/components/moment/MomentSearch";
+import type { MomentSearchHandle } from "@/components/moment/MomentSearch";
 import { MomentChart } from "@/components/moment/MomentChart";
 import { FourQuestions } from "@/components/moment/FourQuestions";
 import { ZonesSignal } from "@/components/moment/ZonesSignal";
@@ -41,6 +42,7 @@ export default function Moment() {
   const [symbol, setSymbol] = useState<string | null>(null);
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const searchRef = useRef<MomentSearchHandle>(null);
 
   const {
     data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
@@ -53,6 +55,9 @@ export default function Moment() {
 
   const handleSelect = async (next: string) => {
     setLimitMessage(null);
+    // Clear the search field whenever a symbol is chosen (from the dropdown
+    // or from "Worth a look today"), so stale text never lingers.
+    searchRef.current?.clear();
 
     if (!user) {
       const used = Number(localStorage.getItem(ANON_KEY) ?? "0");
@@ -104,7 +109,7 @@ export default function Moment() {
         </p>
       </header>
 
-      <MomentSearch onSelect={handleSelect} />
+      <MomentSearch ref={searchRef} onSelect={handleSelect} />
 
       {limitMessage && (
         <p className="mt-3 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
