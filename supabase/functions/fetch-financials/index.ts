@@ -113,6 +113,39 @@ const yv = (o: unknown): number | null => {
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 };
 
+/**
+ * Reported annual share counts (diluted, basic fallback) from Yahoo's public
+ * fundamentals timeseries. quoteSummary's priorSharesOutstanding is almost
+ * never populated, which is why the share-count change read as unreported.
+ * Returns the two most recent fiscal years, newest first.
+ */
+async function yahooAnnualShares(symbol: string): Promise<number[] | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const url =
+    `https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}` +
+    `?symbol=${encodeURIComponent(symbol)}&type=annualDilutedAverageShares,annualBasicAverageShares` +
+    `&period1=${now - 8 * 365 * 24 * 3600}&period2=${now}`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA } });
+    if (!res.ok) return null;
+    const j: any = await res.json();
+    const series: any[] = j?.timeseries?.result ?? [];
+    for (const type of ["annualDilutedAverageShares", "annualBasicAverageShares"]) {
+      const entry = series.find((s) => s?.meta?.type?.[0] === type);
+      const rows: any[] = (entry?.[type] ?? []).filter(Boolean);
+      const values = rows
+        .map((r) => ({ date: r?.asOfDate as string, v: yv(r?.reportedValue) }))
+        .filter((r) => r.v != null && r.v! > 0)
+        .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+        .map((r) => r.v as number);
+      if (values.length >= 2) return values;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Fallback: Yahoo quoteSummary reported statements + key ratios. */
 async function yahooFinancials(symbol: string): Promise<Record<string, unknown> | null> {
   const auth = await yahooCrumb();
@@ -161,6 +194,17 @@ async function yahooFinancials(symbol: string): Promise<Record<string, unknown> 
   const equity = yv(b0.totalStockholderEquity);
   const d2e = yv(fd.debtToEquity);
 
+  const price = yv(r.price?.regularMarketPrice) ?? yv(sd.previousClose);
+  const trailingEps = yv(ks.trailingEps);
+  const netIncome = yv(i0.netIncome);
+  const peRatio =
+    yv(sd.trailingPE) ??
+    yv(ks.trailingPE) ??
+    (price != null && trailingEps != null && trailingEps > 0 ? price / trailingEps : null) ??
+    (marketCap != null && netIncome != null && netIncome > 0 ? marketCap / netIncome : null);
+
+  const shareHistory = await yahooAnnualShares(symbol);
+
   return {
     symbol,
     fiscalDate: i0.endDate ? new Date(yv(i0.endDate)! * 1000).toISOString().slice(0, 10) : null,
@@ -186,8 +230,12 @@ async function yahooFinancials(symbol: string): Promise<Record<string, unknown> 
       return debt != null && ebitda ? (debt - (cashAmt ?? 0)) / ebitda : null;
     })(),
     currentRatio: yv(fd.currentRatio),
-    sharesOutstanding: yv(ks.sharesOutstanding) ?? yv(r.price?.sharesOutstanding),
+    peRatio,
+    sharesOutstanding: yv(ks.sharesOutstanding) ?? yv(r.price?.sharesOutstanding) ?? shareHistory?.[0] ?? null,
     sharesChangeYoY: (() => {
+      if (shareHistory && shareHistory.length >= 2 && shareHistory[1] > 0) {
+        return (shareHistory[0] / shareHistory[1] - 1) * 100;
+      }
       const now = yv(ks.sharesOutstanding);
       const prior = yv(ks.priorSharesOutstanding);
       return now != null && prior ? (now / prior - 1) * 100 : null;
@@ -574,8 +622,14 @@ serve(async (req) => {
     const currentRatio = n(r0.currentRatio) ??
       ratio(n(b0.totalCurrentAssets), n(b0.totalCurrentLiabilities));
 
-    const sh0 = n(i0.weightedAverageShsOutDil) ?? n(b0.commonStock);
-    const sh1 = n(i1.weightedAverageShsOutDil) ?? n(b1.commonStock);
+    let sh0 = n(i0.weightedAverageShsOutDil) ?? n(i0.weightedAverageShsOut) ?? n(b0.commonStock);
+    let sh1 = n(i1.weightedAverageShsOutDil) ?? n(i1.weightedAverageShsOut) ?? n(b1.commonStock);
+    // Some statement feeds omit the share counts entirely; the reported annual
+    // share history is public, so use it rather than showing "Not reported".
+    if (sh0 == null || sh1 == null || sh1 <= 0) {
+      const hist = await yahooAnnualShares(symbol);
+      if (hist && hist.length >= 2) { sh0 = hist[0]; sh1 = hist[1]; }
+    }
     const sharesChangeYoY = sh0 != null && sh1 != null && sh1 > 0 ? (sh0 / sh1 - 1) * 100 : null;
 
     const marketCap = n(q0.marketCap) ?? n(m0.marketCap);
@@ -583,6 +637,13 @@ serve(async (req) => {
       (marketCap != null && netDebt != null ? ratio(marketCap + netDebt, ebitda) : null);
     const priceToSales = n(r0.priceToSalesRatio) ?? ratio(marketCap, rev0);
     const priceToBook = n(r0.priceToBookRatio) ?? ratio(marketCap, equity);
+    const eps = n(i0.epsDiluted) ?? n(i0.eps) ?? n(q0.eps);
+    const price = n(q0.price);
+    const peRatio =
+      n(r0.priceEarningsRatio) ?? n(m0.peRatio) ?? n(q0.pe) ??
+      (price != null && eps != null && eps > 0 ? price / eps : null) ??
+      (marketCap != null && n(i0.netIncome) != null && n(i0.netIncome)! > 0
+        ? marketCap / n(i0.netIncome)! : null);
 
     return new Response(JSON.stringify({
       symbol,
@@ -596,6 +657,7 @@ serve(async (req) => {
       freeCashFlow, fcfPositiveYears, fcfYearsChecked: cash.length,
       debtToEquity, netDebtToEbitda, currentRatio,
       sharesOutstanding: sh0, sharesChangeYoY,
+      peRatio,
       evToEbitda, priceToSales, priceToBook,
       avgVolume: n(q0.avgVolume) ?? n(p0.averageVolume),
       beta: n(p0.beta),
