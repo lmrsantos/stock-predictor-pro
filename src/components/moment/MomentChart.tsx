@@ -7,7 +7,7 @@
 // A forecast never renders without its band.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceArea, ReferenceLine, Customized,
@@ -112,7 +112,6 @@ export function MomentChart({ data }: { data: MomentData }) {
   const [chartStyle, setChartStyle] = useState<"line" | "candles">("line");
   const [span, setSpan] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
-  const touch = useRef<{ x: number; dist: number; span: number; offset: number } | null>(null);
 
   const baseBars = RANGES.find((r) => r.key === rangeKey)!.bars;
   const effSpan = Math.max(30, Math.min(span ?? baseBars, data.points.length));
@@ -277,7 +276,7 @@ export function MomentChart({ data }: { data: MomentData }) {
         <li>Blue band = support zone · red band = resistance zone</li>
         <li>{trendMeasurable ? "Solid line = fitted trend" : "Dashed grey line = no measurable trend"}</li>
         <li>Shaded cone = where price usually travels over the next 30 days</li>
-        <li>Pinch to zoom, drag to pan. As of {data.asOfDate}</li>
+        <li>Use the range buttons above to zoom. As of {data.asOfDate}</li>
       </ul>
     </section>
   );
