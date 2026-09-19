@@ -159,7 +159,6 @@ function QrSheet({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-50 flex min-h-full items-center justify-center overflow-y-auto bg-black/60 p-4"
       onClick={onClose}
     >
-      <div className="flex min-h-full items-center justify-center p-4">
         <div
           className="w-full max-w-xs rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
           onClick={(e) => e.stopPropagation()}
