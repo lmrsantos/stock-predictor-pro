@@ -152,46 +152,21 @@ function SwipeTickerRow({
 
 export function MyTickers({ onSelect }: { onSelect: (symbol: string) => void }) {
   const { list, remove } = useMyTickers();
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [openSymbol, setOpenSymbol] = useState<string | null>(null);
+  const { quotes: live } = useMomentQuotes(list);
 
-  useEffect(() => {
-    if (list.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      const since = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("stock_prices")
-        .select("ticker, date, close")
-        .in("ticker", list)
-        .gte("date", since)
-        .order("date", { ascending: true });
-      if (cancelled || error || !data) return;
-
-      const byTicker = new Map<string, number[]>();
-      for (const row of data) {
-        const close = Number(row.close);
-        if (!Number.isFinite(close) || close <= 0) continue;
-        const arr = byTicker.get(row.ticker);
-        if (arr) arr.push(close);
-        else byTicker.set(row.ticker, [close]);
-      }
-
-      const next: Record<string, Quote> = {};
-      byTicker.forEach((closes, ticker) => {
-        const last = closes[closes.length - 1];
-        const prev = closes.length > 1 ? closes[closes.length - 2] : null;
-        next[ticker] = {
-          close: last,
-          changePct: prev ? ((last - prev) / prev) * 100 : null,
-        };
-      });
-      setQuotes(next);
-    })();
-    return () => {
-      cancelled = true;
+  const quotes: Record<string, Quote> = {};
+  for (const symbol of list) {
+    const q = live[symbol];
+    if (!q || !Number.isFinite(q.price)) continue;
+    quotes[symbol] = {
+      close: q.price,
+      changePct: q.changePct ?? null,
+      extendedPrice: q.extendedPrice ?? null,
+      extendedLabel: q.extendedLabel ?? null,
     };
-  }, [list]);
+  }
+
 
   return (
     <section className="rounded-xl border border-border bg-card">
