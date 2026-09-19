@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Smartphone, Download, Share, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
