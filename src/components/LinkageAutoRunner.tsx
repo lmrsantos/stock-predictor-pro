@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { runLinkages, readCachedLinkages } from "@/lib/run-linkages";
+
+// Routes that never consume the linkage cache — don't spend work there.
+const SKIP_PATHS = ["/moment"];
 
 /**
  * Silently refreshes the cross-sector linkage cache on app startup
@@ -8,8 +12,10 @@ import { runLinkages, readCachedLinkages } from "@/lib/run-linkages";
  */
 export function LinkageAutoRunner() {
   const started = useRef(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
+    if (SKIP_PATHS.some((p) => pathname.startsWith(p))) return;
     if (started.current) return;
     started.current = true;
 
@@ -24,7 +30,7 @@ export function LinkageAutoRunner() {
     }, 4000);
 
     return () => clearTimeout(t);
-  }, []);
+  }, [pathname]);
 
   return null;
 }
