@@ -42,6 +42,7 @@ export default function Moment() {
   const [symbol, setSymbol] = useState<string | null>(null);
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const searchRef = useRef<MomentSearchHandle>(null);
 
   const {
     data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
@@ -54,6 +55,9 @@ export default function Moment() {
 
   const handleSelect = async (next: string) => {
     setLimitMessage(null);
+    // Clear the search field whenever a symbol is chosen (from the dropdown
+    // or from "Worth a look today"), so stale text never lingers.
+    searchRef.current?.clear();
 
     if (!user) {
       const used = Number(localStorage.getItem(ANON_KEY) ?? "0");
