@@ -22,7 +22,7 @@ import { FundamentalsCard } from "@/components/moment/FundamentalsCard";
 import { MomentWatchList } from "@/components/moment/MomentWatchList";
 
 const ANON_KEY = "qm_anon_lookups";
-const ANON_LIMIT = 2;
+const ANON_LIMIT = 5;
 
 function CardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
@@ -116,10 +116,10 @@ export default function Moment() {
         <div className="mt-4 rounded-xl border border-border bg-card p-4">
           <h2 className="text-base font-semibold text-foreground">Create a free account to keep going</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            You've used your two free lookups. An account keeps them unlimited — free while we're building.
+            You've used your five free lookups. An account keeps them open — free while we're building.
           </p>
           <Link
-            to="/auth?next=/moment"
+            to="/moment/auth"
             className="mt-3 flex min-h-[44px] items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
           >
             Create free account

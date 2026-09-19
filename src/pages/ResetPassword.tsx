@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,10 @@ const ResetPassword = () => {
   const [loading, setLoading] = useState(false);
   const [validLink, setValidLink] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next") ?? "";
+  const nextPath =
+    rawNext === "/moment" || rawNext.startsWith("/moment/") ? "/moment/auth" : "/auth";
 
   useEffect(() => {
     // Supabase sends recovery as a hash fragment: #type=recovery&access_token=...
@@ -43,7 +47,7 @@ const ResetPassword = () => {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setMessage("Password updated successfully. Signing you in...");
-      setTimeout(() => navigate("/auth", { replace: true }), 1500);
+      setTimeout(() => navigate(nextPath, { replace: true }), 1500);
     } catch (err: any) {
       setError(err.message || "Failed to reset password.");
     } finally {
@@ -110,7 +114,7 @@ const ResetPassword = () => {
 
         <p className="text-center text-sm text-muted-foreground">
           <button
-            onClick={() => navigate("/auth")}
+            onClick={() => navigate(nextPath)}
             className="text-primary hover:underline"
           >
             Back to sign in
