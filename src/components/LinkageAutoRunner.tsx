@@ -12,8 +12,10 @@ const SKIP_PATHS = ["/moment"];
  */
 export function LinkageAutoRunner() {
   const started = useRef(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
+    if (SKIP_PATHS.some((p) => pathname.startsWith(p))) return;
     if (started.current) return;
     started.current = true;
 
