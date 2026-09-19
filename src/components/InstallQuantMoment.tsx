@@ -236,8 +236,8 @@ function IosSheet({ onClose }: { onClose: () => void }) {
         >
           Got it
         </button>
-      </div>
-      </div>
-    </div>
+        </div>
+    </div>,
+    document.body,
   );
 }
