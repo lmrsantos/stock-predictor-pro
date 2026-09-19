@@ -44,6 +44,7 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/terminal" element={<Index />} />
                 <Route path="/moment" element={<Moment />} />
+                <Route path="/moment/auth" element={<MomentAuth />} />
                 <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reviewer-access" element={<ReviewerAccess />} />
