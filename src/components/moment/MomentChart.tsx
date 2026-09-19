@@ -34,6 +34,38 @@ interface MomentChartPoint {
   cone?: [number, number];
 }
 
+interface CompactTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload?: MomentChartPoint }>;
+  label?: string;
+}
+
+function CompactTooltip({ active, payload, label }: CompactTooltipProps) {
+  const point = payload?.[0]?.payload;
+  if (!active || !point || !label) return null;
+
+  const actual = point.price ?? point.close;
+  const expected = point.mean;
+  const date = new Date(`${label}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <div className="rounded-md border border-border bg-popover px-2 py-1.5 text-xs shadow-sm">
+      <p className="whitespace-nowrap font-semibold text-popover-foreground">
+        {date}{actual != null ? ` — $${actual.toFixed(2)}` : ""}
+      </p>
+      {expected != null && (
+        <p className="whitespace-nowrap font-medium text-popover-foreground">
+          Expected: ${expected.toFixed(2)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface CandleLayerProps {
   xAxisMap?: Record<string, { scale?: ((value: string) => number) & { bandwidth?: () => number } }>;
   yAxisMap?: Record<string, { scale?: (value: number) => number }>;
@@ -200,37 +232,27 @@ export function MomentChart({ data }: { data: MomentData }) {
         onTouchEnd={() => { touch.current = null; }}
       >
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <ComposedChart data={chartData} margin={{ top: 54, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
               dataKey="label"
               tickFormatter={(date: string) => new Date(`${date}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-              tick={{ fontSize: 10 }}
+              tick={{ fontSize: 12 }}
               minTickGap={28}
               stroke="hsl(var(--muted-foreground))"
             />
             <YAxis
               domain={[yMin, yMax]}
-              tick={{ fontSize: 10 }}
+              tick={{ fontSize: 12 }}
               width={46}
               stroke="hsl(var(--muted-foreground))"
               tickFormatter={(v: number) => `$${v.toFixed(0)}`}
             />
             <Tooltip
-              contentStyle={{
-                background: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-              formatter={(v: number | [number, number], name: string, item: { payload?: MomentChartPoint }) => {
-                if (chartStyle === "candles" && name === "price" && item.payload?.close != null) {
-                  const p = item.payload;
-                  return [`O $${p.open?.toFixed(2)} · H $${p.high?.toFixed(2)} · L $${p.low?.toFixed(2)} · C $${p.close.toFixed(2)}`, "Daily candle"];
-                }
-                const shown = Array.isArray(v) ? v.map((n) => `$${Number(n).toFixed(2)}`).join(" – ") : `$${Number(v).toFixed(2)}`;
-                return [shown, name === "price" ? "Actual close" : name === "mean" ? "Model path" : "Expected range"];
-              }}
+              content={<CompactTooltip />}
+              position={{ y: 4 }}
+              cursor={{ stroke: "hsl(var(--foreground))", strokeOpacity: 0.55, strokeWidth: 1 }}
+              allowEscapeViewBox={{ x: false, y: false }}
             />
 
             {/* 52-week range */}
@@ -242,14 +264,14 @@ export function MomentChart({ data }: { data: MomentData }) {
               y={data.currentPrice}
               stroke="hsl(var(--foreground))"
               strokeDasharray="4 3"
-              label={{ value: `${pos52.toFixed(0)}% of 52w range`, position: "insideTopRight", fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              label={{ value: `${pos52.toFixed(0)}% of 52w range`, position: "insideTopRight", fontSize: 12, fill: "hsl(var(--foreground))" }}
             />
 
             {hasBand && (
-              <Area dataKey="cone" stroke="none" fill="hsl(var(--primary))" fillOpacity={0.18} isAnimationActive={false} />
+              <Area dataKey="cone" stroke="none" fill="hsl(var(--chart-forecast))" fillOpacity={0.24} isAnimationActive={false} />
             )}
             {hasBand && (
-              <Line dataKey="mean" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line dataKey="mean" stroke="hsl(var(--chart-forecast))" strokeWidth={2.5} dot={false} isAnimationActive={false} />
             )}
             {chartStyle === "line" ? (
               <Line dataKey="price" stroke="hsl(var(--foreground))" strokeWidth={2} dot={false} isAnimationActive={false} />
