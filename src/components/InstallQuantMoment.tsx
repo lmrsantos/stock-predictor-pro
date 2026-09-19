@@ -122,27 +122,69 @@ export function InstallQuantMoment({
     );
   }
 
-  // Desktop / other browsers without a prompt: nudge them to open /moment on
-  // their phone rather than offering an install that won't fire.
+  // Desktop / other browsers without a prompt: show a QR code so the visitor
+  // can open /moment on their phone and install it there.
   if (variant === "pill") {
     return (
-      <a
-        href="/moment"
-        className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground hover:bg-accent transition-colors"
-      >
-        <Smartphone className="h-4 w-4" />
-        Get the mobile app
-      </a>
+      <>
+        <button
+          onClick={() => setShowIosSheet(true)}
+          className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-sm font-medium text-secondary-foreground hover:bg-accent transition-colors"
+        >
+          <Smartphone className="h-4 w-4" />
+          Get the mobile app
+        </button>
+        {showIosSheet && <QrSheet onClose={() => setShowIosSheet(false)} />}
+      </>
     );
   }
   return (
-    <a
-      href="/moment"
-      className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white hover:bg-white/5 transition-colors"
+    <>
+      <button
+        onClick={() => setShowIosSheet(true)}
+        className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white hover:bg-white/5 transition-colors"
+      >
+        <Smartphone className="h-4 w-4" />
+        Get Quant Moment on your phone
+      </button>
+      {showIosSheet && <QrSheet onClose={() => setShowIosSheet(false)} />}
+    </>
+  );
+}
+
+function QrSheet({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
     >
-      <Smartphone className="h-4 w-4" />
-      Open Quant Moment on your phone
-    </a>
+      <div
+        className="w-full max-w-xs rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center gap-2">
+          <QrCode className="h-5 w-5 text-primary" />
+          <h3 className="text-base font-semibold">Get Quant Moment on your phone</h3>
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Scan this with your phone camera to open Quant Moment, then add it to
+          your Home Screen.
+        </p>
+        <div className="mx-auto mb-4 flex justify-center rounded-xl bg-white p-3">
+          <QRCodeSVG value={MOMENT_URL} size={180} level="M" />
+        </div>
+        <p className="mb-4 text-center text-xs text-muted-foreground">
+          On Android, tap “Install app.” On iPhone, tap Share → Add to Home
+          Screen.
+        </p>
+        <button
+          onClick={onClose}
+          className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground"
+        >
+          Close
+        </button>
+      </div>
+    </div>
   );
 }
 
