@@ -184,9 +184,9 @@ function QrSheet({ onClose }: { onClose: () => void }) {
         >
           Close
         </button>
-      </div>
-      </div>
-    </div>
+        </div>
+    </div>,
+    document.body,
   );
 }
 
