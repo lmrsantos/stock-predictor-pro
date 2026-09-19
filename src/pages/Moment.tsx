@@ -21,6 +21,10 @@ import { FourQuestions } from "@/components/moment/FourQuestions";
 import { ZonesSignal } from "@/components/moment/ZonesSignal";
 import { FundamentalsCard } from "@/components/moment/FundamentalsCard";
 import { MomentWatchList } from "@/components/moment/MomentWatchList";
+import { MyTickers } from "@/components/moment/MyTickers";
+import { UpdateBanner } from "@/components/moment/UpdateBanner";
+import { useMyTickers } from "@/hooks/useMyTickers";
+import { Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
 const ANON_LIMIT = 5;
@@ -43,6 +47,7 @@ export default function Moment() {
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const searchRef = useRef<MomentSearchHandle>(null);
+  const { toggle, has } = useMyTickers();
 
   const {
     data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
