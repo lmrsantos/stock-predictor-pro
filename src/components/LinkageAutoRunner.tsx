@@ -30,7 +30,7 @@ export function LinkageAutoRunner() {
     }, 4000);
 
     return () => clearTimeout(t);
-  }, []);
+  }, [pathname]);
 
   return null;
 }
