@@ -657,6 +657,7 @@ serve(async (req) => {
       freeCashFlow, fcfPositiveYears, fcfYearsChecked: cash.length,
       debtToEquity, netDebtToEbitda, currentRatio,
       sharesOutstanding: sh0, sharesChangeYoY,
+      peRatio,
       evToEbitda, priceToSales, priceToBook,
       avgVolume: n(q0.avgVolume) ?? n(p0.averageVolume),
       beta: n(p0.beta),
