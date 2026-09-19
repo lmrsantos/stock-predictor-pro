@@ -4,6 +4,7 @@
 // it still lists, plainly marked, instead of showing a made-up number.
 
 import { useEffect, useRef, useState } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight, Star, Trash2 } from "lucide-react";
 import { useMyTickers } from "@/hooks/useMyTickers";
@@ -116,9 +117,11 @@ function SwipeTickerRow({
             onSelect();
           }
         }}
-        className="relative z-10 flex min-h-[56px] w-full touch-pan-y select-none items-center gap-3 bg-card px-3 py-3 text-left transition-transform duration-200 ease-out"
+        className={`relative z-10 flex min-h-[56px] w-full touch-pan-y select-none items-center gap-3 px-3 py-3 text-left transition-[background-color,transform] duration-200 ease-out bg-card active:bg-primary/10`}
         style={{ transform: `translateX(${dragging.current ? dragOffset : restingOffset}px)` }}
       >
+
+
         <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{symbol}</span>
         {quote ? (
           <span className="shrink-0 text-right">
