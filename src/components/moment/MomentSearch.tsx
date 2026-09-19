@@ -101,3 +101,4 @@ export const MomentSearch = forwardRef<MomentSearchHandle, { onSelect: (symbol: 
     </div>
   );
 }
+);
