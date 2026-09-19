@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { Smartphone, Download, Share } from "lucide-react";
+import { Smartphone, Download, Share, QrCode } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+
+const MOMENT_URL = "https://www.quant-forecast.com/moment";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
