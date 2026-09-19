@@ -115,7 +115,9 @@ export default function Moment() {
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
           <a
-            href="/"
+            href="/?from=moment"
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-1 shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             quant-forecast.com

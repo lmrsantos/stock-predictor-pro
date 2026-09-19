@@ -4,7 +4,7 @@
   "short_name": "Quant Moment",
   "description": "Your eyes can mislead you. We check your read with the math.",
   "start_url": "/moment",
-  "scope": "/",
+  "scope": "/moment",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a1f",

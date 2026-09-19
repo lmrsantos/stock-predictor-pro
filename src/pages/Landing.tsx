@@ -19,6 +19,7 @@ import {
   Rocket,
   Clock,
   BookOpen,
+  ArrowLeft,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { BootPreloader } from "@/components/BootPreloader";
@@ -32,6 +33,7 @@ import { InstallQuantMoment } from "@/components/InstallQuantMoment";
 export default function Landing() {
   const { user } = useAuth();
   const [booted, setBooted] = useState(false);
+  const openedFromMoment = new URLSearchParams(window.location.search).get("from") === "moment";
 
   return (
     <div
@@ -62,7 +64,21 @@ export default function Landing() {
       <BootPreloader onDone={() => setBooted(true)} />
 
       {/* ─── 1. NAV ──────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-[#07071a]/70 border-b border-white/5">
+      <header
+        className="sticky top-0 z-40 backdrop-blur-xl bg-[#07071a]/70 border-b border-white/5"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        {openedFromMoment && (
+          <div className="max-w-7xl mx-auto px-6 pt-2">
+            <Link
+              to="/moment"
+              className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-white/80 hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Quant Moment
+            </Link>
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center">
