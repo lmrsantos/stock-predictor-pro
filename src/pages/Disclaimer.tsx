@@ -4,6 +4,8 @@ export default function Disclaimer() {
   const location = useLocation();
   const navigate = useNavigate();
   const from = (location.state as { from?: string } | null)?.from;
+  const isMoment = (from ?? location.pathname).startsWith("/moment");
+  const product = isMoment ? "Quant Moment" : "QuantForecast";
 
   const handleBack = () => {
     if (from) {
@@ -11,7 +13,7 @@ export default function Disclaimer() {
     } else if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate("/terminal", { replace: true });
+      navigate(isMoment ? "/moment" : "/terminal", { replace: true });
     }
   };
 
@@ -29,7 +31,7 @@ export default function Disclaimer() {
 
         <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-4 space-y-2">
           <p className="font-semibold text-amber-200">
-            QuantForecast is NOT a registered investment adviser.
+            {product} is NOT a registered investment adviser.
           </p>
           <p className="text-amber-100/80 text-xs">
             All content is provided for informational and educational purposes
@@ -42,10 +44,9 @@ export default function Disclaimer() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">What this Service is</h2>
           <p>
-            A quantitative-research and educational platform. It applies linear
-            regression, autoencoder anomaly detection, macro regime
-            classification, and historical backtesting to publicly available
-            market data, and surfaces the results in a research interface.
+            A quantitative-research and educational tool. It applies linear
+            regression and historical backtesting to publicly available market
+            data, and surfaces the results in a research interface.
           </p>
         </section>
 
@@ -60,7 +61,7 @@ export default function Disclaimer() {
         </section>
 
         <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Past performance &amp; forecasts</h2>
+          <h2 className="text-lg font-semibold">Past performance & forecasts</h2>
           <p>
             Backtests are hypothetical. They do not reflect actual trading,
             slippage, taxes, or live execution. Forecasts derived from
