@@ -22,7 +22,7 @@ import { FundamentalsCard } from "@/components/moment/FundamentalsCard";
 import { MomentWatchList } from "@/components/moment/MomentWatchList";
 
 const ANON_KEY = "qm_anon_lookups";
-const ANON_LIMIT = 2;
+const ANON_LIMIT = 5;
 
 function CardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
