@@ -180,3 +180,48 @@
 .trend-blur .recharts-bar-rectangle path {
   opacity: 0.5;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Quant Moment app skin — dark neutral surfaces, green/red moves, purple
+   accent, system typography, matching the look of the phone stock apps people
+   already use. Scoped to <html class="qm-theme">, added only on /moment routes,
+   so the QuantForecast terminal keeps its own theme untouched.
+   ────────────────────────────────────────────────────────────────────────── */
+html.qm-theme {
+  --background: 216 16% 9%;
+  --foreground: 0 0% 100%;
+
+  --card: 213 16% 15%;
+  --card-foreground: 0 0% 100%;
+
+  --popover: 213 16% 13%;
+  --popover-foreground: 0 0% 100%;
+
+  --primary: 265 100% 56%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 213 14% 19%;
+  --secondary-foreground: 0 0% 92%;
+
+  --muted: 213 14% 18%;
+  --muted-foreground: 213 10% 70%;
+
+  --accent: 213 14% 20%;
+  --accent-foreground: 0 0% 100%;
+
+  --accent-success: 152 76% 44%;
+  --accent-danger: 358 100% 60%;
+
+  --destructive: 358 100% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 213 12% 23%;
+  --input: 213 12% 23%;
+  --ring: 265 100% 56%;
+
+  --chart-surface: 213 16% 15%;
+  --chart-grid: 213 12% 23%;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+}

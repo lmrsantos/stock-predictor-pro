@@ -11,6 +11,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMomentSkin } from "@/hooks/useMomentSkin";
 
 type Mode = "signup" | "signin" | "forgot";
 
@@ -25,6 +26,7 @@ export default function MomentAuth() {
   const [loading, setLoading] = useState(false);
   const { session } = useAuth();
   const navigate = useNavigate();
+  useMomentSkin();
 
   const momentUrl = window.location.origin + MOMENT_PATH;
 

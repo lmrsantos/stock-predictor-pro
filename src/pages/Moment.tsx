@@ -24,6 +24,7 @@ import { MomentWatchList } from "@/components/moment/MomentWatchList";
 import { MyTickers } from "@/components/moment/MyTickers";
 import { UpdateBanner } from "@/components/moment/UpdateBanner";
 import { useMyTickers } from "@/hooks/useMyTickers";
+import { useMomentSkin } from "@/hooks/useMomentSkin";
 import { Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
@@ -48,6 +49,7 @@ export default function Moment() {
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const searchRef = useRef<MomentSearchHandle>(null);
   const { toggle, has } = useMyTickers();
+  useMomentSkin();
 
   const {
     data, loading, error, fundamentals, fundamentalsError, fundamentalsLoading, baseRates,
@@ -200,7 +202,7 @@ export default function Moment() {
                   {data.dayChangePct !== null && (
                     <p
                       className={`text-sm font-semibold tabular-nums ${
-                        data.dayChangePct >= 0 ? "text-primary" : "text-destructive"
+                        data.dayChangePct >= 0 ? "text-accent-success" : "text-accent-danger"
                       }`}
                     >
                       {data.dayChangePct >= 0 ? "+" : ""}
@@ -212,7 +214,7 @@ export default function Moment() {
               {extendedQuote && (
                 <p className="mt-1 text-xs tabular-nums text-muted-foreground">
                   {extendedQuote.label} ${extendedQuote.price.toFixed(2)}{" "}
-                  <span className={extendedQuote.change >= 0 ? "text-primary" : "text-destructive"}>
+                  <span className={extendedQuote.change >= 0 ? "text-accent-success" : "text-accent-danger"}>
                     {extendedQuote.change >= 0 ? "+" : ""}
                     {(extendedQuote.changePct * 100).toFixed(2)}%
                   </span>

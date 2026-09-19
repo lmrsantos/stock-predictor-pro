@@ -1,18 +1,20 @@
 // components/moment/MyTickers.tsx
 // "My tickers" — the list the user chose to follow, kept on their device.
-// Prices come from stored daily closes; when a ticker has no history on file
-// it still lists, plainly marked, instead of showing a made-up number.
+// Prices are live market quotes, refreshed while the screen is open; when a
+// quote can't be reached the row says so instead of showing a stale number.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight, Star, Trash2 } from "lucide-react";
 import { useMyTickers } from "@/hooks/useMyTickers";
+import { useMomentQuotes } from "@/hooks/useMomentQuotes";
 import { Button } from "@/components/ui/button";
 
 interface Quote {
   close: number;
   changePct: number | null;
+  extendedPrice: number | null;
+  extendedLabel: string | null;
 }
 
 const ACTION_WIDTH = 88;
@@ -131,16 +133,21 @@ function SwipeTickerRow({
             {quote.changePct !== null && (
               <span
                 className={`block text-[11px] font-semibold tabular-nums ${
-                  quote.changePct >= 0 ? "text-primary" : "text-destructive"
+                  quote.changePct >= 0 ? "text-accent-success" : "text-accent-danger"
                 }`}
               >
                 {quote.changePct >= 0 ? "+" : ""}
                 {quote.changePct.toFixed(2)}%
               </span>
             )}
+            {quote.extendedPrice !== null && (
+              <span className="block text-[10px] tabular-nums text-muted-foreground">
+                {quote.extendedLabel} ${quote.extendedPrice.toFixed(2)}
+              </span>
+            )}
           </span>
         ) : (
-          <span className="shrink-0 text-[11px] text-muted-foreground">No price on file</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">Price unavailable</span>
         )}
         <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
       </div>
@@ -150,46 +157,21 @@ function SwipeTickerRow({
 
 export function MyTickers({ onSelect }: { onSelect: (symbol: string) => void }) {
   const { list, remove } = useMyTickers();
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [openSymbol, setOpenSymbol] = useState<string | null>(null);
+  const { quotes: live } = useMomentQuotes(list);
 
-  useEffect(() => {
-    if (list.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      const since = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const { data, error } = await supabase
-        .from("stock_prices")
-        .select("ticker, date, close")
-        .in("ticker", list)
-        .gte("date", since)
-        .order("date", { ascending: true });
-      if (cancelled || error || !data) return;
-
-      const byTicker = new Map<string, number[]>();
-      for (const row of data) {
-        const close = Number(row.close);
-        if (!Number.isFinite(close) || close <= 0) continue;
-        const arr = byTicker.get(row.ticker);
-        if (arr) arr.push(close);
-        else byTicker.set(row.ticker, [close]);
-      }
-
-      const next: Record<string, Quote> = {};
-      byTicker.forEach((closes, ticker) => {
-        const last = closes[closes.length - 1];
-        const prev = closes.length > 1 ? closes[closes.length - 2] : null;
-        next[ticker] = {
-          close: last,
-          changePct: prev ? ((last - prev) / prev) * 100 : null,
-        };
-      });
-      setQuotes(next);
-    })();
-    return () => {
-      cancelled = true;
+  const quotes: Record<string, Quote> = {};
+  for (const symbol of list) {
+    const q = live[symbol];
+    if (!q || !Number.isFinite(q.price)) continue;
+    quotes[symbol] = {
+      close: q.price,
+      changePct: q.changePct ?? null,
+      extendedPrice: q.extendedPrice ?? null,
+      extendedLabel: q.extendedLabel ?? null,
     };
-  }, [list]);
+  }
+
 
   return (
     <section className="rounded-xl border border-border bg-card">
