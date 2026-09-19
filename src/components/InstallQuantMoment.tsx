@@ -193,13 +193,14 @@ function QrSheet({ onClose }: { onClose: () => void }) {
 function IosSheet({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/60 p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60"
       onClick={onClose}
     >
-      <div
-        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-y-auto rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex min-h-full items-end justify-center p-4">
+        <div
+          className="w-full max-w-sm rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
         <div className="mb-3 flex items-center gap-2">
           <Smartphone className="h-5 w-5 text-primary" />
           <h3 className="text-base font-semibold">Add Quant Moment to Home Screen</h3>
