@@ -1,18 +1,20 @@
 // components/moment/MyTickers.tsx
 // "My tickers" — the list the user chose to follow, kept on their device.
-// Prices come from stored daily closes; when a ticker has no history on file
-// it still lists, plainly marked, instead of showing a made-up number.
+// Prices are live market quotes, refreshed while the screen is open; when a
+// quote can't be reached the row says so instead of showing a stale number.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
-import { supabase } from "@/integrations/supabase/client";
 import { ChevronRight, Star, Trash2 } from "lucide-react";
 import { useMyTickers } from "@/hooks/useMyTickers";
+import { useMomentQuotes } from "@/hooks/useMomentQuotes";
 import { Button } from "@/components/ui/button";
 
 interface Quote {
   close: number;
   changePct: number | null;
+  extendedPrice: number | null;
+  extendedLabel: string | null;
 }
 
 const ACTION_WIDTH = 88;
