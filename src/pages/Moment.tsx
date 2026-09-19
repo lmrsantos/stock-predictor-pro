@@ -103,7 +103,15 @@ export default function Moment() {
   return (
     <main className="mx-auto w-full max-w-md overflow-x-hidden px-3 pb-16 pt-5">
       <header className="mb-4">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Quant Moment</h1>
+          <a
+            href="/"
+            className="mt-1 shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            quant-forecast.com
+          </a>
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">
           Your eyes can mislead you. We check your read with the math.
         </p>
