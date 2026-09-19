@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.reviewer-login]
 verify_jwt = false
+
+[functions.moment-quotes]
+verify_jwt = false
