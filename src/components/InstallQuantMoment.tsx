@@ -191,11 +191,11 @@ function QrSheet({ onClose }: { onClose: () => void }) {
 function IosSheet({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/60 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
+        className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-sm flex-col overflow-y-auto rounded-2xl bg-card p-5 text-card-foreground shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center gap-2">
