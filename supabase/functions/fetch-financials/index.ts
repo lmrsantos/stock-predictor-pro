@@ -194,6 +194,17 @@ async function yahooFinancials(symbol: string): Promise<Record<string, unknown> 
   const equity = yv(b0.totalStockholderEquity);
   const d2e = yv(fd.debtToEquity);
 
+  const price = yv(r.price?.regularMarketPrice) ?? yv(sd.previousClose);
+  const trailingEps = yv(ks.trailingEps);
+  const netIncome = yv(i0.netIncome);
+  const peRatio =
+    yv(sd.trailingPE) ??
+    yv(ks.trailingPE) ??
+    (price != null && trailingEps != null && trailingEps > 0 ? price / trailingEps : null) ??
+    (marketCap != null && netIncome != null && netIncome > 0 ? marketCap / netIncome : null);
+
+  const shareHistory = await yahooAnnualShares(symbol);
+
   return {
     symbol,
     fiscalDate: i0.endDate ? new Date(yv(i0.endDate)! * 1000).toISOString().slice(0, 10) : null,
