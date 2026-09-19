@@ -109,7 +109,7 @@ export default function Moment() {
         </p>
       </header>
 
-      <MomentSearch onSelect={handleSelect} />
+      <MomentSearch ref={searchRef} onSelect={handleSelect} />
 
       {limitMessage && (
         <p className="mt-3 rounded-lg border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
