@@ -157,7 +157,7 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
               <li key={r.symbol}>
                 <button
                   onClick={() => onSelect(r.symbol)}
-                  className="flex min-h-[44px] w-full items-center gap-3 px-3 py-3 text-left"
+                  className="flex min-h-[44px] w-full items-center gap-3 px-3 py-3 text-left transition-colors duration-150 active:bg-primary/10"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-foreground">{r.symbol}</p>

@@ -9,3 +9,6 @@
 - [x] Keep Quant Forecast headers below the iPhone status area.
 - [x] Increase Quant Moment typography and show the current market session beside the date.
 - [x] Replace ticker examples with voice-enabled symbol search.
+- [x] Increase typography across the complete Quant Moment experience.
+- [x] Simplify the chart readout and improve forecast contrast.
+- [x] Add accepted-tap feedback to Worth a look today rows.

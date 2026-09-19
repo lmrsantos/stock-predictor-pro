@@ -221,11 +221,36 @@ html.qm-theme {
 
   --chart-surface: 213 16% 15%;
   --chart-grid: 213 12% 23%;
+  --chart-forecast: 269 100% 72%;
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
     Arial, sans-serif;
+
+  /* Scale every rem-based label and control across the standalone app. */
+  font-size: 18px;
 }
 
 html.qm-theme body {
-  font-size: 17px;
+  font-size: 18px;
+}
+
+html.qm-theme .text-sm {
+  font-size: 1rem;
+  line-height: 1.4rem;
+}
+
+html.qm-theme .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.2rem;
+}
+
+/* Older compact labels use fixed pixel utilities, so lift them too. */
+html.qm-theme .text-\[10px\] {
+  font-size: 0.72rem;
+  line-height: 1rem;
+}
+
+html.qm-theme .text-\[11px\] {
+  font-size: 0.78rem;
+  line-height: 1.1rem;
 }
