@@ -157,18 +157,7 @@ export default function Moment() {
       <UpdateBanner />
       <header className="mb-4">
         <h1 className="text-3xl font-bold text-foreground">Quant Moment</h1>
-        <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
-          <p className="min-w-0 truncate whitespace-nowrap text-sm text-muted-foreground">
-              {now.toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })} ·{" "}
-              <span className={getMarketStatus(now) === "Market closed" ? "text-red-500" : "text-green-500"}>
-                {getMarketStatus(now)}
-              </span>
-          </p>
+        <div className="flex justify-end">
           <a
             href="/?from=moment"
             target="_blank"
@@ -178,6 +167,17 @@ export default function Moment() {
             Visit: quant-forecast.com
           </a>
         </div>
+        <p className="mt-1 whitespace-nowrap text-sm text-muted-foreground">
+          {now.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })} ·{" "}
+          <span className={getMarketStatus(now) === "Market closed" ? "text-red-500" : "text-green-500"}>
+            {getMarketStatus(now)}
+          </span>
+        </p>
       </header>
 
       <MomentSearch ref={searchRef} onSelect={handleSelect} />
