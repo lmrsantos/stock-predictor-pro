@@ -79,8 +79,29 @@ export default function Moment() {
     extendedQuote,
   } = useMomentSymbol(gated ? null : symbol);
 
+  // Quant Moment must present its own identity in link previews (iOS share
+  // sheet, social cards) instead of the terminal's static og:title. The
+  // share sheet reads the live og:* meta tags, so update them here.
   useEffect(() => {
+    const setMeta = (name: string, content: string) => {
+      let el = document.querySelector(`meta[property="${name}"]`) as HTMLMetaElement | null;
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute("property", name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
     document.title = "Quant Moment — check your read with the math";
+    setMeta("og:title", "Quant Moment — check your read with the math");
+    setMeta(
+      "og:description",
+      "Check any stock with the math in seconds — forecast range, support/resistance, and the base-rate odds. Quant Moment by QuantForecast."
+    );
+    return () => {
+      // Leave tags in place; restoring the terminal title is handled by other routes.
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -147,6 +168,14 @@ export default function Moment() {
     // Run once on mount only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Make the link-preview card ticker-aware so a shared AAPL link reads
+  // "AAPL on Quant Moment" rather than the generic title.
+  useEffect(() => {
+    if (!data?.ticker) return;
+    const el = document.querySelector('meta[property="og:title"]') as HTMLMetaElement | null;
+    if (el) el.setAttribute("content", `${data.ticker} on Quant Moment`);
+  }, [data?.ticker]);
 
   const shareTicker = async (ticker: string) => {
     const url = `${window.location.origin}/moment?symbol=${encodeURIComponent(ticker)}`;
