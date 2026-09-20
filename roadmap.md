@@ -13,3 +13,5 @@
 - [x] Simplify the chart readout and improve forecast contrast.
 - [x] Add accepted-tap feedback to Worth a look today rows.
 - [x] Clarify Quant Moment chart controls and show the full forecast range on touch.
+- [x] Move the Quant Forecast link into the date row so it remains fully visible on phones.
+- [x] Show an immediate blocking progress message while a selected ticker is loading.
