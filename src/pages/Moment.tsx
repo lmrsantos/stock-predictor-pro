@@ -25,7 +25,7 @@ import { MyTickers } from "@/components/moment/MyTickers";
 import { UpdateBanner } from "@/components/moment/UpdateBanner";
 import { useMyTickers } from "@/hooks/useMyTickers";
 import { useMomentSkin } from "@/hooks/useMomentSkin";
-import { Loader2, Star } from "lucide-react";
+import { Check, Loader2, Share2, Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
 const ANON_LIMIT = 5;
@@ -69,6 +69,7 @@ export default function Moment() {
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [processingSymbol, setProcessingSymbol] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [linkCopied, setLinkCopied] = useState(false);
   const searchRef = useRef<MomentSearchHandle>(null);
   const { toggle, has } = useMyTickers();
   useMomentSkin();
@@ -135,6 +136,41 @@ export default function Moment() {
     }
     setGated(false);
     setSymbol(normalized);
+  };
+
+  // Open a shared link like /moment?symbol=AAPL directly on that ticker.
+  useEffect(() => {
+    const shared = new URLSearchParams(window.location.search).get("symbol");
+    if (!shared) return;
+    const cleaned = shared.toUpperCase().replace(/[^A-Z0-9.^=-]/g, "").slice(0, 12);
+    if (cleaned) void handleSelect(cleaned);
+    // Run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const shareTicker = async (ticker: string) => {
+    const url = `${window.location.origin}/moment?symbol=${encodeURIComponent(ticker)}`;
+    const shareData = {
+      title: `${ticker} on Quant Moment`,
+      text: `Check ${ticker} with the math on Quant Moment`,
+      url,
+    };
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // User dismissed the share sheet — nothing to do.
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable (very old browser) — fail silently.
+    }
   };
 
   const read =
@@ -242,6 +278,17 @@ export default function Moment() {
                       <Star
                         className={`h-5 w-5 ${has(data.ticker) ? "fill-primary text-primary" : ""}`}
                       />
+                    </button>
+                    <button
+                      onClick={() => void shareTicker(data.ticker)}
+                      aria-label={linkCopied ? "Link copied" : `Share ${data.ticker}`}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
+                    >
+                      {linkCopied ? (
+                        <Check className="h-5 w-5 text-accent-success" />
+                      ) : (
+                        <Share2 className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                   <p className="truncate text-xs text-muted-foreground">
