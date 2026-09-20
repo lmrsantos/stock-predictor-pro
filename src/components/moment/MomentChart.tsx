@@ -49,6 +49,8 @@ function CompactTooltip({ active, payload, label, points }: CompactTooltipProps)
 
   const actual = point.price ?? point.close;
   const expected = point.mean ?? (point.cone ? (point.cone[0] + point.cone[1]) / 2 : undefined);
+  const lower = point.cone?.[0];
+  const upper = point.cone?.[1];
   const date = new Date(`${label}T00:00:00`).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -64,6 +66,12 @@ function CompactTooltip({ active, payload, label, points }: CompactTooltipProps)
         <p className="whitespace-nowrap font-medium text-popover-foreground">
           Expected: ${expected.toFixed(2)}
         </p>
+      )}
+      {point.mean != null && upper != null && lower != null && (
+        <>
+          <p className="whitespace-nowrap text-popover-foreground">Upper range: ${upper.toFixed(2)}</p>
+          <p className="whitespace-nowrap text-popover-foreground">Lower range: ${lower.toFixed(2)}</p>
+        </>
       )}
     </div>
   );
@@ -244,7 +252,6 @@ export function MomentChart({ data }: { data: MomentData }) {
               y={data.currentPrice}
               stroke="hsl(var(--foreground))"
               strokeDasharray="4 3"
-              label={{ value: `${pos52.toFixed(0)}% of 52w range`, position: "insideTopRight", fontSize: 12, fill: "hsl(var(--foreground))" }}
             />
 
             {hasBand && (
@@ -276,7 +283,7 @@ export function MomentChart({ data }: { data: MomentData }) {
         <li>Blue band = support zone · red band = resistance zone</li>
         <li>{trendMeasurable ? "Solid line = fitted trend" : "Dashed grey line = no measurable trend"}</li>
         <li>Shaded cone = where price usually travels over the next 30 days</li>
-        <li>Use the range buttons above to zoom. As of {data.asOfDate}</li>
+        <li>Select 1M, 6M, 1Y or 5Y above to change the date range. As of {data.asOfDate}</li>
       </ul>
     </section>
   );
