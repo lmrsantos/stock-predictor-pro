@@ -149,7 +149,10 @@ export default function Moment() {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
-              })} · {getMarketStatus(now)}
+              })} ·{" "}
+              <span className={getMarketStatus(now) === "Market closed" ? "text-red-500" : "text-green-500"}>
+                {getMarketStatus(now)}
+              </span>
             </p>
           </div>
           <a
