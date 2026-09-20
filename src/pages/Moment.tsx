@@ -25,7 +25,7 @@ import { MyTickers } from "@/components/moment/MyTickers";
 import { UpdateBanner } from "@/components/moment/UpdateBanner";
 import { useMyTickers } from "@/hooks/useMyTickers";
 import { useMomentSkin } from "@/hooks/useMomentSkin";
-import { Loader2, Star } from "lucide-react";
+import { Check, Loader2, Share2, Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
 const ANON_LIMIT = 5;
@@ -69,6 +69,7 @@ export default function Moment() {
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [processingSymbol, setProcessingSymbol] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
+  const [linkCopied, setLinkCopied] = useState(false);
   const searchRef = useRef<MomentSearchHandle>(null);
   const { toggle, has } = useMyTickers();
   useMomentSkin();
