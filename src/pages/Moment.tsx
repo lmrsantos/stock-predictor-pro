@@ -25,7 +25,7 @@ import { MyTickers } from "@/components/moment/MyTickers";
 import { UpdateBanner } from "@/components/moment/UpdateBanner";
 import { useMyTickers } from "@/hooks/useMyTickers";
 import { useMomentSkin } from "@/hooks/useMomentSkin";
-import { Star } from "lucide-react";
+import { Loader2, Star } from "lucide-react";
 
 const ANON_KEY = "qm_anon_lookups";
 const ANON_LIMIT = 5;
@@ -67,6 +67,7 @@ export default function Moment() {
   const [symbol, setSymbol] = useState<string | null>(null);
   const [gated, setGated] = useState(false);
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [processingSymbol, setProcessingSymbol] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const searchRef = useRef<MomentSearchHandle>(null);
   const { toggle, has } = useMyTickers();
@@ -86,7 +87,21 @@ export default function Moment() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (
+      processingSymbol &&
+      symbol === processingSymbol &&
+      !loading &&
+      (Boolean(data) || Boolean(error) || gated)
+    ) {
+      setProcessingSymbol(null);
+    }
+  }, [data, error, gated, loading, processingSymbol, symbol]);
+
   const handleSelect = async (next: string) => {
+    if (processingSymbol) return;
+    const normalized = next.toUpperCase();
+    setProcessingSymbol(normalized);
     setLimitMessage(null);
     // Clear the search field whenever a symbol is chosen (from the dropdown
     // or from "Worth a look today"), so stale text never lingers.
@@ -95,13 +110,13 @@ export default function Moment() {
     if (!user) {
       const used = Number(localStorage.getItem(ANON_KEY) ?? "0");
       if (used >= ANON_LIMIT) {
-        setSymbol(next);
+        setSymbol(normalized);
         setGated(true);
         return;
       }
       localStorage.setItem(ANON_KEY, String(used + 1));
       setGated(false);
-      setSymbol(next);
+      setSymbol(normalized);
       return;
     }
 
@@ -112,13 +127,14 @@ export default function Moment() {
       });
       if (!usageError && usage?.allowed === false) {
         setLimitMessage("You've hit today's lookup ceiling. It resets tomorrow.");
+        setProcessingSymbol(null);
         return;
       }
     } catch {
       // Never block a lookup on the counter failing.
     }
     setGated(false);
-    setSymbol(next);
+    setSymbol(normalized);
   };
 
   const read =
@@ -140,10 +156,9 @@ export default function Moment() {
     >
       <UpdateBanner />
       <header className="mb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Quant Moment</h1>
-            <p className="mt-1 truncate whitespace-nowrap text-sm text-muted-foreground">
+        <h1 className="text-3xl font-bold text-foreground">Quant Moment</h1>
+        <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
+          <p className="min-w-0 truncate whitespace-nowrap text-sm text-muted-foreground">
               {now.toLocaleDateString("en-US", {
                 weekday: "short",
                 month: "short",
@@ -153,15 +168,14 @@ export default function Moment() {
               <span className={getMarketStatus(now) === "Market closed" ? "text-red-500" : "text-green-500"}>
                 {getMarketStatus(now)}
               </span>
-            </p>
-          </div>
+          </p>
           <a
             href="/?from=moment"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-1 shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            className="shrink-0 whitespace-nowrap text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
-            quant-forecast.com
+            Visit: quant-forecast.com
           </a>
         </div>
       </header>
@@ -291,6 +305,21 @@ export default function Moment() {
           Not investment advice. These are statistical estimates, not predictions.
         </p>
       </footer>
+
+      {processingSymbol && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/75 px-6 backdrop-blur-sm"
+          role="status"
+          aria-live="assertive"
+          aria-label={`Loading ${processingSymbol}`}
+        >
+          <div className="flex min-w-[220px] flex-col items-center rounded-xl border border-border bg-card px-6 py-5 shadow-lg">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" aria-hidden="true" />
+            <p className="mt-3 text-base font-semibold text-foreground">Checking {processingSymbol}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Loading the latest market information…</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
