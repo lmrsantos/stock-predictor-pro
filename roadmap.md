@@ -12,3 +12,4 @@
 - [x] Increase typography across the complete Quant Moment experience.
 - [x] Simplify the chart readout and improve forecast contrast.
 - [x] Add accepted-tap feedback to Worth a look today rows.
+- [x] Clarify Quant Moment chart controls and show the full forecast range on touch.
