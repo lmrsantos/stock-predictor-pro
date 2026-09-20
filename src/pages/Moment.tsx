@@ -169,6 +169,14 @@ export default function Moment() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Make the link-preview card ticker-aware so a shared AAPL link reads
+  // "AAPL on Quant Moment" rather than the generic title.
+  useEffect(() => {
+    if (!data?.ticker) return;
+    const el = document.querySelector('meta[property="og:title"]') as HTMLMetaElement | null;
+    if (el) el.setAttribute("content", `${data.ticker} on Quant Moment`);
+  }, [data?.ticker]);
+
   const shareTicker = async (ticker: string) => {
     const url = `${window.location.origin}/moment?symbol=${encodeURIComponent(ticker)}`;
     const shareData = {
