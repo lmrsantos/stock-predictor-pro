@@ -8,6 +8,8 @@ import { AlertTriangle } from "lucide-react";
  */
 export function DisclaimerBar() {
   const location = useLocation();
+  // Hide the persistent disclaimer bar on legal pages that already cover it.
+  if (location.pathname === "/terms" || location.pathname === "/disclaimer") return null;
   // Tell legal pages where to send the user back to, so a Quant Moment
   // visitor never gets bounced into the terminal.
   const backState = { state: { from: location.pathname } };
