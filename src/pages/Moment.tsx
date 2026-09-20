@@ -138,6 +138,41 @@ export default function Moment() {
     setSymbol(normalized);
   };
 
+  // Open a shared link like /moment?symbol=AAPL directly on that ticker.
+  useEffect(() => {
+    const shared = new URLSearchParams(window.location.search).get("symbol");
+    if (!shared) return;
+    const cleaned = shared.toUpperCase().replace(/[^A-Z0-9.^=-]/g, "").slice(0, 12);
+    if (cleaned) void handleSelect(cleaned);
+    // Run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const shareTicker = async (ticker: string) => {
+    const url = `${window.location.origin}/moment?symbol=${encodeURIComponent(ticker)}`;
+    const shareData = {
+      title: `${ticker} on Quant Moment`,
+      text: `Check ${ticker} with the math on Quant Moment`,
+      url,
+    };
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // User dismissed the share sheet — nothing to do.
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable (very old browser) — fail silently.
+    }
+  };
+
   const read =
     data &&
     buildRead({
@@ -243,6 +278,17 @@ export default function Moment() {
                       <Star
                         className={`h-5 w-5 ${has(data.ticker) ? "fill-primary text-primary" : ""}`}
                       />
+                    </button>
+                    <button
+                      onClick={() => void shareTicker(data.ticker)}
+                      aria-label={linkCopied ? "Link copied" : `Share ${data.ticker}`}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground"
+                    >
+                      {linkCopied ? (
+                        <Check className="h-5 w-5 text-accent-success" />
+                      ) : (
+                        <Share2 className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                   <p className="truncate text-xs text-muted-foreground">
