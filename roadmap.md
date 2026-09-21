@@ -15,3 +15,4 @@
 - [x] Clarify Quant Moment chart controls and show the full forecast range on touch.
 - [x] Move the Quant Forecast link into the date row so it remains fully visible on phones.
 - [x] Show an immediate blocking progress message while a selected ticker is loading.
+- [ ] Stand up quant-moment.com as its own project (see QUANT-MOMENT-HANDOVER.md) — blocked: the new empty project must be created from the Lovable dashboard.
