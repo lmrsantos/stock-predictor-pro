@@ -34,25 +34,41 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
             .toISOString()
             .split("T")[0];
 
-          const [priceRes, metaRes] = await Promise.all([
-            supabase
+          // The backend caps every response at 1000 rows, so page through the
+          // window instead of asking for one big range (which silently cut the
+          // universe down to tickers starting with A–C).
+          const PAGE = 1000;
+          const priceRows: { ticker: string; date: string; close: number | string }[] = [];
+          for (let page = 0; page < 40; page++) {
+            const { data, error } = await supabase
               .from("stock_prices")
               .select("ticker, date, close")
               .gte("date", since)
               .order("ticker", { ascending: true })
               .order("date", { ascending: true })
-              .range(0, 24999),
-            supabase.from("stock_fundamentals").select("ticker, sector").range(0, 999),
-          ]);
+              .range(page * PAGE, page * PAGE + PAGE - 1);
+            if (error) throw error;
+            priceRows.push(...(data ?? []));
+            if (!data || data.length < PAGE) break;
+          }
 
-          if (priceRes.error) throw priceRes.error;
+          const sectors: { ticker: string; sector: string | null }[] = [];
+          for (let page = 0; page < 10; page++) {
+            const { data } = await supabase
+              .from("stock_fundamentals")
+              .select("ticker, sector")
+              .order("ticker", { ascending: true })
+              .range(page * PAGE, page * PAGE + PAGE - 1);
+            sectors.push(...(data ?? []));
+            if (!data || data.length < PAGE) break;
+          }
 
           const sectorByTicker = new Map<string, string | null>(
-            (metaRes.data ?? []).map((m) => [m.ticker, m.sector]),
+            sectors.map((m) => [m.ticker, m.sector]),
           );
 
           const byTicker = new Map<string, number[]>();
-          for (const r of priceRes.data ?? []) {
+          for (const r of priceRows) {
             const close = Number(r.close);
             if (!Number.isFinite(close) || close <= 0) continue;
             const list = byTicker.get(r.ticker);
@@ -82,13 +98,16 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
             .filter((r): r is NonNullable<typeof r> => r !== null)
             .sort((a, b) => b.score - a.score);
 
+          // Sector labels exist for only part of the universe, so a missing
+          // label must not disqualify a ticker — it just isn't de-duplicated.
           const seenSector = new Set<string>();
           const picked: WatchListRow[] = [];
           for (const r of scored) {
             if (picked.length >= 8) break;
-            if (!r.sector) continue;
-            if (seenSector.has(r.sector)) continue;
-            seenSector.add(r.sector);
+            if (r.sector) {
+              if (seenSector.has(r.sector)) continue;
+              seenSector.add(r.sector);
+            }
             picked.push({
               symbol: r.symbol,
               sector: r.sector,
