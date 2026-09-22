@@ -98,13 +98,16 @@ export function MomentWatchList({ onSelect }: { onSelect: (symbol: string) => vo
             .filter((r): r is NonNullable<typeof r> => r !== null)
             .sort((a, b) => b.score - a.score);
 
+          // Sector labels exist for only part of the universe, so a missing
+          // label must not disqualify a ticker — it just isn't de-duplicated.
           const seenSector = new Set<string>();
           const picked: WatchListRow[] = [];
           for (const r of scored) {
             if (picked.length >= 8) break;
-            if (!r.sector) continue;
-            if (seenSector.has(r.sector)) continue;
-            seenSector.add(r.sector);
+            if (r.sector) {
+              if (seenSector.has(r.sector)) continue;
+              seenSector.add(r.sector);
+            }
             picked.push({
               symbol: r.symbol,
               sector: r.sector,
