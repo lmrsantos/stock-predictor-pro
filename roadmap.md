@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Add and verify a portfolio gain/loss history chart with momentum and structural levels.
+
 - [x] Add Line / Candles switch to Quant Forecast with real daily OHLC candles.
 - [x] Add Line / Candles switch to Quant Moment with real daily OHLC candles.
 - [x] Verify both modes visually on desktop and mobile.
