@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { Area, Bar, CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, Bar, Cell, CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Activity, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/InfoTooltip";
@@ -99,7 +99,7 @@ export function PortfolioMomentum({ holdings }: { holdings: HistoryHolding[] }) 
         <div><h3 className="mb-2 text-sm font-medium">Momentum wave</h3><div className="h-[120px] w-full select-none [touch-action:pan-y] [-webkit-touch-callout:none]"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={visible} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
           <YAxis width={72} tickFormatter={money} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
           <XAxis dataKey="date" hide /><ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" />
-          <Tooltip content={<HistoryTooltip />} /><Bar dataKey="momentum" name="20-session change" fill="hsl(var(--primary))" isAnimationActive={false} />
+          <Tooltip content={<HistoryTooltip />} /><Bar dataKey="momentum" name="20-session change" fill="hsl(var(--primary))" isAnimationActive={false}>{visible.map((point) => <Cell key={point.date} fill={(point.momentum ?? 0) >= 0 ? positive : negative} />)}</Bar>
         </ComposedChart></ResponsiveContainer></div></div>
         <p className="text-xs leading-relaxed text-muted-foreground">Current-basket reconstruction · {dateLabel(visible[0].date)} – {dateLabel(last.date)} · daily closes, not live quotes. Uses today's shares and saved costs; excludes sold positions, past quantity changes, dividends and fees. {holdings.some((h) => !h.purchase_date) ? "Some purchase dates are missing; those positions are assumed held throughout." : "Starts after the latest recorded purchase."} Historical zones do not guarantee another bounce.</p>
       </>}
