@@ -14,6 +14,7 @@ import { PortfolioBacktest } from "@/components/PortfolioBacktest";
 import { FeatureGate } from "@/components/FeatureGate";
 import { TradePlanPanel } from "@/components/TradePlanPanel";
 import { PortfolioSectorBreakdown } from "@/components/PortfolioSectorBreakdown";
+import { PortfolioMomentum } from "@/components/PortfolioMomentum";
 import { History } from "lucide-react";
 
 interface Holding {
@@ -585,6 +586,8 @@ export default function Portfolio() {
             </div>
           </div>
         )}
+
+        <PortfolioMomentum holdings={holdings} />
 
         {isLoading ? (
           <div className="chart-surface p-8 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-primary mr-2" /><span className="text-sm text-muted-foreground">Loading portfolio…</span></div>
